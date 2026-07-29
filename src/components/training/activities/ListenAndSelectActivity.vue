@@ -80,6 +80,12 @@ const handleSelect = (choice: TrainingChoice) => {
                 :aria-label="`${choice.text} 선택`"
                 @click="handleSelect(choice)"
               >
+                <img
+                  v-if="choice.imageUrl"
+                  class="word-choice-image"
+                  :src="choice.imageUrl"
+                  :alt="choice.text"
+                />
                 <strong>{{ choice.text }}</strong>
               </button>
             </div>

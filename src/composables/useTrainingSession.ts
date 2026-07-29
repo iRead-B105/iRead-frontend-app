@@ -35,6 +35,23 @@ const savingState = reactive<SavingState>({
   errorMessage: null,
   attemptCount: 0,
 })
+const isSubmittingAnswer = ref(false)
+const currentHint = ref<string | null>(null)
+
+interface AnswerEvaluation {
+  readonly attemptNo: number
+  readonly correct: boolean
+  readonly questionCompleted: boolean
+  readonly canRetry: boolean
+  readonly hint?: string | null
+}
+
+type AnswerEvaluator = (
+  answer: string | string[],
+  question: TrainingQuestion,
+) => Promise<AnswerEvaluation>
+
+let answerEvaluator: AnswerEvaluator | null = null
 
 // 문제별 목업 저장소: 선택한 정답
 const storedAnswers = reactive<Record<string, string | string[]>>({})
@@ -96,11 +113,34 @@ const selectAnswer = (answer: string | string[]): void => {
 }
 
 // 정답 확인(선택형). 맞추면 해당 문제를 완료로 표시하고 정답을 목업 저장소에 보관.
-const submitAnswer = (): boolean => {
+const submitAnswer = async (): Promise<boolean> => {
   const question = currentQuestion.value
-  if (!question || progressState.selectedAnswer === null) return false
+  if (!question || progressState.selectedAnswer === null || isSubmittingAnswer.value) return false
 
   const answer = progressState.selectedAnswer
+  if (answerEvaluator) {
+    isSubmittingAnswer.value = true
+    try {
+      const evaluation = await answerEvaluator(answer, question)
+      progressState.attemptCount = evaluation.attemptNo
+      currentHint.value = evaluation.correct ? null : (evaluation.hint ?? '정답 카드를 살펴봐요.')
+      if (evaluation.correct || evaluation.questionCompleted) {
+        progressState.isCurrentCorrect = true
+        if (!progressState.completedQuestionIds.includes(question.id)) {
+          progressState.completedQuestionIds.push(question.id)
+        }
+        storedAnswers[question.id] = evaluation.correct ? answer : question.answer
+        if (!evaluation.correct) progressState.hintLevel = 2
+      } else {
+        progressState.isCurrentCorrect = false
+        progressState.hintLevel = Math.max(progressState.hintLevel, 1)
+      }
+      return evaluation.correct || evaluation.questionCompleted
+    } finally {
+      isSubmittingAnswer.value = false
+    }
+  }
+
   const correctAnswer = question.answer
   const isCorrect = Array.isArray(correctAnswer)
     ? Array.isArray(answer) && correctAnswer.every((v, i) => v === answer[i])
@@ -116,10 +156,17 @@ const submitAnswer = (): boolean => {
     storedAnswers[question.id] = answer
   } else {
     progressState.isCurrentCorrect = false
-    // 최대 3회 직접 시도한 뒤 1단계 시각 힌트를 자동으로 활성화
-    if (progressState.attemptCount >= 3 && progressState.hintLevel < 1) {
-      progressState.hintLevel = 1
+    currentHint.value = '힌트를 보고 한 번 더 생각해 봐요.'
+    if (progressState.attemptCount >= 2) {
+      progressState.isCurrentCorrect = true
+      progressState.hintLevel = 2
+      if (!progressState.completedQuestionIds.includes(question.id)) {
+        progressState.completedQuestionIds.push(question.id)
+      }
+      storedAnswers[question.id] = question.answer
+      return true
     }
+    progressState.hintLevel = Math.max(progressState.hintLevel, 1)
   }
 
   return isCorrect
@@ -156,6 +203,7 @@ const nextQuestion = (): boolean => {
   progressState.attemptCount = 0
   progressState.hintLevel = 0
   progressState.isCurrentCorrect = null
+  currentHint.value = null
   return true
 }
 
@@ -200,6 +248,7 @@ const resetSession = (): void => {
   progressState.hintLevel = 0
   progressState.completedQuestionIds = []
   progressState.isCurrentCorrect = null
+  currentHint.value = null
   progressState.isCompleted = false
   progressState.completedAt = null
 
@@ -209,6 +258,10 @@ const resetSession = (): void => {
 
   Object.keys(storedAnswers).forEach((k) => delete storedAnswers[k])
   Object.keys(storedRecordings).forEach((k) => delete storedRecordings[k])
+}
+
+const setAnswerEvaluator = (evaluator: AnswerEvaluator | null): void => {
+  answerEvaluator = evaluator
 }
 
 export function useTrainingSession() {
@@ -222,6 +275,8 @@ export function useTrainingSession() {
     progressPercent,
     savingState,
     isSaving,
+    isSubmittingAnswer,
+    currentHint,
     storedAnswers,
     storedRecordings,
     // 계산
@@ -231,6 +286,7 @@ export function useTrainingSession() {
     startLesson,
     selectAnswer,
     submitAnswer,
+    setAnswerEvaluator,
     markRecordingComplete,
     showHint,
     nextQuestion,

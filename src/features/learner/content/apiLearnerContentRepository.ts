@@ -1,10 +1,11 @@
 import fallbackCover from '@/assets/story/ui/new-book-icon.png'
 import fallbackScene from '@/assets/story/story-reader-turtle-scene-mock.png'
 import { learnerApiClient } from '../learnerApiClient'
-import { LearnerContractUnavailableError } from '../integrationError'
+import { getGrowthAreaId, getTrainingTemplateMapping } from './trainingTemplateMapping'
 import type {
   LearnerCurrentCurriculum,
   LearnerDeviceStatus,
+  LearnerGazeCalibrationGuide,
   LearnerGrowthArea,
   LearnerStoryDetail,
   LearnerStoryFriend,
@@ -54,14 +55,71 @@ interface GazeDeviceStatusDto {
   readonly connected: boolean
 }
 
+interface CurrentTrainingListDto {
+  readonly curriculumId: number
+  readonly curriculumStatus: 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED'
+  readonly trainings: readonly {
+    readonly trainingId: number
+    readonly trainingTemplateId: number
+    readonly sequenceNo: number
+    readonly unitName: string
+    readonly trainingName: string
+    readonly status: 'NOT_READY' | 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED'
+  }[]
+}
+
+interface GrowthDto {
+  readonly trainingProgress: readonly {
+    readonly trainingTemplateId: number
+    readonly trainingTemplateName: string
+    readonly completedCount: number
+  }[]
+}
+
 export class ApiLearnerContentRepository implements LearnerContentRepository {
   readonly source = 'api' as const
 
-  async getCurrentCurriculum(_studentId: string): Promise<LearnerCurrentCurriculum> {
-    throw new LearnerContractUnavailableError(
-      'LEARNER_CURRENT_CURRICULUM_CONTRACT_REQUIRED',
-      '학습 앱 권한으로 현재 커리큘럼을 조회하는 백엔드 계약이 필요합니다.',
+  async getCurrentCurriculum(
+    studentId: string,
+    options: Parameters<LearnerContentRepository['getCurrentCurriculum']>[1] = {},
+  ): Promise<LearnerCurrentCurriculum> {
+    const response = await learnerApiClient.request<CurrentTrainingListDto>(
+      `/api/app/training/${encodeURIComponent(studentId)}`,
+      { signal: options.signal },
     )
+    const orderedTrainings = [...response.trainings].sort(
+      (left, right) => left.sequenceNo - right.sequenceNo,
+    )
+    const current = orderedTrainings.find((training) => (
+      training.status === 'NOT_STARTED' || training.status === 'IN_PROGRESS'
+    ))
+    const allCompleted = orderedTrainings.length > 0
+      && orderedTrainings.every((training) => training.status === 'COMPLETED')
+
+    return {
+      curriculumId: String(response.curriculumId),
+      studyDate: null,
+      status: response.curriculumStatus === 'COMPLETED' || allCompleted ? 'COMPLETED' : 'READY',
+      currentOrder: current?.sequenceNo ?? orderedTrainings.length + 1,
+      trainings: orderedTrainings.flatMap((training) => {
+        const mapping = getTrainingTemplateMapping(training.trainingTemplateId)
+        if (!mapping) return []
+        return [{
+          trainingId: String(training.trainingId),
+          trainingTemplateId: String(training.trainingTemplateId),
+          order: training.sequenceNo,
+          categoryId: mapping.categoryId,
+          lessonId: mapping.lessonId,
+          unitName: training.unitName,
+          name: training.trainingName,
+          status: training.status === 'COMPLETED'
+            ? 'COMPLETED' as const
+            : training.trainingId === current?.trainingId
+              ? 'CURRENT' as const
+              : 'LOCKED' as const,
+        }]
+      }),
+    }
   }
 
   async getStoryLibrary(
@@ -137,11 +195,32 @@ export class ApiLearnerContentRepository implements LearnerContentRepository {
     return String(response.storyId)
   }
 
-  async getGrowthAreas(_studentId: string): Promise<readonly LearnerGrowthArea[]> {
-    throw new LearnerContractUnavailableError(
-      'LEARNER_GROWTH_MAPPING_REQUIRED',
-      '훈련 템플릿별 완료 횟수를 세 성장 영역과 단계로 변환하는 제품 규칙이 필요합니다.',
+  async getGrowthAreas(
+    studentId: string,
+    options: Parameters<LearnerContentRepository['getGrowthAreas']>[1] = {},
+  ): Promise<readonly LearnerGrowthArea[]> {
+    const response = await learnerApiClient.request<GrowthDto>(
+      `/api/app/student/${encodeURIComponent(studentId)}/growth`,
+      { signal: options.signal },
     )
+    const learningCounts: Record<1 | 2 | 3, number> = { 1: 0, 2: 0, 3: 0 }
+    response.trainingProgress.forEach((progress) => {
+      const areaId = getGrowthAreaId(progress.trainingTemplateId)
+      if (areaId) learningCounts[areaId] += progress.completedCount
+    })
+    const names: Record<1 | 2 | 3, string> = {
+      1: '파닉스',
+      2: '읽기',
+      3: '유창성',
+    }
+
+    return ([1, 2, 3] as const).map((areaId) => ({
+      areaId,
+      name: names[areaId],
+      learningCount: learningCounts[areaId],
+      stage: Math.min(5, Math.max(1, learningCounts[areaId] + 1)),
+      updatedAt: '',
+    }))
   }
 
   async getStoryFriends(
@@ -183,5 +262,16 @@ export class ApiLearnerContentRepository implements LearnerContentRepository {
       microphoneAvailable: typeof navigator !== 'undefined' && !!navigator.mediaDevices,
       microphoneActive: false,
     }
+  }
+
+  async getGazeCalibrationGuide(
+    studentId: string,
+    options: Parameters<LearnerContentRepository['getGazeCalibrationGuide']>[1] = {},
+  ): Promise<LearnerGazeCalibrationGuide> {
+    const params = new URLSearchParams({ studentId })
+    return learnerApiClient.request(
+      `/api/app/gaze/calibration-guide?${params.toString()}`,
+      { signal: options.signal },
+    )
   }
 }

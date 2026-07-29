@@ -123,6 +123,7 @@ export interface TrainingChoice {
   text?: string
   letter?: HangulLetter // 글자 카드 선택지(첫소리 찾기 등)
   audioSrc?: string
+  imageUrl?: string
 }
 
 // 2단계 힌트

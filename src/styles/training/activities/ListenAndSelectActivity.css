@@ -234,6 +234,7 @@
 .word-select {
   display: grid;
   place-items: center;
+  gap: 8px;
   width: 100%;
   min-height: 68px;
   flex: 1;
@@ -241,6 +242,13 @@
   border-radius: 18px;
   background: transparent;
   cursor: pointer;
+}
+
+.word-choice-image {
+  width: 72px;
+  height: 72px;
+  border-radius: 14px;
+  object-fit: cover;
 }
 
 .word-select:focus-visible {

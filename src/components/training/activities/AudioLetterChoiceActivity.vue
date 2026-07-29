@@ -26,10 +26,10 @@ const playQuestion = () => {
   if (props.question.audioText) void audio.replay(props.question.audioText, 0.72)
 }
 
-const choose = (choice: TrainingChoice) => {
+const choose = async (choice: TrainingChoice) => {
   if (isCorrect.value) return
   session.selectAnswer(choice.id)
-  const correct = session.submitAnswer()
+  const correct = await session.submitAnswer()
 
   if (correct) {
     void audio.speak('맞았어!', 0.9)

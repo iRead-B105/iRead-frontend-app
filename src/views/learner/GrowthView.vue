@@ -4,6 +4,7 @@ import gardenBackground from '../../assets/backgrounds/garden-growth/garden-stag
 import flowerBedNameplate from '../../assets/growth/ui/flower-bed-nameplate.png'
 import { fetchGrowthAreas, getCachedStudent } from '@/services/learnerDataRepository'
 import StoryFriendCollectionModal from '@/components/growth/StoryFriendCollectionModal.vue'
+import { learnerDataSource } from '@/config/learnerDataSource'
 
 type GardenId = 1 | 2 | 3
 
@@ -24,8 +25,7 @@ const gardens = reactive<Garden[]>([
 ])
 
 const stageNames = ['흙', '새싹', '꽃봉', '꽃', '만개'] as const
-// TODO: 백엔드 연결 시 영역별 누적 학습 횟수와 확정된 단계 임계값으로 교체합니다.
-// 현재 클릭 목업에서는 한 번 누를 때마다 다음 단계로 성장합니다.
+// API 모드에서는 완료 훈련 누적값을 사용하고, mock 모드에서는 클릭으로 단계를 확인합니다.
 const learningCounts = reactive<Record<GardenId, number>>({ 1: 0, 2: 0, 3: 0 })
 const stageForLearningCount = (count: number) => Math.min(5, Math.max(1, count + 1))
 const stages = computed<Record<GardenId, number>>(() => ({
@@ -75,7 +75,7 @@ const progressLabel = (garden: Garden) => (
 )
 
 const grow = (garden: Garden) => {
-  if (loadError.value) return
+  if (loadError.value || learnerDataSource === 'api') return
 
   const currentStage = stages.value[garden.id]
   if (currentStage < 5) {
@@ -182,7 +182,9 @@ onBeforeUnmount(() => {
         :disabled="Boolean(loadError)"
         :aria-label="loadError
           ? `${garden.title} 화단. 성장 정보 계약 확인 필요`
-          : `${garden.title} 화단 ${progressLabel(garden)}. 눌러서 성장시키기`"
+          : learnerDataSource === 'api'
+            ? `${garden.title} 화단 ${progressLabel(garden)}`
+            : `${garden.title} 화단 ${progressLabel(garden)}. 눌러서 성장시키기`"
         @pointerenter="showGrowHint(garden)"
         @pointerleave="showGardenHint(garden)"
         @focus="showGrowHint(garden)"

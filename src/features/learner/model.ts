@@ -106,6 +106,11 @@ export interface LearnerDeviceStatus {
   readonly microphoneActive: boolean
 }
 
+export interface LearnerGazeCalibrationGuide {
+  readonly calibrationRequired: boolean
+  readonly calibrationGuide: string
+}
+
 export type LearnerStoryFriend = VillageItem
 
 export interface LearnerRequestOptions {

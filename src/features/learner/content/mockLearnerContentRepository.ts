@@ -68,4 +68,11 @@ export class MockLearnerContentRepository implements LearnerContentRepository {
   async getDeviceStatus() {
     return { ...learnerRuntimeMock.deviceStatus }
   }
+
+  async getGazeCalibrationGuide() {
+    return {
+      calibrationRequired: true,
+      calibrationGuide: '빛나는 점을 차례대로 바라봐 주세요.',
+    }
+  }
 }

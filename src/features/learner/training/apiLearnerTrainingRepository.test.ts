@@ -12,12 +12,7 @@ describe('API learner training repository', () => {
     const repository = new ApiLearnerTrainingRepository()
 
     await repository.start('101', '55')
-    await repository.complete(
-      '101',
-      '55',
-      { completedQuestionIds: ['q1'] },
-      '2026-07-29T10:00:00',
-    )
+    await repository.complete('101', '55')
 
     expect(request).toHaveBeenNthCalledWith(
       1,
@@ -27,11 +22,41 @@ describe('API learner training repository', () => {
     expect(request).toHaveBeenNthCalledWith(
       2,
       '/api/app/training/101/55/complete',
+      { method: 'POST' },
+    )
+  })
+
+  it('문항 응답을 submission 계약으로 전송한다', async () => {
+    const request = vi.spyOn(learnerApiClient, 'request').mockResolvedValue({
+      submissionId: '11111111-1111-4111-8111-111111111111',
+      correct: true,
+      questionCompleted: true,
+      canRetry: false,
+    })
+    const repository = new ApiLearnerTrainingRepository()
+
+    await repository.saveSubmission('101', '55', 1, {
+      submissionId: '11111111-1111-4111-8111-111111111111',
+      responseType: 'TRACE',
+      response: {
+        canvasWidth: 640,
+        canvasHeight: 500,
+        strokes: [{ points: [{ x: 10, y: 20, elapsedMs: 0 }, { x: 20, y: 30, elapsedMs: 10 }] }],
+      },
+    })
+
+    expect(request).toHaveBeenCalledWith(
+      '/api/app/training/101/55/questions/1/responses',
       {
         method: 'POST',
         body: JSON.stringify({
-          result: { completedQuestionIds: ['q1'] },
-          completedAt: '2026-07-29T10:00:00',
+          submissionId: '11111111-1111-4111-8111-111111111111',
+          responseType: 'TRACE',
+          response: {
+            canvasWidth: 640,
+            canvasHeight: 500,
+            strokes: [{ points: [{ x: 10, y: 20, elapsedMs: 0 }, { x: 20, y: 30, elapsedMs: 10 }] }],
+          },
         }),
       },
     )
@@ -43,8 +68,6 @@ describe('API learner training repository', () => {
     const audioFile = new File(['audio'], 'answer.webm', { type: 'audio/webm' })
 
     await repository.saveRecording('101', '55', 2, {
-      wordId: 7,
-      targetIndex: 1,
       expectedText: '토끼',
       audioFile,
       speechStartOffsetMs: 120,
@@ -57,7 +80,8 @@ describe('API learner training repository', () => {
     expect(init.method).toBe('POST')
     expect(init.body).toBeInstanceOf(FormData)
     const body = init.body as FormData
-    expect(body.get('wordId')).toBe('7')
+    expect(body.has('wordId')).toBe(false)
+    expect(body.has('targetIndex')).toBe(false)
     expect(body.get('expectedText')).toBe('토끼')
     expect(body.get('audioFile')).toBe(audioFile)
   })

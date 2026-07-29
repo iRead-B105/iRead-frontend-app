@@ -9,6 +9,7 @@ import { learnerContentRepository } from '@/features/learner/content'
 import type {
   LearnerCurrentCurriculum,
   LearnerDeviceStatus,
+  LearnerGazeCalibrationGuide,
   LearnerGrowthArea,
   LearnerStudent,
   LearnerStoryDetail,
@@ -77,6 +78,9 @@ export const getInitialDeviceStatus = (): LearnerDeviceStatus =>
 
 export const fetchDeviceStatus = (): Promise<LearnerDeviceStatus> =>
   learnerContentRepository.getDeviceStatus(activeStudentId())
+
+export const fetchGazeCalibrationGuide = (): Promise<LearnerGazeCalibrationGuide> =>
+  learnerContentRepository.getGazeCalibrationGuide(activeStudentId())
 
 export const personalizeRuntimeValue = <T>(value: T): T => {
   const studentName = getCachedStudent().name

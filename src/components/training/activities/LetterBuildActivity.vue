@@ -90,18 +90,18 @@ const releasePointer = () => {
 onMounted(() => window.addEventListener('pointerup', releasePointer))
 onUnmounted(() => window.removeEventListener('pointerup', releasePointer))
 
-const submit = () => {
+const submit = async () => {
   if (!allFilled.value || isCorrect.value) return
   const correctArrangement = slots.value.every(
     (item) => placements[item.id] === item.answerChoiceId,
   )
   const arrangedValue = slots.value.map((item) => placements[item.id]).join('|')
   session.selectAnswer(correctArrangement ? props.question.answer : arrangedValue)
-  const completed = session.submitAnswer()
+  const completed = await session.submitAnswer()
 
   if (completed) {
     void audio.speak(props.question.combined ?? props.question.audioText ?? '', 0.78)
-  } else if (session.progressState.attemptCount >= 3 && session.progressState.hintLevel < 2) {
+  } else if (session.progressState.attemptCount >= 2 && session.progressState.hintLevel < 2) {
     session.showHint()
     clearPlacements()
   }
