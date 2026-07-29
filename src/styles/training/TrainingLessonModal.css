@@ -1,0 +1,174 @@
+/** 대상 컴포넌트: components/training/TrainingLessonModal.vue
+ * Vue 연결: <style scoped src="@/styles/training/TrainingLessonModal.css">
+ * 숫자를 수정할 때는 바로 위 한국어 주석과 styles/README.md의 공통 토큰 표를 먼저 확인하세요.*/
+
+.lesson-modal-overlay {
+  position: fixed;
+  z-index: 200;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: clamp(12px, 3dvh, 28px) clamp(12px, 3dvw, 36px);
+  background: var(--learner-modal-backdrop);
+  backdrop-filter: blur(var(--learner-modal-blur));
+}
+
+.lesson-modal-panel {
+  width: min(94dvw, 720px);
+  max-height: min(92dvh, 820px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: clamp(16px, 3dvh, 32px);
+  border: var(--learner-modal-border);
+  border-radius: var(--learner-radius-panel);
+  background: var(--learner-modal-background);
+  box-shadow: var(--learner-shadow-floating);
+  outline: none;
+}
+
+.modal-heading {
+  display: flex;
+  align-items: center;
+  gap: var(--learner-space-4);
+  padding-bottom: var(--learner-space-5);
+  border-bottom: var(--learner-border-width) solid var(--learner-border-color-soft);
+}
+
+.heading-icon {
+  width: 76px;
+  height: 76px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border-radius: var(--learner-radius-medium);
+  background: rgb(255 255 255 / 60%);
+  overflow: hidden;
+}
+
+.heading-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.heading-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.heading-title {
+  margin: 0;
+  font-family: var(--learner-font-display);
+  font-size: var(--learner-type-card-title);
+  font-weight: var(--learner-font-weight-heavy);
+  color: var(--learner-color-text);
+  line-height: 1.1;
+}
+
+.heading-desc {
+  margin: var(--learner-space-1) 0 0;
+  font-size: var(--learner-type-body);
+  color: var(--learner-color-text-soft);
+}
+
+.modal-close {
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border: none;
+  border: var(--learner-page-back-border);
+  border-radius: var(--learner-radius-icon-control);
+  background: var(--learner-page-back-background);
+  color: var(--learner-color-text);
+  cursor: pointer;
+  transition: background var(--learner-duration-fast), transform var(--learner-duration-fast);
+}
+
+.modal-close:hover {
+  background: rgb(255 255 255 / 90%);
+  transform: rotate(90deg);
+}
+
+.modal-close:focus-visible {
+  outline: none;
+  box-shadow: var(--learner-shadow-focus);
+}
+
+.modal-close svg {
+  width: 22px;
+  height: 22px;
+}
+
+.modal-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-top: var(--learner-space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--learner-space-3);
+}
+
+.lesson-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--learner-space-3);
+}
+
+.not-ready-toast {
+  position: sticky;
+  bottom: 0;
+  margin: var(--learner-space-4) auto 0;
+  padding: var(--learner-space-3) var(--learner-space-6);
+  border-radius: var(--learner-radius-pill);
+  background: var(--learner-color-text);
+  color: var(--learner-color-text-inverse);
+  font-family: var(--learner-font-display);
+  font-size: var(--learner-type-body);
+  font-weight: var(--learner-font-weight-bold);
+  box-shadow: var(--learner-shadow-card);
+  text-align: center;
+}
+
+.modal-enter-active,
+.modal-leave-active {
+  transition: opacity var(--learner-duration-normal) var(--learner-easing-standard);
+}
+
+.modal-enter-from,
+.modal-leave-to {
+  opacity: 0;
+}
+
+.modal-enter-active .lesson-modal-panel,
+.modal-leave-active .lesson-modal-panel {
+  transition: transform var(--learner-duration-normal) var(--learner-easing-bounce);
+}
+
+.modal-enter-from .lesson-modal-panel,
+.modal-leave-to .lesson-modal-panel {
+  transform: scale(0.92) translateY(12px);
+}
+
+.toast-enter-active,
+.toast-leave-active {
+  transition: opacity var(--learner-duration-fast), transform var(--learner-duration-fast);
+}
+
+.toast-enter-from,
+.toast-leave-to {
+  opacity: 0;
+  transform: translateY(8px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .modal-close:hover {
+    transform: none;
+  }
+}

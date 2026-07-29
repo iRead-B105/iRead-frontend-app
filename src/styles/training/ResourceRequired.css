@@ -1,0 +1,60 @@
+/** 대상 컴포넌트: components/training/ResourceRequired.vue
+ * Vue 연결: <style scoped src="@/styles/training/ResourceRequired.css">
+ * 숫자를 수정할 때는 바로 위 한국어 주석과 styles/README.md의 공통 토큰 표를 먼저 확인하세요.*/
+
+.resource-required {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--learner-space-2);
+  border: var(--learner-border-width-strong) dashed var(--learner-color-text-soft);
+  border-radius: var(--learner-radius-large);
+  background: rgb(255 255 255 / 35%);
+  color: var(--learner-color-text-soft);
+  text-align: center;
+}
+
+.resource-required--small {
+  width: 120px;
+  height: 120px;
+  padding: var(--learner-space-3);
+}
+
+.resource-required--medium {
+  width: 220px;
+  height: 220px;
+  padding: var(--learner-space-5);
+}
+
+.resource-required--large {
+  width: 300px;
+  height: 300px;
+  padding: var(--learner-space-6);
+}
+
+.resource-icon {
+  width: 56px;
+  height: 56px;
+  opacity: 0.7;
+}
+
+.resource-required--small .resource-icon {
+  width: 36px;
+  height: 36px;
+}
+
+.resource-text {
+  font-family: var(--learner-font-display);
+  font-size: var(--learner-type-body);
+  font-weight: var(--learner-font-weight-bold);
+}
+
+.resource-required--small .resource-text {
+  font-size: var(--learner-type-caption);
+}
+
+.resource-label {
+  font-size: var(--learner-type-caption);
+  opacity: 0.8;
+}

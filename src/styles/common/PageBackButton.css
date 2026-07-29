@@ -1,0 +1,37 @@
+/** 모든 일반 하위 화면이 공유하는 페이지 이동용 뒤로가기 버튼 */
+.page-back-button {
+  width: var(--learner-page-back-size);
+  height: var(--learner-page-back-size);
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  padding: 0;
+  border: var(--learner-page-back-border);
+  border-radius: var(--learner-radius-icon-control);
+  background: var(--learner-page-back-background);
+  color: var(--learner-color-text);
+  box-shadow: var(--learner-shadow-control);
+  cursor: pointer;
+  transition:
+    transform var(--learner-duration-fast) var(--learner-easing-standard),
+    box-shadow var(--learner-duration-fast) var(--learner-easing-standard);
+}
+
+.page-back-button svg {
+  width: 30px;
+  height: 30px;
+}
+
+.page-back-button:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--learner-shadow-control-hover);
+}
+
+.page-back-button:active {
+  transform: translateY(0);
+}
+
+.page-back-button:focus-visible {
+  outline: none;
+  box-shadow: var(--learner-shadow-focus);
+}

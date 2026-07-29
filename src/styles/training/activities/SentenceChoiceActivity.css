@@ -1,0 +1,344 @@
+/** 대상 컴포넌트: components/training/activities/SentenceChoiceActivity.vue
+ * Vue 연결: <style scoped src="@/styles/training/activities/SentenceChoiceActivity.css">
+ * 숫자를 수정할 때는 바로 위 한국어 주석과 styles/README.md의 공통 토큰 표를 먼저 확인하세요.*/
+
+.activity {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  max-width: 1120px;
+  height: 100%;
+  min-height: 0;
+  padding: 16px 26px 14px;
+  border: 4px solid rgba(255,255,255,.94);
+  border-radius: 30px;
+  background: linear-gradient(180deg,#d9efff 0%,#eff8ff 58%,#e7f4d5 100%);
+  box-shadow: inset 0 0 0 2px rgba(89,145,212,.18),0 12px 26px rgba(45,94,145,.14);
+  overflow: hidden;
+}
+
+.activity-heading {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 46px;
+}
+
+.activity-heading h1 {
+  margin: 0;
+  color: #193b79;
+  font-family: var(--learner-font-display);
+  font-size: clamp(26px,2.2vw,35px);
+  font-weight: 900;
+}
+
+.status-message {
+  position: absolute;
+  right: 0;
+  margin: 0;
+  padding: 9px 15px;
+  border: 2px solid #ecd79e;
+  border-radius: 999px;
+  background: #fffdf4;
+  color: #88651c;
+  font-family: var(--learner-font-display);
+  font-size: 16px;
+  font-weight: 900;
+}
+
+.status-message.success {
+  border-color: #9bd488;
+  background: #f2ffec;
+  color: #388452;
+}
+
+.picture-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 9px;
+  flex: 1;
+  min-height: 0;
+  width: min(100%,500px);
+  padding: 8px 10px 10px;
+  border: 4px solid #fff;
+  border-radius: 27px;
+  background: #fffdf8;
+  box-shadow: 0 8px 19px rgba(64,86,111,.14);
+}
+
+.picture {
+  width: 100%;
+  min-height: 0;
+  flex: 1;
+  object-fit: cover;
+  border-radius: 18px;
+}
+
+.sentence-target {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  min-height: 64px;
+  padding: 8px 16px;
+  border: 4px dashed #7e9be2;
+  border-radius: 18px;
+  background: #eef4ff;
+  color: #2e4d8c;
+  font-family: var(--learner-font-display);
+  font-size: 22px;
+  font-weight: 900;
+  text-align: center;
+  transition: border-color .18s,background .18s,box-shadow .18s;
+}
+
+.sentence-target.over {
+  border-style: solid;
+  border-color: #ffc83d;
+  background: #fff8cd;
+  box-shadow: 0 0 0 5px rgba(255,208,48,.22);
+}
+
+.sentence-target.filled {
+  border-style: solid;
+  border-color: #65bd6d;
+  background: #effbea;
+  color: #297a35;
+}
+
+.sentence-target.hint {
+  animation: target-pulse .9s ease-in-out infinite;
+}
+
+.choices {
+  display: grid;
+  grid-template-columns: repeat(3,minmax(0,1fr));
+  gap: 12px;
+  width: min(100%,1020px);
+  min-height: 100px;
+}
+
+.sentence-card {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 96px;
+  padding: 12px 22px;
+  border: 4px solid #efe1bd;
+  border-radius: 21px;
+  background: #fffdf8;
+  color: #263853;
+  box-shadow: 0 6px 15px rgba(59,83,111,.13);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  transition: border-color .18s,opacity .18s,box-shadow .18s;
+}
+
+.sentence-card strong {
+  font-family: var(--learner-font-display);
+  font-size: clamp(18px,1.7vw,25px);
+  font-weight: 900;
+  text-align: center;
+  line-height: 1.35;
+}
+
+.grip {
+  position: absolute;
+  right: 10px;
+  top: 6px;
+  color: #a8b2c1;
+  font-size: 20px;
+}
+
+.sentence-card.wrong {
+  border-color: #ed8175;
+  background: #fff1ee;
+  animation: shake .38s ease-in-out;
+}
+
+.sentence-card.hint {
+  border-color: #ffc83d;
+  animation: card-pulse .9s ease-in-out infinite;
+}
+
+.sentence-card.used {
+  opacity: .2;
+}
+
+.choices.locked .sentence-card:not(.used) {
+  opacity: .4;
+  cursor: default;
+}
+
+.action-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 52px;
+}
+
+.reading-state {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 0;
+  padding: 12px 20px;
+  border-radius: 999px;
+  background: #fff8d8;
+  color: #7f641a;
+  font-family: var(--learner-font-display);
+  font-size: 18px;
+  font-weight: 900;
+}
+
+.reading-state span {
+  color: #f0b72e;
+}
+
+.next-button {
+  min-width: 190px;
+  min-height: 52px;
+  border: 0;
+  border-radius: 20px;
+  background: linear-gradient(180deg,#ffc75a,#f2a92f);
+  color: #fff;
+  font-family: var(--learner-font-display);
+  font-size: 21px;
+  font-weight: 900;
+  box-shadow: 0 7px 16px rgba(150,96,16,.22);
+  cursor: pointer;
+}
+
+.next-button:focus-visible {
+  outline: 5px solid #ffd54a;
+  outline-offset: 3px;
+}
+
+.drag-ghost {
+  position: fixed;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  width: min(310px,80vw);
+  min-height: 82px;
+  padding: 12px 20px;
+  border: 4px solid #6f91e9;
+  border-radius: 20px;
+  background: #fffdf8;
+  color: #263853;
+  font-family: var(--learner-font-display);
+  font-size: 23px;
+  font-weight: 900;
+  text-align: center;
+  box-shadow: 0 16px 28px rgba(45,75,120,.28);
+  transform: translate(-50%,-50%) rotate(-2deg);
+  pointer-events: none;
+}
+
+@keyframes shake {
+  25% {
+    transform: translateX(-8px);
+  }
+
+  75% {
+    transform: translateX(8px);
+  }
+}
+
+@keyframes target-pulse {
+  50% {
+    border-color: #ffb823;
+    background: #fff8cf;
+  }
+}
+
+@keyframes card-pulse {
+  50% {
+    box-shadow: 0 0 0 7px rgba(255,210,52,.3),0 8px 18px rgba(151,111,20,.18);
+  }
+}
+
+@media (max-height:800px) {
+  .activity {
+    gap: 9px;
+    padding: 10px 22px 9px;
+  }
+
+  .activity-heading {
+    min-height: 40px;
+  }
+
+  .activity-heading h1 {
+    font-size: 27px;
+  }
+
+  .picture-panel {
+    width: min(100%,410px);
+  }
+
+  .sentence-target {
+    min-height: 54px;
+  }
+
+  .choices {
+    min-height: 82px;
+  }
+
+  .sentence-card {
+    min-height: 78px;
+    padding-block: 8px;
+  }
+
+  .sentence-card strong {
+    font-size: 19px;
+  }
+
+  .action-bar {
+    min-height: 45px;
+  }
+
+  .next-button {
+    min-height: 46px;
+  }
+}
+
+@media (max-width:760px) {
+  .activity {
+    overflow-y: auto;
+  }
+
+  .activity-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .status-message {
+    position: static;
+    align-self: flex-end;
+  }
+
+  .choices {
+    grid-template-columns: 1fr;
+  }
+
+  .picture-panel {
+    min-height: 280px;
+  }
+
+  .sentence-card {
+    min-height: 70px;
+  }
+}
+
+@media (prefers-reduced-motion:reduce) {
+  .sentence-target,.sentence-card,.sentence-card.wrong,.sentence-card.hint,.sentence-target.hint {
+    transition: none;
+    animation: none;
+  }
+}

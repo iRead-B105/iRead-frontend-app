@@ -1,0 +1,103 @@
+/** 대상 컴포넌트: components/training/LetterCard.vue
+ * Vue 연결: <style scoped src="@/styles/training/LetterCard.css">
+ * 숫자를 수정할 때는 바로 위 한국어 주석과 styles/README.md의 공통 토큰 표를 먼저 확인하세요.*/
+
+.letter-card {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--learner-radius-selection-card);
+  background: var(--learner-color-surface);
+  box-shadow: var(--learner-shadow-card);
+  border: var(--learner-border-width) solid transparent;
+  transition: transform var(--learner-duration-fast) var(--learner-easing-standard),
+    box-shadow var(--learner-duration-fast), border-color var(--learner-duration-fast);
+  user-select: none;
+}
+
+.letter-card--small {
+  width: 96px;
+  height: 80px;
+  padding: var(--learner-space-1);
+}
+
+.letter-card--medium {
+  width: 132px;
+  height: 110px;
+  padding: var(--learner-space-2);
+}
+
+.letter-card--large {
+  width: 168px;
+  height: 138px;
+  padding: var(--learner-space-3);
+}
+
+.letter-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.letter-card.is-selectable {
+  cursor: pointer;
+}
+
+.letter-card.is-selectable:hover:not(.letter-card--disabled):not(.letter-card--correct) {
+  transform: translateY(-4px);
+  box-shadow: var(--learner-shadow-floating);
+}
+
+.letter-card--selected {
+  border-color: var(--learner-flow-accent, var(--learner-color-learning));
+  background: color-mix(in srgb, var(--learner-flow-accent, var(--learner-color-learning)) 12%, var(--learner-color-surface));
+  transform: translateY(-3px);
+}
+
+.letter-card--correct {
+  border-color: var(--learner-color-success);
+  background: color-mix(in srgb, var(--learner-color-success) 16%, var(--learner-color-surface));
+}
+
+.letter-card--wrong {
+  border-color: var(--learner-color-error);
+  animation: letterShake 0.4s ease-out;
+}
+
+.letter-card--hint {
+  border-color: var(--learner-color-warning);
+  box-shadow: var(--learner-shadow-card), 0 0 0 4px rgb(244 189 69 / 35%);
+}
+
+.letter-card--disabled {
+  border-color: #c8ced7;
+  background: #e4e7eb;
+  filter: grayscale(1);
+  opacity: 0.62;
+  cursor: default;
+}
+
+.letter-card:focus-visible {
+  outline: none;
+  box-shadow: var(--learner-shadow-focus);
+}
+
+@keyframes letterShake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+
+  25% {
+    transform: translateX(-6px);
+  }
+
+  75% {
+    transform: translateX(6px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .letter-card.is-selectable:hover {
+    transform: none;
+  }
+}

@@ -1,0 +1,165 @@
+/** 서비스 전체 공통 규칙
+ *
+ * 글꼴:
+ * - 메뉴, 제목, 버튼: --learner-font-display
+ * - 책 본문, 실제 학습 글자: 각 이야기·학습 CSS에서 --learner-font-reading
+ *
+ * 가장 자주 수정하는 값은 common/tokens.css에 있습니다.*/
+
+:root {
+  color-scheme: light;
+}
+
+.learner-layout {
+  width: 100%;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+.learner-layout {
+  min-height: 100vh;
+  background: #8bd8fa;
+  color: var(--learner-color-text);
+  font-family: var(--learner-font-display);
+  font-size: var(--learner-type-body);
+}
+
+.learner-layout button,
+.learner-layout input,
+.learner-layout textarea,
+.learner-layout select,
+.learner-layout canvas {
+  font: inherit;
+}
+
+.learner-layout button {
+  font-family: var(--learner-font-display);
+}
+
+/** 공통 화면 문법
+ * 여러 화면에서 같은 역할을 하는 요소는 아래 클래스를 그대로 재사용합니다. */
+.learner-content-panel {
+  border: var(--learner-frame-border);
+  border-radius: var(--learner-radius-panel);
+  background: var(--learner-frame-background);
+  box-shadow: var(--learner-shadow-panel);
+}
+
+.learner-selection-card {
+  border: var(--learner-card-border);
+  border-radius: var(--learner-radius-selection-card);
+  background: var(--learner-card-background);
+  box-shadow: var(--learner-shadow-card);
+  transition:
+    transform var(--learner-duration-fast) var(--learner-easing-standard),
+    box-shadow var(--learner-duration-fast) var(--learner-easing-standard);
+}
+
+.learner-selection-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--learner-shadow-control-hover);
+}
+
+.learner-selection-card:focus-visible {
+  outline: none;
+  box-shadow: var(--learner-shadow-focus);
+}
+
+.learner-primary-button,
+.learner-secondary-button {
+  min-height: var(--learner-control-height-medium);
+  padding: 0 var(--learner-space-6);
+  border-radius: var(--learner-radius-control);
+  font-size: var(--learner-type-button);
+  font-weight: var(--learner-font-weight-heavy);
+  cursor: pointer;
+  transition:
+    transform var(--learner-duration-fast) var(--learner-easing-standard),
+    box-shadow var(--learner-duration-fast) var(--learner-easing-standard);
+}
+
+.learner-primary-button {
+  border: 0;
+  background: var(--learner-flow-accent, var(--learner-color-learning));
+  color: var(--learner-color-text-inverse);
+  box-shadow: var(--learner-shadow-control);
+}
+
+.learner-secondary-button {
+  border: 2px solid var(--learner-border-color-soft);
+  background: var(--learner-color-surface);
+  color: var(--learner-color-text);
+  box-shadow: var(--learner-shadow-small);
+}
+
+.learner-primary-button:hover:not(:disabled),
+.learner-secondary-button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: var(--learner-shadow-control-hover);
+}
+
+.learner-primary-button:focus-visible,
+.learner-secondary-button:focus-visible {
+  outline: none;
+  box-shadow: var(--learner-shadow-focus);
+}
+
+.learner-primary-button:disabled,
+.learner-secondary-button:disabled {
+  border-color: transparent;
+  background: #d8dde4;
+  color: #8b95a4;
+  box-shadow: none;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.learner-modal-backdrop {
+  background: var(--learner-modal-backdrop);
+  backdrop-filter: blur(var(--learner-modal-blur));
+}
+
+.learner-modal-panel {
+  border: var(--learner-modal-border);
+  border-radius: var(--learner-radius-panel);
+  background: var(--learner-modal-background);
+  box-shadow: var(--learner-shadow-floating);
+}
+
+.learner-screen-title {
+  margin: 0;
+  color: var(--learner-color-text);
+  font-family: var(--learner-font-display);
+  font-size: var(--learner-type-page-title);
+  font-weight: var(--learner-font-weight-heavy);
+  line-height: 1.12;
+}
+
+.learner-instruction {
+  margin: 0;
+  color: var(--learner-color-text);
+  font-family: var(--learner-font-display);
+  font-size: var(--learner-activity-instruction-size);
+  font-weight: var(--learner-font-weight-heavy);
+  line-height: 1.2;
+  text-align: center;
+  word-break: keep-all;
+}
+
+.learner-supporting-copy {
+  color: var(--learner-color-text-soft);
+  font-size: max(var(--learner-type-caption), 16px);
+  line-height: 1.45;
+}
+
+.learner-reading-copy {
+  max-width: var(--learner-reading-max-line);
+  color: var(--learner-color-text);
+  font-family: var(--learner-font-reading);
+  font-size: var(--learner-type-reading);
+  line-height: var(--learner-reading-line-height);
+}
+
+.learner-reading-copy + .learner-reading-copy {
+  margin-top: var(--learner-reading-paragraph-gap);
+}

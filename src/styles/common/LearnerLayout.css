@@ -1,0 +1,31 @@
+/** 대상 컴포넌트: layouts/LearnerLayout.vue
+ * Vue 연결: <style scoped src="@/styles/common/LearnerLayout.css">
+ * 숫자를 수정할 때는 바로 위 한국어 주석과 styles/README.md의 공통 토큰 표를 먼저 확인하세요.*/
+
+.learner-layout {
+  position: relative;
+  min-height: 100dvh;
+  overflow: hidden;
+  background: var(--learner-background);
+  color: var(--learner-color-text);
+  font-family: var(--learner-font-reading);
+}
+
+.learner-page {
+  position: relative;
+  z-index: 0;
+  height: 100dvh;
+  min-height: 0;
+  box-sizing: border-box;
+  padding-top: 0;
+}
+
+.learner-page--full {
+  height: 100dvh;
+  padding-top: 0;
+}
+
+:deep(.learner-screen-with-header) {
+  box-sizing: border-box;
+  padding-top: var(--learner-header-height) !important;
+}

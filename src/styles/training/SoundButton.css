@@ -1,0 +1,117 @@
+/** 대상 컴포넌트: components/training/SoundButton.vue
+ * Vue 연결: <style scoped src="@/styles/training/SoundButton.css">
+ * 숫자를 수정할 때는 바로 위 한국어 주석과 styles/README.md의 공통 토큰 표를 먼저 확인하세요.*/
+
+.sound-button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--learner-space-3);
+  border: none;
+  border-radius: var(--learner-radius-pill);
+  cursor: pointer;
+  color: var(--learner-color-text-inverse);
+  font-family: var(--learner-font-display);
+  font-weight: var(--learner-font-weight-heavy);
+  transition: transform var(--learner-duration-fast) var(--learner-easing-standard),
+    box-shadow var(--learner-duration-fast);
+}
+
+.sound-button--primary {
+  background: var(--learner-flow-accent, var(--learner-color-learning));
+  box-shadow: var(--learner-shadow-card);
+}
+
+.sound-button--ghost {
+  background: rgb(255 255 255 / 60%);
+  color: var(--learner-color-text);
+  box-shadow: var(--learner-shadow-small);
+}
+
+.sound-button--medium {
+  min-width: 64px;
+  height: 64px;
+  padding: 0 var(--learner-space-4);
+  font-size: var(--learner-type-body);
+}
+
+.sound-button--medium .sound-icon {
+  width: 28px;
+  height: 28px;
+}
+
+.sound-button--large {
+  min-width: 132px;
+  height: 96px;
+  padding: 0 var(--learner-space-6);
+  font-size: var(--learner-font-size-body-large);
+}
+
+.sound-button--large .sound-icon {
+  width: 40px;
+  height: 40px;
+}
+
+.sound-button:hover:not(:disabled) {
+  transform: translateY(-3px);
+  box-shadow: var(--learner-shadow-floating);
+}
+
+.sound-button:active:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.sound-button:disabled {
+  background: #d8dde4;
+  color: #8b95a4;
+  box-shadow: none;
+  cursor: not-allowed;
+  opacity: 1;
+}
+
+.sound-button:focus-visible {
+  outline: none;
+  box-shadow: var(--learner-shadow-focus);
+}
+
+.sound-button.playing .sound-pulse {
+  opacity: 1;
+}
+
+.sound-pulse {
+  position: absolute;
+  inset: -6px;
+  border-radius: inherit;
+  border: 3px solid rgb(255 255 255 / 70%);
+  opacity: 0;
+  animation: soundPulse 1.2s ease-out infinite;
+  pointer-events: none;
+}
+
+@keyframes soundPulse {
+  0% {
+    transform: scale(0.96);
+    opacity: 0.7;
+  }
+
+  100% {
+    transform: scale(1.12);
+    opacity: 0;
+  }
+}
+
+.sound-label {
+  line-height: 1.1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sound-pulse {
+    animation: none;
+    opacity: 0;
+  }
+
+  .sound-button:hover {
+    transform: none;
+  }
+}

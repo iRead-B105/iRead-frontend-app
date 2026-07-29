@@ -1,0 +1,166 @@
+@font-face {
+  font-family: 'PeachMarket';
+  src: url('../../assets/fonts/PeachMarket-Regular.ttf') format('truetype');
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+
+:root {
+  /*학습자 브랜드 색상*/
+  --learner-color-primary: #3e66e9;
+  --learner-color-primary-dark: #2e49c9;
+  --learner-color-primary-light: #7194f2;
+  /*학습자 배경과 표면*/
+  --learner-color-sky-top: #88d5fa;
+  --learner-color-sky-middle: #bcecff;
+  --learner-color-sky-bottom: #73c9f1;
+  --learner-color-surface: #ffffff;
+  --learner-color-surface-soft: #f7fbff;
+  --learner-background: linear-gradient(
+    180deg,
+    var(--learner-color-sky-top) 0%,
+    var(--learner-color-sky-middle) 62%,
+    var(--learner-color-sky-bottom) 100%
+  );
+  /*학습자 글자*/
+  --learner-color-text: #172650;
+  --learner-color-text-soft: #52617d;
+  --learner-color-text-inverse: #ffffff;
+  /*학습자 메뉴별 포인트*/
+  --learner-color-growth: #59b93b;
+  --learner-color-game: #f5b514;
+  --learner-color-learning: #f27622;
+  --learner-color-challenge: #4b78e6;
+  --learner-color-story: #6e4fd1;
+  --learner-color-voice: #ef8a7f;
+  /*학습자 상태*/
+  --learner-color-success: #4caf68;
+  --learner-color-info: #438af0;
+  --learner-color-warning: #f4bd45;
+  --learner-color-error: #ef6b6b;
+  --learner-color-focus: #ffffff;
+  /*학습자 글꼴*/
+  --learner-font-display: 'Arial Rounded MT Bold', 'Noto Sans KR', sans-serif;
+  --learner-font-reading: 'PeachMarket', 'Noto Sans KR', 'Pretendard', sans-serif;
+  --learner-font-weight-regular: 500;
+  --learner-font-weight-bold: 700;
+  --learner-font-weight-heavy: 900;
+  --learner-font-size-caption: 16px;
+  --learner-font-size-body: 20px;
+  --learner-font-size-body-large: 24px;
+  --learner-font-size-button: 26px;
+  --learner-font-size-card-title: 32px;
+  --learner-font-size-page-title: 48px;
+  --learner-font-size-reading: 38px;
+  --learner-font-size-page-title-fluid: clamp(38px, 4vw, 60px);
+  --learner-font-size-card-title-fluid: clamp(26px, 2.5vw, 38px);
+  --learner-font-size-reading-fluid: clamp(30px, 3vw, 46px);
+  /** 공통 글자 단계
+   * 아래 값만 바꾸면 같은 역할의 글자가 모든 화면에서 함께 변경됩니다.*/
+  --learner-type-page-title: var(--learner-font-size-page-title-fluid);
+  --learner-type-section-title: var(--learner-font-size-reading-fluid);
+  --learner-type-card-title: var(--learner-font-size-card-title-fluid);
+  --learner-type-button: var(--learner-font-size-button);
+  --learner-type-body: var(--learner-font-size-body);
+  --learner-type-caption: var(--learner-font-size-caption);
+  --learner-type-reading: clamp(38px, min(3.55vw, 6vh), 58px);
+  /*학습자 간격*/
+  --learner-space-1: 4px;
+  --learner-space-2: 8px;
+  --learner-space-3: 12px;
+  --learner-space-4: 16px;
+  --learner-space-5: 20px;
+  --learner-space-6: 24px;
+  --learner-space-8: 32px;
+  --learner-space-10: 40px;
+  --learner-space-12: 48px;
+  --learner-space-16: 64px;
+  /*학습자 모서리*/
+  --learner-radius-small: 12px;
+  --learner-radius-medium: 18px;
+  --learner-radius-large: 28px;
+  --learner-radius-card: 32px;
+  --learner-radius-pill: 999px;
+  /* 공통 컴포넌트별 모서리: 화면별 숫자 재정의 금지 */
+  --learner-radius-panel: 34px;
+  --learner-radius-selection-card: 24px;
+  --learner-radius-control: 18px;
+  --learner-radius-icon-control: 18px;
+  /*학습자 그림자*/
+  --learner-shadow-small: 0 4px 10px rgb(35 71 130 / 12%);
+  --learner-shadow-card: 0 10px 24px rgb(35 71 130 / 16%);
+  --learner-shadow-floating: 0 16px 32px rgb(35 71 130 / 20%);
+  --learner-shadow-focus: 0 0 0 5px rgb(255 255 255 / 90%), 0 0 0 9px rgb(62 102 233 / 70%);
+  --learner-shadow-panel: 0 14px 30px rgb(45 70 95 / 16%);
+  --learner-shadow-control: 0 6px 14px rgb(45 70 95 / 14%);
+  --learner-shadow-control-hover: 0 10px 22px rgb(45 70 95 / 18%);
+  /*학습자 테두리와 컨트롤*/
+  --learner-border-width: 3px;
+  --learner-border-width-strong: 6px;
+  --learner-border-color: rgb(255 255 255 / 75%);
+  --learner-border-color-soft: rgb(23 38 80 / 10%);
+  /*Shared child-facing frame system for training and story screens.*/
+  --learner-frame-background: #fff9e7;
+  --learner-frame-border: 4px solid rgb(255 255 255 / 90%);
+  --learner-frame-radius: var(--learner-radius-panel);
+  --learner-frame-shadow: var(--learner-shadow-panel);
+  --learner-inner-background: rgb(255 255 255 / 52%);
+  --learner-inner-radius: 26px;
+  --learner-card-border: 3px solid #f1e4c5;
+  --learner-card-background: #fffdf8;
+  --learner-card-radius: 24px;
+  --learner-control-height-small: 48px;
+  --learner-control-height-medium: 60px;
+  --learner-control-height-large: 72px;
+  --learner-touch-target: 52px;
+  /* 모달 */
+  --learner-modal-backdrop: rgb(23 38 80 / 48%);
+  --learner-modal-blur: 5px;
+  --learner-modal-background: #fff9e7;
+  --learner-modal-border: 4px solid rgb(255 255 255 / 90%);
+  /* 일반 하위 화면 뒤로가기 */
+  --learner-page-back-size: 56px;
+  --learner-page-back-inset: clamp(18px, 2vw, 30px);
+  --learner-page-back-background: #fff9e7;
+  --learner-page-back-border: 2px solid #eadfbf;
+  /* 상세 훈련 공통 레이아웃 */
+  --learner-activity-panel-width: 1360px;
+  --learner-activity-header-height: 118px;
+  --learner-activity-gap: clamp(12px, 1.5vmin, 22px);
+  --learner-activity-instruction-size: clamp(30px, 2.7vw, 44px);
+  --learner-reading-line-height: 1.65;
+  --learner-reading-paragraph-gap: 0.55em;
+  --learner-reading-max-line: 24ch;
+  /*학습자 레이아웃*/
+  /*F11 16:9 전체화면을 기준으로 높이와 너비가 함께 변하는 공통 프레임*/
+  --learner-header-height: clamp(122px, 10.4vw, 188px);
+  --learner-page-height: calc(100dvh - var(--learner-header-height));
+  --learner-content-width: 1440px;
+  --learner-reading-width: 1080px;
+  --learner-safe-width: min(94vw, 1600px);
+  --learner-page-padding: clamp(16px, 2.4vmin, 48px);
+  /*학습자 애니메이션*/
+  --learner-duration-fast: 160ms;
+  --learner-duration-normal: 240ms;
+  --learner-duration-slow: 360ms;
+  --learner-easing-standard: cubic-bezier(.2, .8, .2, 1);
+  --learner-easing-bounce: cubic-bezier(.2, 1.35, .4, 1);
+  /*교수자 UI는 학습자 토큰과 독립적으로 관리*/
+  --educator-header-height: 72px;
+  --educator-font: 'Pretendard', 'Noto Sans KR', system-ui, sans-serif;
+  --educator-background: #f5f7fb;
+  --educator-surface: #ffffff;
+  --educator-text: #172033;
+  --educator-muted: #667085;
+  --educator-border: #e4e7ec;
+  --educator-primary: #3157d5;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --learner-duration-fast: 0ms;
+    --learner-duration-normal: 0ms;
+    --learner-duration-slow: 0ms;
+  }
+}

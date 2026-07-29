@@ -1,0 +1,319 @@
+/** 대상 컴포넌트: components/training/activities/WordReadingGridActivity.vue
+ * Vue 연결: <style scoped src="@/styles/training/activities/WordReadingGridActivity.css">
+ * 숫자를 수정할 때는 바로 위 한국어 주석과 styles/README.md의 공통 토큰 표를 먼저 확인하세요.*/
+
+.activity {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: 100%;
+  max-width: 1060px;
+  height: 100%;
+  min-height: 0;
+  padding: 20px 28px 18px;
+  border: 4px solid rgba(255,255,255,.95);
+  border-radius: 32px;
+  background: linear-gradient(180deg,#d9efff 0%,#f1f9ff 58%,#e8f6d7 100%);
+  box-shadow: inset 0 0 0 2px rgba(83,138,204,.18),0 12px 28px rgba(47,88,138,.15);
+  overflow: hidden;
+}
+
+.activity-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  min-height: 58px;
+}
+
+.activity-heading h1 {
+  margin: 0;
+  color: #223f7d;
+  font-family: var(--learner-font-display);
+  font-size: clamp(28px,2.3vw,38px);
+  font-weight: 900;
+}
+
+.reading-status {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 48px;
+  padding: 0 19px;
+  border: 2px solid #d7e4ed;
+  border-radius: 999px;
+  background: rgba(255,255,255,.9);
+  color: #58708d;
+  font-family: var(--learner-font-display);
+  font-size: 18px;
+  font-weight: 900;
+  box-shadow: 0 5px 12px rgba(59,90,122,.1);
+}
+
+.status-icon {
+  color: #73a2e8;
+  font-size: 14px;
+}
+
+.reading-status.retry {
+  border-color: #f1cf91;
+  color: #9a6b1d;
+}
+
+.reading-status.help {
+  border-color: #f4c94d;
+  background: #fffbe2;
+  color: #8c6811;
+}
+
+.reading-status.complete {
+  border-color: #9bd488;
+  background: #f2ffec;
+  color: #388452;
+}
+
+.word-grid {
+  display: grid;
+  grid-template-columns: repeat(2,minmax(0,1fr));
+  grid-template-rows: repeat(2,minmax(0,1fr));
+  gap: 18px;
+  flex: 1;
+  min-height: 0;
+  padding: 8px;
+  touch-action: none;
+}
+
+.word-card {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 150px;
+  overflow: hidden;
+  border: 5px solid #fff;
+  border-radius: 29px;
+  background: #fffdf8;
+  box-shadow: 0 8px 18px rgba(67,92,119,.14),inset 0 0 0 2px #e7e2d2;
+  transition: border-color .18s,transform .18s,box-shadow .18s,background .18s;
+}
+
+.word-card strong {
+  position: relative;
+  z-index: 2;
+  color: #292d3a;
+  font-family: var(--learner-font-display);
+  font-size: clamp(48px,5vw,76px);
+  font-weight: 900;
+  letter-spacing: .08em;
+}
+
+.word-card.active {
+  border-color: #6e98ef;
+  box-shadow: 0 8px 20px rgba(68,103,178,.2),0 0 0 4px rgba(109,151,238,.2);
+}
+
+.word-card.gazed {
+  transform: translateY(-2px);
+  box-shadow: 0 11px 25px rgba(55,101,162,.23),0 0 0 5px rgba(86,156,230,.24);
+}
+
+.word-card.complete {
+  border-color: #9ad58a;
+  background: #f0fae9;
+  box-shadow: 0 7px 16px rgba(61,128,72,.14);
+}
+
+.word-card.complete strong {
+  color: #52705a;
+}
+
+.complete-mark {
+  position: absolute;
+  right: 19px;
+  top: 15px;
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: #70c363;
+  color: #fff;
+  font-family: var(--learner-font-display);
+  font-size: 27px;
+  font-weight: 900;
+}
+
+.word-card.assist {
+  border-color: #ffc83d;
+  animation: assist-pulse .9s ease-in-out infinite;
+}
+
+.assist-sweep {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(90deg,rgba(255,220,81,.55),rgba(255,244,174,.25),transparent 72%);
+  transform-origin: left center;
+  animation: sweep 1.2s ease-in-out infinite;
+}
+
+.gaze-cursor {
+  --dwell: 0deg;
+  position: fixed;
+  z-index: 50;
+  width: 70px;
+  height: 70px;
+  border: 5px solid rgba(47,126,204,.45);
+  border-radius: 50%;
+  background: rgba(106,194,255,.16);
+  box-shadow: 0 0 0 4px rgba(255,255,255,.52),0 7px 18px rgba(42,90,139,.18);
+  transform: translate(-50%,-50%);
+  pointer-events: none;
+}
+
+.gaze-cursor.dwelling::after {
+  content: "";
+  position: absolute;
+  inset: -9px;
+  border-radius: 50%;
+  background: conic-gradient(#ffc72f var(--dwell),transparent 0);
+  -webkit-mask: radial-gradient(farthest-side,transparent calc(100% - 6px),#000 0);
+  mask: radial-gradient(farthest-side,transparent calc(100% - 6px),#000 0);
+}
+
+.action-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 62px;
+}
+
+.start-button,.next-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 11px;
+  min-width: 210px;
+  min-height: 60px;
+  border: 0;
+  border-radius: 21px;
+  color: #fff;
+  font-family: var(--learner-font-display);
+  font-size: 22px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.start-button {
+  background: linear-gradient(180deg,#7194f2,#4f72df);
+  box-shadow: 0 8px 18px rgba(50,81,155,.25);
+}
+
+.start-button span {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 3px solid rgba(255,255,255,.82);
+  border-radius: 50%;
+  font-size: 14px;
+}
+
+.next-button {
+  background: linear-gradient(180deg,#ffc75a,#f2a92f);
+  box-shadow: 0 8px 18px rgba(150,96,16,.22);
+}
+
+.start-button:focus-visible,.next-button:focus-visible {
+  outline: 5px solid #ffd64c;
+  outline-offset: 3px;
+}
+
+@keyframes assist-pulse {
+  50% {
+    box-shadow: 0 8px 23px rgba(217,155,17,.24),0 0 0 7px rgba(255,214,69,.32);
+  }
+}
+
+@keyframes sweep {
+  0%,100% {
+    transform: scaleX(.28);
+    opacity: .55;
+  }
+
+  50% {
+    transform: scaleX(1);
+    opacity: 1;
+  }
+}
+
+@media (max-height:800px) {
+  .activity {
+    padding: 12px 22px 10px;
+  }
+
+  .activity-heading {
+    min-height: 45px;
+  }
+
+  .activity-heading h1 {
+    font-size: 28px;
+  }
+
+  .reading-status {
+    min-height: 42px;
+    font-size: 16px;
+  }
+
+  .word-grid {
+    gap: 12px;
+    padding: 3px;
+  }
+
+  .word-card {
+    min-height: 120px;
+  }
+
+  .word-card strong {
+    font-size: 50px;
+  }
+
+  .action-bar {
+    min-height: 52px;
+  }
+
+  .start-button,.next-button {
+    min-height: 52px;
+  }
+}
+
+@media (max-width:760px) {
+  .activity {
+    padding: 14px;
+  }
+
+  .activity-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .word-grid {
+    gap: 10px;
+  }
+
+  .word-card strong {
+    font-size: 42px;
+  }
+
+  .reading-status {
+    align-self: flex-end;
+  }
+}
+
+@media (prefers-reduced-motion:reduce) {
+  .word-card,.word-card.assist,.assist-sweep {
+    transition: none;
+    animation: none;
+  }
+}

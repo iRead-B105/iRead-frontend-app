@@ -1,0 +1,48 @@
+/** 대상 컴포넌트: views/learner/LearnerHomeView.vue
+ * Vue 연결: <style scoped src="@/styles/world/LearnerHomeView.css">
+ * 숫자를 수정할 때는 바로 위 한국어 주석과 styles/README.md의 공통 토큰 표를 먼저 확인하세요.*/
+
+.learner-home {
+  position: relative;
+  height: 100%;
+  box-sizing: border-box;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+}
+
+.toast {
+  position: absolute;
+  left: 50%;
+  bottom: 22px;
+  transform: translateX(-50%);
+  z-index: 30;
+  margin: 0;
+  padding: var(--learner-space-3) var(--learner-space-6);
+  border-radius: var(--learner-radius-pill);
+  background: var(--learner-color-text);
+  color: var(--learner-color-text-inverse);
+  font-family: var(--learner-font-display);
+  font-size: var(--learner-type-body);
+  font-weight: var(--learner-font-weight-bold);
+  box-shadow: var(--learner-shadow-card);
+}
+
+.toast-enter-active,.toast-leave-active {
+  transition: opacity var(--learner-duration-normal) var(--learner-easing-standard);
+}
+
+.toast-enter-from,.toast-leave-to {
+  opacity: 0;
+  transform: translate(-50%,10px);
+}
+
+@media (max-width:800px) {
+  .learner-home {
+    display: block;
+    overflow: auto;
+  }
+}
