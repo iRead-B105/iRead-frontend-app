@@ -1,0 +1,250 @@
+<script setup lang="ts">
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import type { TrainingChoice, TrainingQuestion } from '@/types/training'
+import { useTrainingSession } from '@/composables/useTrainingSession'
+
+const props = defineProps<{ question: TrainingQuestion }>()
+defineEmits<{ next: [] }>()
+
+interface SpeechResultEvent extends Event {
+  results: { [index: number]: { [index: number]: { transcript: string } } }
+}
+interface SpeechErrorEvent extends Event { error?: string }
+interface SpeechRecognitionLike {
+  lang: string
+  interimResults: boolean
+  continuous: boolean
+  onresult: ((event: SpeechResultEvent) => void) | null
+  onerror: ((event: SpeechErrorEvent) => void) | null
+  onend: (() => void) | null
+  start: () => void
+  stop: () => void
+}
+type SpeechRecognitionConstructor = new () => SpeechRecognitionLike
+type SpeechState = 'waiting' | 'listening' | 'retry' | 'success' | 'denied'
+
+const session = useTrainingSession()
+const choices = computed<TrainingChoice[]>(() => props.question.choices ?? [])
+const sentenceParts = computed(() => (props.question.targetText ?? '').split('___'))
+const correctChoice = computed(() => choices.value.find((choice) => choice.id === props.question.answer) ?? null)
+const completedSentence = computed(() =>
+  (props.question.targetText ?? '').replace('___', correctChoice.value?.text ?? ''),
+)
+
+const placedChoice = ref<TrainingChoice | null>(null)
+const blankElement = ref<HTMLElement | null>(null)
+const attempts = ref(0)
+const wrongChoiceId = ref<string | null>(null)
+const isOverBlank = ref(false)
+const draggingChoiceId = ref<string | null>(null)
+const dragPoint = ref({ x: 0, y: 0 })
+const speechState = ref<SpeechState>('waiting')
+const speechMessage = ref('')
+let recognition: SpeechRecognitionLike | null = null
+let wrongTimer: ReturnType<typeof setTimeout> | null = null
+
+const isFilled = computed(() => placedChoice.value?.id === props.question.answer)
+const showHint = computed(() => attempts.value >= 3 && !isFilled.value)
+const isComplete = computed(() => speechState.value === 'success')
+
+const normalize = (value: string) => value.replace(/[\s.,!?~'"’“”]/g, '').toLowerCase()
+
+const sentenceMatches = (transcript: string) => {
+  const heard = normalize(transcript)
+  const answer = normalize(completedSentence.value)
+  return Boolean(answer && (heard === answer || heard.includes(answer)))
+}
+
+const finishSpeech = () => {
+  if (isComplete.value) return
+  speechState.value = 'success'
+  speechMessage.value = '다 읽었어요!'
+  session.markRecordingComplete({ isMock: false, audioUrl: null })
+}
+
+const handleTranscript = (transcript: string) => {
+  if (!isFilled.value || speechState.value !== 'listening') return
+  if (sentenceMatches(transcript)) finishSpeech()
+  else {
+    speechState.value = 'retry'
+    speechMessage.value = '한 번 더 읽어봐요'
+  }
+}
+
+const startSpeech = () => {
+  if (!isFilled.value || speechState.value === 'listening' || isComplete.value) return
+  speechState.value = 'listening'
+  speechMessage.value = '문장을 읽어봐요'
+
+  const speechWindow = window as typeof window & {
+    SpeechRecognition?: SpeechRecognitionConstructor
+    webkitSpeechRecognition?: SpeechRecognitionConstructor
+  }
+  const Recognition = speechWindow.SpeechRecognition ?? speechWindow.webkitSpeechRecognition
+  if (!Recognition) return
+
+  recognition?.stop()
+  recognition = new Recognition()
+  recognition.lang = 'ko-KR'
+  recognition.interimResults = false
+  recognition.continuous = false
+  recognition.onresult = (event) => handleTranscript(event.results[0]?.[0]?.transcript ?? '')
+  recognition.onerror = (event) => {
+    if (event.error === 'not-allowed' || event.error === 'service-not-allowed' || event.error === 'audio-capture') {
+      window.dispatchEvent(new CustomEvent('iread:microphone-state', { detail: { active: false, available: false } }))
+      speechState.value = 'denied'
+      speechMessage.value = '마이크를 켜고 다시 눌러요'
+      return
+    }
+    if (event.error !== 'aborted') {
+      speechState.value = 'retry'
+      speechMessage.value = '한 번 더 읽어봐요'
+    }
+  }
+  recognition.onend = () => {
+    if (speechState.value === 'listening') {
+      speechState.value = 'retry'
+      speechMessage.value = '한 번 더 읽어봐요'
+    }
+    recognition = null
+  }
+  recognition.start()
+}
+
+const evaluateChoice = (choiceId: string) => {
+  if (isFilled.value) return
+  const choice = choices.value.find((item) => item.id === choiceId)
+  if (!choice) return
+
+  if (choice.id === props.question.answer) {
+    placedChoice.value = choice
+    wrongChoiceId.value = null
+    speechState.value = 'waiting'
+    speechMessage.value = ''
+    return
+  }
+
+  attempts.value += 1
+  wrongChoiceId.value = choice.id
+  speechMessage.value = '한 번 더 해봐요'
+  if (wrongTimer) clearTimeout(wrongTimer)
+  wrongTimer = setTimeout(() => {
+    wrongChoiceId.value = null
+  }, 650)
+}
+
+const pointIsOverBlank = (clientX: number, clientY: number) => {
+  const rect = blankElement.value?.getBoundingClientRect()
+  return Boolean(rect && clientX >= rect.left && clientX <= rect.right && clientY >= rect.top && clientY <= rect.bottom)
+}
+const startPointerDrag = (event: PointerEvent, choice: TrainingChoice) => {
+  if (isFilled.value || event.button !== 0) return
+  event.preventDefault()
+  draggingChoiceId.value = choice.id
+  dragPoint.value = { x: event.clientX, y: event.clientY }
+  isOverBlank.value = pointIsOverBlank(event.clientX, event.clientY)
+}
+const onPointerMove = (event: PointerEvent) => {
+  if (!draggingChoiceId.value) return
+  dragPoint.value = { x: event.clientX, y: event.clientY }
+  isOverBlank.value = pointIsOverBlank(event.clientX, event.clientY)
+}
+const finishPointerDrag = (event: PointerEvent) => {
+  const choiceId = draggingChoiceId.value
+  if (!choiceId) return
+  const shouldDrop = pointIsOverBlank(event.clientX, event.clientY)
+  draggingChoiceId.value = null
+  isOverBlank.value = false
+  if (shouldDrop) evaluateChoice(choiceId)
+}
+const cancelPointerDrag = () => {
+  draggingChoiceId.value = null
+  isOverBlank.value = false
+}
+const onExternalSpeech = (event: Event) => {
+  const detail = (event as CustomEvent<{ transcript?: string }>).detail
+  if (detail?.transcript) handleTranscript(detail.transcript)
+}
+
+onMounted(() => {
+  window.addEventListener('iread:speech', onExternalSpeech)
+  window.addEventListener('pointermove', onPointerMove)
+  window.addEventListener('pointerup', finishPointerDrag)
+  window.addEventListener('pointercancel', cancelPointerDrag)
+})
+onBeforeUnmount(() => {
+  window.removeEventListener('iread:speech', onExternalSpeech)
+  window.removeEventListener('pointermove', onPointerMove)
+  window.removeEventListener('pointerup', finishPointerDrag)
+  window.removeEventListener('pointercancel', cancelPointerDrag)
+  recognition?.stop()
+  if (wrongTimer) clearTimeout(wrongTimer)
+})
+</script>
+
+<template>
+  <section class="activity" :aria-label="question.instruction">
+    <header class="activity-heading">
+      <h1>{{ isFilled ? '완성한 문장을 읽어봐요' : '빈칸에 낱말을 넣어봐요' }}</h1>
+      <p v-if="speechMessage" class="status-message" :class="speechState" role="status" aria-live="polite">
+        {{ speechMessage }}
+      </p>
+    </header>
+
+    <div class="sentence-card" aria-live="polite">
+      <span>{{ sentenceParts[0] }}</span>
+      <span
+        ref="blankElement"
+        class="blank"
+        :class="{ filled: isFilled, over: isOverBlank, hint: showHint }"
+      >
+        {{ placedChoice?.text ?? '' }}
+      </span>
+      <span>{{ sentenceParts[1] }}</span>
+    </div>
+
+    <div class="choices" :class="{ locked: isFilled }">
+      <article
+        v-for="choice in choices"
+        :key="choice.id"
+        class="word-card"
+        :class="{
+          wrong: wrongChoiceId === choice.id,
+          hint: showHint && choice.id === question.answer,
+          used: placedChoice?.id === choice.id,
+        }"
+        @pointerdown="startPointerDrag($event, choice)"
+      >
+        <span class="grip" aria-hidden="true">⠿</span>
+        <strong>{{ choice.text }}</strong>
+      </article>
+    </div>
+
+    <Teleport to="body">
+      <div
+        v-if="draggingChoiceId"
+        class="drag-ghost"
+        :style="{ left: `${dragPoint.x}px`, top: `${dragPoint.y}px` }"
+        aria-hidden="true"
+      >
+        {{ choices.find((choice) => choice.id === draggingChoiceId)?.text }}
+      </div>
+    </Teleport>
+
+    <footer class="action-bar">
+      <button
+        v-if="isFilled && !isComplete"
+        class="speak-button"
+        type="button"
+        :disabled="speechState === 'listening'"
+        @click="startSpeech"
+      >
+        <span aria-hidden="true">●</span>
+        {{ speechState === 'listening' ? '듣고 있어요' : '문장 읽기' }}
+      </button>
+      <button v-else-if="isComplete" class="next-button" type="button" @click="$emit('next')">다음</button>
+    </footer>
+  </section>
+</template>
+
+<style scoped src="@/styles/training/activities/FillBlankActivity.css"></style>

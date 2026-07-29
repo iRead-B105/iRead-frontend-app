@@ -1,0 +1,10 @@
+/** 아이리드 전체 CSS 진입점
+ *
+ * 공통 글꼴·글자 크기·색상·간격을 바꾸려면 common/tokens.css를 수정합니다.
+ * 이 파일에는 화면 전체에 반드시 한 번만 적용되어야 하는 규칙만 둡니다.*/
+
+@import './common/reset.css';
+
+@import './common/tokens.css';
+
+@import './common/foundation.css';

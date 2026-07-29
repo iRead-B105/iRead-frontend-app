@@ -1,0 +1,399 @@
+/** 대상 컴포넌트: views/LoginView.vue
+ * Vue 연결: <style scoped src="@/styles/common/LoginView.css">
+ * 숫자를 수정할 때는 바로 위 한국어 주석과 styles/README.md의 공통 토큰 표를 먼저 확인하세요.*/
+
+.login-page {
+  position: relative;
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: clamp(24px, 4vw, 64px);
+  background: var(--learner-background);
+  color: var(--learner-color-text);
+  font-family: var(--learner-font-reading);
+}
+
+.login-shell {
+  position: relative;
+  z-index: 2;
+  width: min(94vw, 760px);
+}
+
+.login-card {
+  width: min(86vw, 580px);
+  margin: 0 auto;
+  padding: clamp(24px, 3.2vw, 40px);
+  box-sizing: border-box;
+  border: var(--learner-border-width) solid var(--learner-border-color);
+  border-radius: var(--learner-radius-card);
+  background: color-mix(in srgb, var(--learner-color-game) 16%, var(--learner-color-surface));
+  box-shadow: var(--learner-shadow-card);
+}
+
+.student-empty {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  padding: 18px 4px 2px;
+  text-align: center;
+}
+
+.student-empty > span {
+  font-size: 54px;
+}
+
+.student-empty strong {
+  color: var(--learner-color-text);
+  font-family: var(--learner-font-display);
+  font-size: clamp(24px, 3vw, 32px);
+}
+
+.student-empty p {
+  margin: 0 0 8px;
+  color: var(--learner-color-text-soft);
+  font-size: 18px;
+  font-weight: var(--learner-font-weight-bold);
+}
+
+.login-step {
+  width: max-content;
+  margin: 0 auto var(--learner-space-3);
+  padding: 6px 15px;
+  border-radius: var(--learner-radius-pill);
+  background: rgb(83 110 224 / 12%);
+  color: var(--learner-color-primary);
+  font-family: var(--learner-font-display);
+  font-size: 17px;
+  font-weight: var(--learner-font-weight-heavy);
+}
+
+.login-logo-frame {
+  width: min(92vw, 650px);
+  height: clamp(220px, 30vh, 300px);
+  margin: 0 auto var(--learner-space-6);
+  overflow: visible;
+}
+
+.login-logo {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center;
+}
+
+.login-title {
+  margin: 0 0 var(--learner-space-8);
+  color: var(--learner-color-text);
+  font-family: var(--learner-font-display);
+  font-size: clamp(30px, 3.4vw, 46px);
+  font-weight: var(--learner-font-weight-heavy);
+  line-height: 1.25;
+  text-align: center;
+}
+
+.login-form {
+  width: 100%;
+  min-width: 0;
+  display: grid;
+  gap: var(--learner-space-5);
+}
+
+.login-input-wrapper {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  height: clamp(72px, 9vh, 84px);
+  display: flex;
+  align-items: center;
+  gap: var(--learner-space-4);
+  padding: 0 var(--learner-space-6);
+  border: var(--learner-border-width) solid var(--learner-border-color-soft);
+  border-radius: var(--learner-radius-medium);
+  background: var(--learner-color-surface);
+  transition: border-color var(--learner-duration-fast), box-shadow var(--learner-duration-fast);
+}
+
+.login-input-wrapper:focus-within {
+  border-color: var(--learner-color-primary);
+  box-shadow: var(--learner-shadow-focus);
+}
+
+.user-icon,
+.lock-icon {
+  width: 44px;
+  height: 44px;
+  flex: 0 0 auto;
+  fill: var(--learner-color-primary-light);
+  stroke: var(--learner-color-primary);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.lock-icon circle {
+  fill: var(--learner-color-primary);
+  stroke: none;
+}
+
+.login-input-wrapper input {
+  min-width: 0;
+  flex: 1;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--learner-color-text);
+  font-family: var(--learner-font-display);
+  font-size: clamp(24px, 2.4vw, 32px);
+  font-weight: var(--learner-font-weight-bold);
+}
+
+.login-input-wrapper input::placeholder {
+  color: var(--learner-color-text-soft);
+  opacity: .7;
+}
+
+.login-error {
+  margin: calc(var(--learner-space-2) * -1) var(--learner-space-2) 0;
+  color: var(--learner-color-error);
+  font-size: var(--learner-type-body);
+  font-weight: var(--learner-font-weight-bold);
+}
+
+.login-button {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  height: clamp(72px, 9vh, 84px);
+  border: 0;
+  border-radius: var(--learner-radius-medium);
+  background: var(--learner-color-primary);
+  color: var(--learner-color-text-inverse);
+  box-shadow: var(--learner-shadow-small);
+  cursor: pointer;
+  font-family: var(--learner-font-display);
+  font-size: var(--learner-type-button);
+  font-weight: var(--learner-font-weight-heavy);
+  transition: transform var(--learner-duration-fast) var(--learner-easing-standard), background var(--learner-duration-fast);
+}
+
+.login-button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  background: var(--learner-color-primary-dark);
+}
+
+.login-button:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.login-button:focus-visible {
+  outline: none;
+  box-shadow: var(--learner-shadow-focus);
+}
+
+.login-button:disabled {
+  cursor: wait;
+  opacity: .65;
+}
+
+.student-form {
+  display: grid;
+  gap: var(--learner-space-5);
+}
+
+.student-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--learner-space-4);
+}
+
+.student-card {
+  min-width: 0;
+  min-height: 176px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 5px;
+  padding: 16px 10px;
+  border: 4px solid #fff;
+  border-radius: 26px;
+  background: #fff;
+  box-shadow: 0 6px 0 #d8e8f1, 0 10px 18px rgb(46 85 111 / 12%);
+  color: var(--learner-color-text);
+  cursor: pointer;
+  font-family: var(--learner-font-display);
+  transition: transform var(--learner-duration-fast), border-color var(--learner-duration-fast), box-shadow var(--learner-duration-fast);
+}
+
+.student-card:hover {
+  transform: translateY(-3px);
+}
+
+.student-card.selected {
+  border-color: #ffd34d;
+  background: #fffced;
+  box-shadow: 0 6px 0 #e8b92f, 0 0 0 5px rgb(255 211 77 / 24%);
+  transform: translateY(-3px);
+}
+
+.student-card:focus-visible {
+  outline: none;
+  box-shadow: var(--learner-shadow-focus);
+}
+
+.student-avatar {
+  width: 84px;
+  height: 84px;
+  display: grid;
+  place-items: center;
+  border: 5px solid #fff;
+  border-radius: 50%;
+  background: var(--profile-color);
+  box-shadow: 0 4px 10px rgb(40 76 104 / 16%);
+  color: #fff;
+  font-size: 38px;
+  font-weight: 900;
+}
+
+.student-card strong {
+  font-size: 24px;
+  font-weight: 900;
+}
+
+.student-card small {
+  color: var(--learner-color-text-soft);
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.student-actions {
+  display: grid;
+  grid-template-columns: 150px 1fr;
+  gap: var(--learner-space-4);
+}
+
+.back-button {
+  border: 4px solid #fff;
+  border-radius: var(--learner-radius-medium);
+  background: #dce8ef;
+  color: #486378;
+  box-shadow: 0 5px 0 #b9cbd6;
+  cursor: pointer;
+  font-family: var(--learner-font-display);
+  font-size: 22px;
+  font-weight: 900;
+}
+
+.back-button:active {
+  transform: translateY(3px);
+  box-shadow: 0 2px 0 #b9cbd6;
+}
+
+.back-button:focus-visible {
+  outline: none;
+  box-shadow: var(--learner-shadow-focus);
+}
+
+.cloud {
+  position: absolute;
+  width: clamp(130px, 14vw, 220px);
+  height: clamp(42px, 5vw, 74px);
+  border-radius: var(--learner-radius-pill);
+  background: rgb(255 255 255 / 82%);
+  pointer-events: none;
+}
+
+.cloud::before, .cloud::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  border-radius: 50%;
+  background: inherit;
+}
+
+.cloud::before {
+  left: 12%;
+  width: 48%;
+  height: 155%;
+}
+
+.cloud::after {
+  right: 10%;
+  width: 40%;
+  height: 120%;
+}
+
+.cloud-left {
+  left: -3%;
+  top: 18%;
+}
+
+.cloud-right {
+  right: -3%;
+  bottom: 15%;
+  transform: scale(.82);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (max-height: 760px) {
+  .login-card {
+    padding-block: var(--learner-space-6);
+  }
+
+  .login-logo-frame {
+    height: 170px;
+    margin-bottom: var(--learner-space-3);
+  }
+
+  .login-title {
+    margin-bottom: var(--learner-space-5);
+    font-size: clamp(28px, 3vw, 38px);
+  }
+
+  .student-card {
+    min-height: 142px;
+    padding-block: 10px;
+  }
+
+  .student-avatar {
+    width: 66px;
+    height: 66px;
+    font-size: 30px;
+  }
+}
+
+@media (max-width: 620px) {
+  .student-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .student-card {
+    min-height: 112px;
+    grid-template-columns: auto 1fr;
+    justify-items: start;
+    padding-inline: 18px;
+  }
+
+  .student-avatar {
+    grid-row: 1 / 3;
+  }
+
+  .student-actions {
+    grid-template-columns: 110px 1fr;
+  }
+}

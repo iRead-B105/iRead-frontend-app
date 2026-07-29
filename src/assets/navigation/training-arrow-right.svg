@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 104" role="img" aria-labelledby="title">
+  <title id="title">다음</title>
+  <circle cx="48" cy="54" r="41" fill="#4DA8D4"/>
+  <circle cx="48" cy="47" r="41" fill="#78CEF4" stroke="#FFFFFF" stroke-width="6"/>
+  <circle cx="48" cy="47" r="32" fill="#86DAF7" opacity=".72"/>
+  <path d="m43 27 20 20-20 20" fill="none" stroke="#17497B" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="m45 29 17 18" fill="none" stroke="#DFF7FF" stroke-width="3.5" stroke-linecap="round" opacity=".9"/>
+</svg>

@@ -1,0 +1,523 @@
+/** 대상 컴포넌트: components/training/TrainingCurriculumPath.vue
+ * Vue 연결: <style scoped src="@/styles/training/TrainingCurriculumPath.css">
+ * 숫자를 수정할 때는 바로 위 한국어 주석과 styles/README.md의 공통 토큰 표를 먼저 확인하세요.*/
+
+/* 학습 선택 전체 크기: width는 좌우 크기, padding은 내부 여백입니다. */
+.curriculum-path {
+  position: relative;
+  width: min(95%, 1178px);
+  max-width: var(--learner-safe-width);
+  margin: 0 auto;
+  padding: clamp(20px, 2vw, 30px) clamp(22px, 3.6vw, 56px) 36px;
+  overflow: hidden;
+  border: var(--learner-frame-border);
+  border-radius: var(--learner-frame-radius);
+  background-color: #fffaf2;
+  background-image: url('../../assets/backgrounds/curriculum-background.png');
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+  box-shadow: var(--learner-frame-shadow);
+}
+
+/* 상단 한 줄 배치: 달력 + 글자 연습 간판 + 오늘의 연습 게이지 */
+.curriculum-heading {
+  position: relative;
+  z-index: 4;
+  display: grid;
+  grid-template-columns: minmax(150px, 175px) minmax(360px, 420px) minmax(255px, 300px);
+  align-items: center;
+  justify-content: space-between;
+  gap: clamp(18px, 2.2vw, 32px);
+  min-height: 198px;
+}
+
+.curriculum-heading h1 {
+  margin: 0;
+  color: var(--learner-color-text);
+  font-family: var(--learner-font-display);
+  font-weight: 900;
+  line-height: 1.05;
+}
+
+/* 날짜 달력 크기와 달력 안 글자 위치 */
+.date-calendar {
+  position: relative;
+  width: 100%;
+  max-width: 175px;
+  aspect-ratio: 1.81 / 1;
+  display: grid;
+  place-items: center;
+  justify-self: start;
+  filter: drop-shadow(0 7px 7px rgb(107 69 23 / 18%));
+}
+
+.date-calendar img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.date-calendar strong {
+  position: relative;
+  z-index: 1;
+  margin-top: 14%;
+  color: #6f3814;
+  font-family: var(--learner-font-display);
+  font-size: clamp(21px, 1.7vw, 28px);
+  font-weight: 900;
+  line-height: 1;
+  text-shadow: 0 2px 0 rgb(255 255 255 / 82%);
+  white-space: nowrap;
+}
+
+/* 가운데 글자 연습 나무 간판 크기 */
+.curriculum-title-sign {
+  position: relative;
+  width: 100%;
+  max-width: 420px;
+  aspect-ratio: 2.12 / 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  justify-self: center;
+  gap: .01em;
+  padding: 0 11% 2% 9%;
+  filter: drop-shadow(0 8px 8px rgb(104 69 24 / 16%));
+}
+
+.curriculum-title-sign > img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.title-letter {
+  position: relative;
+  z-index: 1;
+  font-size: clamp(32px, 3.15vw, 48px);
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: -.08em;
+  -webkit-text-stroke: 5px #fff;
+  paint-order: stroke fill;
+  text-shadow: 0 4px 0 rgb(63 75 104 / 14%);
+}
+
+.title-letter--tile {
+  display: grid;
+  place-items: center;
+  width: 1.08em;
+  height: 1.08em;
+  margin-right: .14em;
+  border-radius: .24em;
+  background: #64bf37;
+  color: #fff;
+  -webkit-text-stroke: 0;
+  box-shadow: inset 0 -5px 0 rgb(52 140 38 / 30%), 0 4px 0 rgb(52 140 38 / 20%);
+}
+
+.title-letter--orange {
+  color: #ff7d20;
+}
+
+.title-letter--green {
+  color: #66b93d;
+}
+
+.title-letter--blue {
+  color: #4f7fe8;
+}
+
+.title-letter--purple {
+  color: #8655d6;
+}
+
+/* 오른쪽 오늘의 연습 카드 크기와 내부 여백 */
+.progress-card {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+  max-width: 300px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 8px 14px;
+  min-height: 126px;
+  padding: 25px 27px 23px;
+  justify-self: end;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--learner-color-text);
+  font-family: var(--learner-font-display);
+  font-size: clamp(15px, 1.35vw, 21px);
+  font-weight: 900;
+}
+
+.progress-card > img {
+  position: absolute;
+  z-index: -1;
+  inset: -11%;
+  width: 122%;
+  height: 122%;
+  object-fit: fill;
+  pointer-events: none;
+}
+
+.progress-card strong {
+  color: #2869dc;
+  font-size: clamp(24px, 2.2vw, 34px);
+}
+
+.progress-card small {
+  margin-left: 5px;
+  color: var(--learner-color-text);
+  font-size: .58em;
+}
+
+.progress-track {
+  grid-column: 1 / -1;
+  height: 15px;
+  overflow: hidden;
+  border-radius: 999px;
+  border: 0;
+  background: #dfe9ef;
+  box-shadow: inset 0 2px 4px rgb(45 83 110 / 12%);
+}
+
+.progress-track i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #52b83d, #8bd83f);
+  transition: width 240ms ease;
+}
+
+/* 발판들이 보이는 가로 영역: margin-top은 간판과 발판 사이 거리 */
+.path-scroll {
+  position: relative;
+  width: 100%;
+  margin-top: 20px;
+  overflow-x: hidden;
+  overflow-y: hidden;
+  overscroll-behavior-inline: contain;
+  scrollbar-width: none;
+}
+
+.path-viewport {
+  position: relative;
+}
+
+/* 좌우 이동 화살표의 크기와 세로 위치 */
+.path-nav {
+  position: absolute;
+  z-index: 25;
+  top: 50%;
+  width: clamp(64px, 5.7vw, 82px);
+  height: clamp(70px, 6.2vw, 89px);
+  display: grid;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  place-items: center;
+  background: transparent;
+  filter: drop-shadow(0 9px 11px rgb(41 100 145 / 22%));
+  cursor: pointer;
+  transform: translateY(-50%);
+  transition: transform 160ms var(--learner-easing-bounce), filter 160ms ease, opacity 160ms ease;
+}
+
+.path-nav img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.path-nav:not(:disabled):hover {
+  filter: brightness(1.04) drop-shadow(0 12px 13px rgb(41 100 145 / 25%));
+  transform: translateY(calc(-50% - 3px)) scale(1.07);
+}
+
+.path-nav:not(:disabled):active {
+  filter: drop-shadow(0 4px 6px rgb(41 100 145 / 18%));
+  transform: translateY(calc(-50% + 4px)) scale(.98);
+}
+
+.path-nav:focus-visible {
+  outline: 5px solid rgb(74 130 255 / 28%);
+  outline-offset: 3px;
+}
+
+.path-nav:disabled {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.path-nav--left {
+  left: -40px;
+}
+
+.path-nav--right {
+  right: -40px;
+}
+
+.path-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+/* 발판 경로 전체 캔버스 크기 */
+.path-stage {
+  position: relative;
+  min-width: 1080px;
+  min-height: 420px;
+  transition: transform 420ms var(--learner-easing-bounce);
+}
+
+.path-line {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.path-line path {
+  fill: none;
+  stroke: #dfcda8;
+  stroke-width: 13px;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 3 30;
+}
+
+.path-line .path-segment--locked {
+  stroke: #b8bcc1;
+}
+
+/* 개별 학습 발판 크기 */
+.lesson-node {
+  position: absolute;
+  z-index: 2;
+  width: clamp(205px, 18vw, 230px);
+  height: 180px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--learner-color-text);
+  cursor: pointer;
+  transform: translateX(-50%);
+}
+
+.lesson-node--locked {
+  cursor: pointer;
+}
+
+.lesson-node:focus-visible {
+  outline: none;
+}
+
+.lesson-node:focus-visible .lesson-island {
+  filter: drop-shadow(0 0 0 #fff) drop-shadow(0 0 8px #326ff0);
+}
+
+.lesson-island {
+  position: absolute;
+  top: 4px;
+  left: 50%;
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+  pointer-events: none;
+  filter: drop-shadow(0 12px 7px rgb(89 74 38 / 18%));
+  transform: translateX(-50%);
+  transition: transform 180ms var(--learner-easing-bounce), filter 180ms ease;
+}
+
+.lesson-node:not(.lesson-node--locked):hover .lesson-island {
+  filter: brightness(1.05) drop-shadow(0 14px 8px rgb(89 74 38 / 20%));
+  transform: translateX(-50%) translateY(-4px) scale(1.035);
+}
+
+.lesson-node strong {
+  position: absolute;
+  top: 130px;
+  left: 50%;
+  z-index: 6;
+  width: max-content;
+  max-width: 122%;
+  padding: 8px 17px 7px;
+  border: 3px solid rgb(255 255 255 / 88%);
+  border-radius: 15px;
+  background: var(--lesson-category-color, #ff982e);
+  box-shadow: inset 0 -4px 0 rgb(0 0 0 / 10%),
+    0 5px 10px rgb(61 69 91 / 18%);
+  color: #fff;
+  font-family: var(--learner-font-display);
+  font-size: clamp(17px, 1.45vw, 22px);
+  font-weight: 900;
+  line-height: 1.15;
+  text-shadow: 0 2px 0 rgb(0 0 0 / 14%);
+  transform: translateX(-50%);
+}
+
+.step-number {
+  position: absolute;
+  z-index: 4;
+  top: 0;
+  left: 16%;
+  width: 48px;
+  height: 48px;
+  display: grid;
+  border: 4px solid #fff;
+  border-radius: 50%;
+  place-items: center;
+  background: #61bc28;
+  box-shadow: 0 4px 8px rgb(60 94 30 / 22%);
+  color: #fff;
+  font-family: var(--learner-font-display);
+  font-size: 25px;
+  font-weight: 900;
+}
+
+.lesson-node--current .step-number {
+  background: #ff9d17;
+}
+
+.lesson-node--locked .step-number {
+  background: #909390;
+}
+
+.lesson-node--locked strong {
+  border-color: rgb(255 255 255 / 72%);
+  background: #8e9399;
+  color: #f3f5f6;
+  box-shadow: var(--learner-shadow-small);
+  text-shadow: none;
+}
+
+/* 현재 학습 발판 위 토끼 크기와 위치 */
+.path-rabbit {
+  position: absolute;
+  z-index: 5;
+  bottom: 100px;
+  left: 50%;
+  width: clamp(72px, 6.4vw, 88px);
+  height: auto;
+  object-fit: contain;
+  pointer-events: none;
+  transform: translateX(-50%);
+  filter: drop-shadow(0 7px 4px rgb(86 63 27 / 18%));
+}
+
+@media (max-width: 760px) {
+  .curriculum-heading {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    min-height: 0;
+  }
+
+  .date-calendar,
+  .curriculum-title-sign,
+  .progress-card {
+    width: 100%;
+    justify-self: center;
+  }
+
+  .lesson-node {
+    width: 180px;
+  }
+
+  .path-rabbit {
+    width: 80px;
+  }
+
+  .path-nav {
+    width: 58px;
+    height: 63px;
+  }
+
+  .path-nav--left {
+    left: 8px;
+  }
+
+  .path-nav--right {
+    right: 8px;
+  }
+}
+
+@media (max-height: 800px) and (min-width: 761px) {
+  .curriculum-path {
+    padding: 16px 28px 26px;
+  }
+
+  .curriculum-heading {
+    grid-template-columns: 150px minmax(330px, 380px) minmax(230px, 270px);
+    align-items: center;
+    min-height: 172px;
+  }
+
+  .curriculum-heading h1 {
+    font-size: clamp(32px, 3.4vw, 46px);
+  }
+
+  .date-calendar {
+    width: 150px;
+  }
+
+  .date-calendar strong {
+    font-size: clamp(21px, 2vw, 28px);
+  }
+
+  .progress-card {
+    width: 260px;
+    min-height: 110px;
+    padding: 20px 23px 18px;
+  }
+
+  .progress-track {
+    height: 11px;
+  }
+
+  .path-scroll {
+    height: 350px;
+    margin-top: 8px;
+  }
+
+  .path-stage {
+    height: 360px !important;
+    min-height: 360px;
+  }
+
+  .lesson-node {
+    width: 225px;
+    height: 160px;
+    scale: .92;
+    transform-origin: top center;
+  }
+
+  .lesson-node strong {
+    top: 116px;
+    padding: 7px 13px 6px;
+    font-size: 18px;
+  }
+
+  .step-number {
+    width: 44px;
+    height: 44px;
+    font-size: 23px;
+  }
+
+  .path-rabbit {
+    bottom: 92px;
+    width: 74px;
+  }
+}

@@ -1,0 +1,46 @@
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { learnerApiClient } from '../learnerApiClient'
+import { ApiLearnerStoryRepository } from './apiLearnerStoryRepository'
+
+describe('API learner story repository', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('이야기 분기 음성을 backend multipart 계약으로 전송한다', async () => {
+    const request = vi.spyOn(learnerApiClient, 'request').mockResolvedValue({
+      transcript: '오른쪽 길로 갈래요',
+      nextLineId: 12,
+      generatedContent: '토끼가 오른쪽 길로 갔어요.',
+      imageUrl: '/uploads/scene.png',
+      progress: 70,
+      status: 'IN_PROGRESS',
+    })
+    const repository = new ApiLearnerStoryRepository()
+    const audioFile = new File(['voice'], 'branch.webm', { type: 'audio/webm' })
+
+    const result = await repository.chooseDirection('101', '31', '9', audioFile)
+
+    const call = request.mock.calls[0]!
+    expect(call[0]).toBe('/api/app/story/101/31/lines/9/branches')
+    const body = (call[1] as RequestInit).body as FormData
+    expect(body.get('audioFile')).toBe(audioFile)
+    expect(result.nextLineId).toBe('12')
+  })
+
+  it('TTS 요청에는 backend가 요구하는 숫자 lineId만 보낸다', async () => {
+    const request = vi.spyOn(learnerApiClient, 'request').mockResolvedValue({
+      audioUrl: '/api/app/story/101/audio/line.mp3',
+      durationMs: 1400,
+      playbackLimit: 3,
+    })
+    const repository = new ApiLearnerStoryRepository()
+
+    await repository.synthesizeLine('101', '31', '9')
+
+    expect(request).toHaveBeenCalledWith(
+      '/api/app/story/101/31/tts',
+      { method: 'POST', body: JSON.stringify({ lineId: 9 }) },
+    )
+  })
+})

@@ -1,0 +1,157 @@
+/** 대상 컴포넌트: components/training/TrainingComplete.vue
+ * Vue 연결: <style scoped src="@/styles/training/TrainingComplete.css">
+ * 숫자를 수정할 때는 바로 위 한국어 주석과 styles/README.md의 공통 토큰 표를 먼저 확인하세요.*/
+
+.complete-screen {
+  position: relative;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  padding: var(--learner-page-padding);
+  overflow: hidden;
+  background-color: #22c5ed;
+  background-image: url('../../assets/backgrounds/training-section-background.png');
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+}
+
+.complete-card {
+  position: relative;
+  z-index: 2;
+  width: min(92%, 640px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--learner-space-3);
+  padding: var(--learner-space-12) var(--learner-space-10);
+  text-align: center;
+  border: var(--learner-frame-border);
+  border-radius: var(--learner-radius-panel);
+  background: var(--learner-frame-background);
+  box-shadow: var(--learner-shadow-panel);
+}
+
+.complete-emblem {
+  width: 230px;
+  height: 230px;
+  display: grid;
+  place-items: center;
+  margin-bottom: var(--learner-space-2);
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--learner-color-learning) 22%, var(--learner-color-surface));
+  box-shadow: var(--learner-shadow-card);
+  animation: emblemPop 0.5s var(--learner-easing-bounce);
+}
+
+.complete-emblem img {
+  width: 220px;
+  height: 220px;
+  object-fit: contain;
+}
+
+@keyframes emblemPop {
+  0% {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.complete-eyebrow {
+  margin: 0;
+  padding: var(--learner-space-1) var(--learner-space-4);
+  border-radius: var(--learner-radius-pill);
+  background: var(--learner-color-learning);
+  color: var(--learner-color-text-inverse);
+  font-family: var(--learner-font-display);
+  font-size: var(--learner-type-caption);
+  font-weight: var(--learner-font-weight-heavy);
+}
+
+.complete-title {
+  margin: 0;
+  font-family: var(--learner-font-display);
+  font-size: var(--learner-type-page-title);
+  font-weight: var(--learner-font-weight-heavy);
+  color: var(--learner-color-text);
+  line-height: 1.15;
+}
+
+.complete-message {
+  margin: 0;
+  max-width: 460px;
+  font-size: var(--learner-font-size-body-large);
+  font-weight: var(--learner-font-weight-bold);
+  color: var(--learner-color-text-soft);
+  line-height: 1.5;
+}
+
+.complete-meta {
+  margin: var(--learner-space-2) 0 var(--learner-space-4);
+  font-size: var(--learner-type-body);
+  color: var(--learner-color-text-soft);
+}
+
+.complete-actions {
+  display: flex;
+  gap: var(--learner-space-4);
+  width: 100%;
+  max-width: 480px;
+  margin-top: var(--learner-space-2);
+}
+
+.action {
+  flex: 1;
+  min-height: var(--learner-control-height-large);
+  border: none;
+  border-radius: var(--learner-radius-control);
+  font-family: var(--learner-font-display);
+  font-size: var(--learner-type-button);
+  font-weight: var(--learner-font-weight-heavy);
+  cursor: pointer;
+  transition: transform var(--learner-duration-fast) var(--learner-easing-standard),
+    box-shadow var(--learner-duration-fast);
+}
+
+.action--secondary {
+  background: var(--learner-color-surface);
+  color: var(--learner-color-text);
+  box-shadow: var(--learner-shadow-small);
+}
+
+.action--primary {
+  background: var(--learner-color-learning);
+  color: var(--learner-color-text-inverse);
+  box-shadow: var(--learner-shadow-card);
+}
+
+.action:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--learner-shadow-floating);
+}
+
+.action:focus-visible {
+  outline: none;
+  box-shadow: var(--learner-shadow-focus);
+}
+
+@media (max-width: 560px) {
+  .complete-actions {
+    flex-direction: column;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .complete-emblem {
+    animation: none;
+  }
+
+  .action:hover {
+    transform: none;
+  }
+}

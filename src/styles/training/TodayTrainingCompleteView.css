@@ -1,0 +1,89 @@
+/** 대상 컴포넌트: views/learner/TodayTrainingCompleteView.vue
+ * Vue 연결: <style scoped src="@/styles/training/TodayTrainingCompleteView.css">
+ * 숫자를 수정할 때는 바로 위 한국어 주석과 styles/README.md의 공통 토큰 표를 먼저 확인하세요.*/
+
+.today-complete {
+  position: relative;
+  height: 100%;
+  display: grid;
+  overflow: hidden;
+  padding: var(--learner-page-padding);
+  place-items: center;
+  background: #22c5ed url('../../assets/backgrounds/training-section-background.png') center / cover no-repeat;
+}
+
+.complete-card {
+  width: min(90%, 700px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: clamp(38px, 6vh, 68px) clamp(28px, 5vw, 70px);
+  border: 4px solid rgb(255 255 255 / 88%);
+  border-radius: var(--learner-radius-panel);
+  background: var(--learner-frame-background);
+  box-shadow: var(--learner-shadow-panel);
+  text-align: center;
+}
+
+.celebration {
+  width: 220px;
+  height: 220px;
+  display: grid;
+  border: 0;
+  border-radius: 50%;
+  place-items: center;
+  background: color-mix(in srgb, var(--learner-color-learning) 18%, white);
+  box-shadow: var(--learner-shadow-card);
+}
+
+.celebration img {
+  width: 96%;
+  height: 96%;
+  object-fit: contain;
+}
+
+.complete-card p {
+  margin: 0;
+  padding: 8px 20px;
+  border-radius: 999px;
+  background: #65c537;
+  color: #fff;
+  font-family: var(--learner-font-display);
+  font-size: clamp(18px, 1.7vw, 25px);
+  font-weight: 900;
+}
+
+.complete-card h1 {
+  margin: 0;
+  color: var(--learner-color-text);
+  font-family: var(--learner-font-display);
+  font-size: clamp(38px, 4.5vw, 64px);
+  font-weight: 900;
+}
+
+.complete-card span {
+  color: var(--learner-color-text-soft);
+  font-size: clamp(20px, 2vw, 28px);
+  font-weight: 800;
+}
+
+.complete-card button {
+  min-width: 240px;
+  min-height: 66px;
+  margin-top: 12px;
+  border: 0;
+  border-radius: var(--learner-radius-control);
+  background: var(--learner-color-learning);
+  box-shadow: var(--learner-shadow-control);
+  color: #fff;
+  font-family: var(--learner-font-display);
+  font-size: 24px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.complete-card button:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--learner-shadow-control-hover);
+}

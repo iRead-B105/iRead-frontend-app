@@ -1,0 +1,6 @@
+/*
+ * Learner UI globals are kept separate from the teacher shell.
+ * Component-specific styles remain scoped in each learner component.
+ */
+@import './common/tokens.css';
+@import './common/foundation.css';

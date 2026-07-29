@@ -1,0 +1,301 @@
+/** 대상 컴포넌트: components/training/activities/CardCombineActivity.vue
+ * Vue 연결: <style scoped src="@/styles/training/activities/CardCombineActivity.css">
+ * 숫자를 수정할 때는 바로 위 한국어 주석과 styles/README.md의 공통 토큰 표를 먼저 확인하세요.*/
+
+.activity {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--learner-space-6);
+  width: 100%;
+  max-width: var(--learner-reading-width);
+  margin: 0 auto;
+}
+
+.activity-main {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--learner-space-6);
+  width: 100%;
+}
+
+.instruction {
+  text-align: center;
+}
+
+.instruction-main {
+  margin: 0;
+  font-family: var(--learner-font-display);
+  font-size: var(--learner-type-card-title);
+  font-weight: var(--learner-font-weight-heavy);
+  color: var(--learner-color-text);
+  line-height: 1.25;
+}
+
+.instruction-sub {
+  margin: var(--learner-space-2) 0 0;
+  font-size: var(--learner-font-size-body-large);
+  color: var(--learner-color-text-soft);
+}
+
+.build-area {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.slots {
+  display: flex;
+  align-items: center;
+  gap: var(--learner-space-4);
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.slot {
+  width: 168px;
+  height: 138px;
+  display: grid;
+  place-items: center;
+  border: var(--learner-border-width-strong) dashed var(--learner-color-text-soft);
+  border-radius: var(--learner-radius-large);
+  background: rgb(255 255 255 / 35%);
+  cursor: default;
+}
+
+.slot.filled {
+  border-style: solid;
+  border-color: transparent;
+  background: transparent;
+  cursor: pointer;
+}
+
+.slot-label {
+  font-family: var(--learner-font-display);
+  font-size: var(--learner-type-body);
+  font-weight: var(--learner-font-weight-bold);
+  color: var(--learner-color-text-soft);
+}
+
+.plus, .equals {
+  font-family: var(--learner-font-display);
+  font-size: var(--learner-font-size-card-title);
+  font-weight: var(--learner-font-weight-heavy);
+  color: var(--learner-color-primary);
+}
+
+.result {
+  width: 168px;
+  height: 168px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--learner-radius-large);
+  background: color-mix(in srgb, var(--learner-color-primary) 14%, var(--learner-color-surface));
+  border: var(--learner-border-width) solid var(--learner-color-primary);
+  box-shadow: var(--learner-shadow-card);
+}
+
+.result.revealed {
+  animation: resultPop 0.4s var(--learner-easing-bounce);
+}
+
+.result-syllable {
+  font-family: var(--learner-font-display);
+  font-size: 96px;
+  font-weight: var(--learner-font-weight-heavy);
+  color: var(--learner-color-primary);
+  line-height: 1;
+}
+
+.result-placeholder {
+  font-family: var(--learner-font-display);
+  font-size: 80px;
+  font-weight: var(--learner-font-weight-heavy);
+  color: var(--learner-color-text-soft);
+  opacity: 0.6;
+}
+
+@keyframes resultPop {
+  0% {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.source-pool {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--learner-space-5);
+  flex-wrap: wrap;
+  min-height: 120px;
+}
+
+.source-chip {
+  cursor: grab;
+  transition: transform var(--learner-duration-fast) var(--learner-easing-standard);
+}
+
+.source-chip:hover {
+  transform: translateY(-4px);
+}
+
+.source-chip:active {
+  cursor: grabbing;
+}
+
+.source-chip:focus-visible {
+  outline: none;
+  box-shadow: var(--learner-shadow-focus);
+  border-radius: var(--learner-radius-medium);
+}
+
+.pool-hint {
+  width: 100%;
+  text-align: center;
+  margin: 0;
+  font-size: var(--learner-type-body);
+  color: var(--learner-color-text-soft);
+}
+
+.action-bar {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  margin-top: var(--learner-space-2);
+}
+
+.action {
+  min-width: 220px;
+  min-height: var(--learner-control-height-large);
+  border: none;
+  border-radius: var(--learner-radius-large);
+  font-family: var(--learner-font-display);
+  font-size: var(--learner-type-button);
+  font-weight: var(--learner-font-weight-heavy);
+  cursor: pointer;
+  transition: transform var(--learner-duration-fast) var(--learner-easing-standard),
+    box-shadow var(--learner-duration-fast), opacity var(--learner-duration-fast);
+}
+
+.action--primary {
+  background: var(--learner-color-primary);
+  color: var(--learner-color-text-inverse);
+  box-shadow: var(--learner-shadow-card);
+}
+
+.action:hover:not(:disabled) {
+  transform: translateY(-3px);
+  box-shadow: var(--learner-shadow-floating);
+}
+
+.action:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.action:focus-visible {
+  outline: none;
+  box-shadow: var(--learner-shadow-focus);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .source-chip:hover, .action:hover, .result.revealed {
+    transform: none;
+    animation: none;
+  }
+}
+
+.activity {
+  gap: 16px;
+  max-width: 1180px;
+  height: 100%;
+  min-height: 0;
+  margin: 0;
+  padding: 22px 26px 20px;
+  border: 4px solid rgb(255 255 255 / 92%);
+  border-radius: 30px;
+  background: linear-gradient(180deg, #d9efff 0%, #eef8ff 58%, #e5f4d1 100%);
+  box-shadow: inset 0 0 0 2px rgb(89 145 212 / 20%), 0 12px 26px rgb(45 94 145 / 14%);
+  overflow: hidden;
+}
+
+.activity-main {
+  flex: 1;
+  min-height: 0;
+  justify-content: center;
+  gap: 18px;
+}
+
+.action-bar {
+  justify-content: flex-end;
+  margin-top: 0;
+}
+
+.action {
+  min-width: 190px;
+  min-height: 60px;
+}
+
+@media (max-height: 800px) and (min-width: 701px) {
+  .activity {
+    gap: 10px;
+    padding: 14px 20px;
+  }
+
+  .activity-main {
+    gap: 10px;
+  }
+
+  .instruction-main {
+    font-size: 26px;
+  }
+
+  .instruction-sub {
+    margin-top: 2px;
+    font-size: 16px;
+  }
+
+  .slot {
+    width: 130px;
+    height: 104px;
+  }
+
+  .slot :deep(.letter-card) {
+    width: 125px;
+    height: 100px;
+  }
+
+  .result {
+    width: 130px;
+    height: 118px;
+  }
+
+  .result-syllable {
+    font-size: 68px;
+  }
+
+  .result-placeholder {
+    font-size: 60px;
+  }
+
+  .source-pool {
+    min-height: 82px;
+    gap: 14px;
+  }
+
+  .source-chip :deep(.letter-card) {
+    width: 108px;
+    height: 82px;
+  }
+
+  .action {
+    min-height: 56px;
+  }
+}

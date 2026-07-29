@@ -1,0 +1,434 @@
+/** 실제 훈련 상세 화면 공통 프레임
+ *
+ * 모든 액티비티의 공통 순서:
+ * 뒤로가기 → 문제 번호 → 지시문 → 액티비티 문제/응답 → 피드백/다음 행동
+ * 훈련별 CSS는 문제 제시 영역의 내부 배치만 담당합니다. */
+
+.lesson-view {
+  --learner-flow-accent: var(--learner-color-learning);
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background-color: #22c5ed;
+  background-image: url('../../assets/backgrounds/training-section-background.png');
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+}
+
+/* 인트로의 뒤로가기도 상세 화면과 동일한 안전 영역을 사용한다. */
+.lesson-topbar--intro {
+  position: absolute;
+  z-index: 10;
+  top: calc(var(--learner-header-height) + var(--learner-page-back-inset));
+  left: max(var(--learner-page-back-inset), calc((100% - min(92vw, var(--learner-activity-panel-width))) / 2));
+}
+
+.playing {
+  flex: 1;
+  min-height: 0;
+  width: min(92vw, var(--learner-activity-panel-width));
+  margin: clamp(8px, 1.2vh, 18px) auto clamp(10px, 1.8vh, 24px);
+  overflow: hidden;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  gap: var(--learner-activity-gap);
+  padding: clamp(14px, 1.8vmin, 24px);
+  border: var(--learner-frame-border);
+  border-radius: var(--learner-radius-panel);
+  background: var(--learner-frame-background);
+  box-shadow: var(--learner-shadow-panel);
+}
+
+.lesson-topbar--inside {
+  min-height: var(--learner-page-back-size);
+  display: grid;
+  grid-template-columns: var(--learner-page-back-size) minmax(0, 1fr) var(--learner-page-back-size);
+  align-items: center;
+  gap: var(--learner-space-4);
+}
+
+.lesson-topbar-spacer {
+  width: var(--learner-page-back-size);
+  height: 1px;
+}
+
+.topbar-progress {
+  justify-self: center;
+  min-width: clamp(150px, 14vw, 210px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 18px;
+  border: 2px solid #eadfbf;
+  border-radius: var(--learner-radius-pill);
+  background: rgb(255 255 255 / 82%);
+  box-shadow: var(--learner-shadow-small);
+  color: var(--learner-color-text);
+}
+
+.topbar-progress strong {
+  font-size: clamp(18px, 1.6vw, 24px);
+  font-weight: var(--learner-font-weight-heavy);
+  line-height: 1;
+}
+
+.topbar-progress-dots {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.prog-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ded8c8;
+  transition:
+    background var(--learner-duration-fast),
+    transform var(--learner-duration-fast);
+}
+
+.prog-dot.active {
+  background: var(--learner-flow-accent);
+  transform: scale(1.12);
+}
+
+.lesson-instruction {
+  max-width: 24ch;
+  justify-self: center;
+  padding-inline: var(--learner-space-4);
+}
+
+.question-scroll {
+  min-height: 0;
+  overflow: auto;
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  overscroll-behavior: contain;
+}
+
+/* 액티비티 내부에 중복 렌더링되던 제목과 지시문을 공통 상단 지시문으로 대체한다. */
+.lesson-view :deep(.activity > h1),
+.lesson-view :deep(.activity-heading > h1),
+.lesson-view :deep(.activity-heading > div > h1),
+.lesson-view :deep(.activity-heading > p),
+.lesson-view :deep(.activity-heading > div > p),
+.lesson-view :deep(.activity-main > .instruction:first-child) {
+  display: none !important;
+}
+
+.lesson-view :deep(.activity),
+.lesson-view :deep(.battle) {
+  width: 100%;
+  min-height: 100%;
+  margin: 0;
+  padding: clamp(8px, 1.2vmin, 18px);
+  border: 0 !important;
+  background: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
+}
+
+/* 모든 훈련의 선택 카드가 같은 표면과 상태 문법을 사용한다. */
+.lesson-view :deep(.word-choice),
+.lesson-view :deep(.text-choice),
+.lesson-view :deep(.sentence-card),
+.lesson-view :deep(.letter-chip),
+.lesson-view :deep(.sound-card),
+.lesson-view :deep(.part-card),
+.lesson-view :deep(.replacement-card),
+.lesson-view :deep(.target-card) {
+  border-radius: var(--learner-radius-selection-card);
+  box-shadow: var(--learner-shadow-card);
+}
+
+.lesson-view :deep(button:not(:disabled):focus-visible),
+.lesson-view :deep([role='button']:focus-visible) {
+  outline: none;
+  box-shadow: var(--learner-shadow-focus) !important;
+}
+
+.lesson-view :deep(button:not(:disabled)) {
+  transition:
+    transform var(--learner-duration-fast) var(--learner-easing-standard),
+    box-shadow var(--learner-duration-fast) var(--learner-easing-standard),
+    border-color var(--learner-duration-fast),
+    background var(--learner-duration-fast);
+}
+
+.lesson-view :deep(.action),
+.lesson-view :deep(.next-button),
+.lesson-view :deep(.start-button) {
+  min-height: var(--learner-control-height-medium);
+  padding-inline: var(--learner-space-6);
+  border: 0;
+  border-radius: var(--learner-radius-control);
+  background: var(--learner-flow-accent);
+  color: var(--learner-color-text-inverse);
+  box-shadow: var(--learner-shadow-control);
+  font-family: var(--learner-font-display);
+  font-size: clamp(19px, 1.6vw, 25px);
+  font-weight: var(--learner-font-weight-heavy);
+}
+
+.lesson-view :deep(.action:hover:not(:disabled)),
+.lesson-view :deep(.next-button:hover:not(:disabled)),
+.lesson-view :deep(.start-button:hover:not(:disabled)) {
+  transform: translateY(-2px);
+  box-shadow: var(--learner-shadow-control-hover);
+}
+
+.lesson-view :deep(button:disabled) {
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* 음성 녹음은 학습 영역색과 구분되는 코랄 상태색을 사용한다. */
+.lesson-view :deep(.mic-button) {
+  background: var(--learner-color-voice);
+}
+
+/* 학습자가 직접 읽고 조작하는 콘텐츠에만 읽기 전용 글꼴을 사용한다. */
+.lesson-view :deep(.instruction-main),
+.lesson-view :deep(.slot-label),
+.lesson-view :deep(.result-syllable),
+.lesson-view :deep(.result-placeholder),
+.lesson-view :deep(.sentence-card),
+.lesson-view :deep(.word-card strong),
+.lesson-view :deep(.drag-ghost),
+.lesson-view :deep(.resume-message),
+.lesson-view :deep(.speech-glyph),
+.lesson-view :deep(.target-word),
+.lesson-view :deep(.player-slot),
+.lesson-view :deep(.hangul-tile),
+.lesson-view :deep(.build-slot),
+.lesson-view :deep(.result-card),
+.lesson-view :deep(.letter-chip),
+.lesson-view :deep(.word-choice strong),
+.lesson-view :deep(.chunk),
+.lesson-view :deep(.chip),
+.lesson-view :deep(.sentence-target),
+.lesson-view :deep(.sentence-card strong),
+.lesson-view :deep(.placed-card),
+.lesson-view :deep(.chunk-text),
+.lesson-view :deep(.sound-slot),
+.lesson-view :deep(.result-word),
+.lesson-view :deep(.sound-card),
+.lesson-view :deep(.text-choice),
+.lesson-view :deep(.sound-unit),
+.lesson-view :deep(.target-card),
+.lesson-view :deep(.replacement-card),
+.lesson-view :deep(.part-card) {
+  font-family: var(--learner-font-reading);
+}
+
+/* 공통 모달과 로딩 */
+.saving-overlay,
+.device-blocker,
+.leave-confirmation {
+  position: absolute;
+  z-index: 80;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: var(--learner-page-padding);
+  background: var(--learner-modal-backdrop);
+  backdrop-filter: blur(var(--learner-modal-blur));
+}
+
+.saving-panel,
+.device-blocker-panel,
+.leave-confirmation-panel {
+  width: min(92%, 600px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--learner-space-4);
+  padding: clamp(28px, 3vw, 42px);
+  border: var(--learner-modal-border);
+  border-radius: var(--learner-radius-panel);
+  background: var(--learner-modal-background);
+  box-shadow: var(--learner-shadow-floating);
+  color: var(--learner-color-text);
+  text-align: center;
+}
+
+.device-blocker-icon {
+  width: 78px;
+  height: 72px;
+  display: grid;
+  place-items: center;
+  color: var(--learner-color-text);
+}
+
+.device-blocker-icon svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  fill: var(--learner-color-surface);
+  stroke: currentColor;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.device-blocker-icon circle:not(.device-icon-shine) {
+  fill: var(--learner-color-text);
+  stroke: none;
+}
+
+.device-blocker-icon .device-icon-shine {
+  fill: var(--learner-color-surface);
+  stroke: none;
+}
+
+.device-blocker-panel h2,
+.leave-confirmation-panel h2 {
+  margin: 0;
+  font-size: clamp(30px, 3vw, 44px);
+  font-weight: var(--learner-font-weight-heavy);
+}
+
+.device-blocker-panel p,
+.leave-confirmation-panel p,
+.saving-text {
+  margin: 0;
+  color: var(--learner-color-text-soft);
+  font-size: clamp(18px, 1.7vw, 24px);
+  font-weight: var(--learner-font-weight-bold);
+  line-height: 1.4;
+}
+
+.device-blocker-panel button,
+.retry-button,
+.leave-confirmation-panel button {
+  min-height: var(--learner-control-height-medium);
+  padding-inline: var(--learner-space-6);
+  border-radius: var(--learner-radius-control);
+  font-weight: var(--learner-font-weight-heavy);
+  cursor: pointer;
+}
+
+.device-blocker-panel button,
+.retry-button,
+.leave-confirmation-cancel {
+  border: 0;
+  background: var(--learner-flow-accent);
+  color: #fff;
+  box-shadow: var(--learner-shadow-control);
+}
+
+.leave-confirmation-confirm {
+  border: 2px solid var(--learner-border-color-soft);
+  background: #fff;
+  color: var(--learner-color-text);
+  box-shadow: var(--learner-shadow-small);
+}
+
+.leave-confirmation-image {
+  width: 150px;
+  height: 150px;
+  object-fit: contain;
+}
+
+.leave-confirmation-panel > div {
+  width: 100%;
+  display: flex;
+  gap: var(--learner-space-3);
+  margin-top: var(--learner-space-3);
+}
+
+.leave-confirmation-panel button {
+  flex: 1;
+}
+
+.saving-spinner {
+  width: 56px;
+  height: 56px;
+  border: 6px solid color-mix(in srgb, var(--learner-flow-accent) 25%, transparent);
+  border-top-color: var(--learner-flow-accent);
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+}
+
+.saving-icon {
+  width: 64px;
+  height: 64px;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  border-radius: 50%;
+  background: var(--learner-color-error);
+  color: #fff;
+  font-size: 40px;
+  font-weight: var(--learner-font-weight-heavy);
+}
+
+.fallback {
+  height: 100%;
+  display: grid;
+  place-items: center;
+  gap: var(--learner-space-4);
+}
+
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity var(--learner-duration-normal) var(--learner-easing-standard);
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 900px) {
+  .playing {
+    width: calc(100% - 28px);
+    padding: 12px;
+  }
+
+  .topbar-progress {
+    min-width: 128px;
+    padding-inline: 12px;
+  }
+}
+
+@media (max-height: 800px) {
+  .playing {
+    margin-block: 5px 8px;
+    gap: 8px;
+    padding: 10px 14px;
+  }
+
+  .lesson-topbar--inside {
+    min-height: 48px;
+  }
+
+  .lesson-instruction {
+    font-size: clamp(26px, 2.5vw, 36px);
+  }
+
+  .question-scroll {
+    overflow: hidden;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .saving-spinner {
+    animation: none;
+  }
+}

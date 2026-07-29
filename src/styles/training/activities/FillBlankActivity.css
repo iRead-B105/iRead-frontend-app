@@ -1,0 +1,354 @@
+/** 대상 컴포넌트: components/training/activities/FillBlankActivity.vue
+ * Vue 연결: <style scoped src="@/styles/training/activities/FillBlankActivity.css">
+ * 숫자를 수정할 때는 바로 위 한국어 주석과 styles/README.md의 공통 토큰 표를 먼저 확인하세요.*/
+
+.activity {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  width: 100%;
+  max-width: 1120px;
+  height: 100%;
+  min-height: 0;
+  padding: 22px 30px 20px;
+  border: 4px solid rgba(255,255,255,.94);
+  border-radius: 30px;
+  background: linear-gradient(180deg,#d9efff 0%,#eff8ff 58%,#e7f4d5 100%);
+  box-shadow: inset 0 0 0 2px rgba(89,145,212,.18),0 12px 26px rgba(45,94,145,.14);
+  overflow: hidden;
+}
+
+.activity-heading {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 54px;
+}
+
+.activity-heading h1 {
+  margin: 0;
+  color: #193b79;
+  font-family: var(--learner-font-display);
+  font-size: clamp(28px,2.4vw,38px);
+  font-weight: 900;
+}
+
+.status-message {
+  position: absolute;
+  right: 0;
+  margin: 0;
+  padding: 11px 17px;
+  border: 2px solid #ecd79e;
+  border-radius: 999px;
+  background: #fffdf4;
+  color: #88651c;
+  font-family: var(--learner-font-display);
+  font-size: 17px;
+  font-weight: 900;
+}
+
+.status-message.success {
+  border-color: #9bd488;
+  background: #f2ffec;
+  color: #388452;
+}
+
+.status-message.denied {
+  border-color: #e5b1a9;
+  color: #a34d42;
+}
+
+.sentence-card {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 14px;
+  width: min(100%,920px);
+  min-height: 150px;
+  padding: 24px 32px;
+  border: 5px solid #fff;
+  border-radius: 29px;
+  background: #fffdf5;
+  color: #263853;
+  font-family: var(--learner-font-display);
+  font-size: clamp(32px,3.5vw,50px);
+  font-weight: 900;
+  box-shadow: inset 0 0 0 2px #eadfbd,0 9px 20px rgba(70,91,112,.13);
+}
+
+.blank {
+  display: grid;
+  place-items: center;
+  min-width: 170px;
+  min-height: 82px;
+  padding: 0 22px;
+  border: 5px dashed #7593e4;
+  border-radius: 21px;
+  background: #eef4ff;
+  color: #3158c6;
+  transition: border-color .18s,background .18s,transform .18s,box-shadow .18s;
+}
+
+.blank.over {
+  border-style: solid;
+  background: #fff5bd;
+  transform: scale(1.04);
+  box-shadow: 0 0 0 6px rgba(255,210,52,.22);
+}
+
+.blank.filled {
+  border-style: solid;
+  border-color: #62bd69;
+  background: #efffea;
+  color: #297a35;
+}
+
+.blank.hint {
+  animation: blank-pulse .9s ease-in-out infinite;
+}
+
+.choices {
+  display: grid;
+  grid-template-columns: repeat(3,minmax(180px,230px));
+  gap: 22px;
+  justify-content: center;
+  width: 100%;
+  min-height: 152px;
+}
+
+.word-card {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 145px;
+  padding: 18px;
+  border: 4px solid #efe1bd;
+  border-radius: 25px;
+  background: #fffdf8;
+  color: #263853;
+  box-shadow: 0 7px 17px rgba(59,83,111,.13);
+  cursor: grab;
+  user-select: none;
+  transition: transform .18s,opacity .18s,border-color .18s,box-shadow .18s;
+}
+
+.word-card:active {
+  cursor: grabbing;
+}
+
+.word-card strong {
+  font-family: var(--learner-font-display);
+  font-size: 34px;
+  font-weight: 900;
+}
+
+.grip {
+  position: absolute;
+  top: 10px;
+  right: 14px;
+  color: #a8b2c1;
+  font-size: 24px;
+}
+
+.word-card.wrong {
+  border-color: #ed8175;
+  background: #fff2ef;
+  animation: shake .38s ease-in-out;
+}
+
+.word-card.hint {
+  border-color: #ffc83d;
+  animation: card-pulse .9s ease-in-out infinite;
+}
+
+.word-card.used {
+  opacity: .22;
+}
+
+.choices.locked .word-card:not(.used) {
+  opacity: .42;
+  cursor: default;
+}
+
+.action-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 62px;
+}
+
+.speak-button,.next-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 11px;
+  min-width: 210px;
+  min-height: 60px;
+  border: 0;
+  border-radius: 21px;
+  color: #fff;
+  font-family: var(--learner-font-display);
+  font-size: 22px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.speak-button {
+  background: linear-gradient(180deg,#7194f2,#4f72df);
+  box-shadow: 0 8px 18px rgba(50,81,155,.25);
+}
+
+.speak-button span {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 3px solid rgba(255,255,255,.82);
+  border-radius: 50%;
+  font-size: 14px;
+}
+
+.speak-button:disabled {
+  opacity: .62;
+}
+
+.next-button {
+  background: linear-gradient(180deg,#ffc75a,#f2a92f);
+  box-shadow: 0 8px 18px rgba(150,96,16,.22);
+}
+
+.speak-button:focus-visible,.next-button:focus-visible {
+  outline: 5px solid #ffd54a;
+  outline-offset: 3px;
+}
+
+@keyframes shake {
+  25% {
+    transform: translateX(-9px);
+  }
+
+  75% {
+    transform: translateX(9px);
+  }
+}
+
+@keyframes card-pulse {
+  50% {
+    box-shadow: 0 0 0 7px rgba(255,210,52,.3),0 8px 18px rgba(151,111,20,.18);
+  }
+}
+
+@keyframes blank-pulse {
+  50% {
+    border-color: #ffd044;
+    background: #fff9d5;
+  }
+}
+
+@media (max-height:800px) {
+  .activity {
+    gap: 15px;
+    padding: 13px 24px;
+  }
+
+  .activity-heading {
+    min-height: 44px;
+  }
+
+  .activity-heading h1 {
+    font-size: 27px;
+  }
+
+  .sentence-card {
+    min-height: 112px;
+    padding: 14px 22px;
+    font-size: 36px;
+  }
+
+  .blank {
+    min-height: 64px;
+  }
+
+  .choices {
+    min-height: 118px;
+  }
+
+  .word-card {
+    min-height: 112px;
+    padding: 10px;
+  }
+
+  .word-card strong {
+    font-size: 29px;
+  }
+
+  .action-bar {
+    min-height: 52px;
+  }
+
+  .speak-button,.next-button {
+    min-height: 52px;
+  }
+}
+
+@media (max-width:760px) {
+  .activity {
+    padding: 14px;
+  }
+
+  .activity-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .status-message {
+    position: static;
+    align-self: flex-end;
+  }
+
+  .choices {
+    grid-template-columns: repeat(3,1fr);
+    gap: 10px;
+  }
+
+  .word-card strong {
+    font-size: 25px;
+  }
+}
+
+@media (prefers-reduced-motion:reduce) {
+  .blank,.word-card,.word-card.wrong,.word-card.hint,.blank.hint {
+    transition: none;
+    animation: none;
+  }
+}
+
+.word-card {
+  touch-action: none;
+}
+
+.drag-ghost {
+  position: fixed;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  min-width: 190px;
+  min-height: 105px;
+  padding: 14px 22px;
+  border: 4px solid #6f91e9;
+  border-radius: 23px;
+  background: #fffdf8;
+  color: #263853;
+  font-family: var(--learner-font-display);
+  font-size: 32px;
+  font-weight: 900;
+  box-shadow: 0 16px 28px rgba(45,75,120,.28);
+  transform: translate(-50%,-50%) rotate(-2deg);
+  pointer-events: none;
+}
