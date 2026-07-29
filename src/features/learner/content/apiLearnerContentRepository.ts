@@ -74,6 +74,13 @@ interface GrowthDto {
     readonly trainingTemplateName: string
     readonly completedCount: number
   }[]
+  readonly growthAreas?: readonly {
+    readonly areaId: 1 | 2 | 3
+    readonly name: string
+    readonly stage: number
+    readonly completedCount: number
+    readonly updatedAt: string | null
+  }[]
 }
 
 export class ApiLearnerContentRepository implements LearnerContentRepository {
@@ -203,6 +210,17 @@ export class ApiLearnerContentRepository implements LearnerContentRepository {
       `/api/app/student/${encodeURIComponent(studentId)}/growth`,
       { signal: options.signal },
     )
+    if (response.growthAreas) {
+      return response.growthAreas.map((area) => ({
+        areaId: area.areaId,
+        name: area.name,
+        learningCount: area.completedCount,
+        stage: Math.min(5, Math.max(1, area.stage)),
+        updatedAt: area.updatedAt ?? '',
+      }))
+    }
+
+    // 구버전 Backend 응답과의 순차 배포 호환용이다. 새 Backend에서는 growthAreas를 사용한다.
     const learningCounts: Record<1 | 2 | 3, number> = { 1: 0, 2: 0, 3: 0 }
     response.trainingProgress.forEach((progress) => {
       const areaId = getGrowthAreaId(progress.trainingTemplateId)

@@ -100,6 +100,11 @@ describe('API learner content repository', () => {
           { trainingTemplateId: 22, trainingTemplateName: '낱말 읽기', completedCount: 3 },
           { trainingTemplateId: 30, trainingTemplateName: '문장 따라 읽기', completedCount: 1 },
         ],
+        growthAreas: [
+          { areaId: 1, name: '파닉스', stage: 2, completedCount: 3, updatedAt: null },
+          { areaId: 2, name: '읽기', stage: 3, completedCount: 8, updatedAt: null },
+          { areaId: 3, name: '유창성', stage: 1, completedCount: 1, updatedAt: null },
+        ],
       })
     const repository = new ApiLearnerContentRepository()
 
@@ -128,7 +133,8 @@ describe('API learner content repository', () => {
         status: 'LOCKED',
       }),
     ])
-    expect(growth.map((area) => area.learningCount)).toEqual([2, 3, 1])
+    expect(growth.map((area) => area.learningCount)).toEqual([3, 8, 1])
+    expect(growth.map((area) => area.stage)).toEqual([2, 3, 1])
   })
 
   it('시선 보정 안내를 학생 식별자와 함께 조회한다', async () => {

@@ -25,13 +25,16 @@ const gardens = reactive<Garden[]>([
 ])
 
 const stageNames = ['흙', '새싹', '꽃봉', '꽃', '만개'] as const
-// API 모드에서는 완료 훈련 누적값을 사용하고, mock 모드에서는 클릭으로 단계를 확인합니다.
+// API 모드에서는 Backend 성장 정책을 사용하고, mock 모드에서는 클릭으로 단계를 확인합니다.
 const learningCounts = reactive<Record<GardenId, number>>({ 1: 0, 2: 0, 3: 0 })
+const backendStages = reactive<Record<GardenId, number>>({ 1: 1, 2: 1, 3: 1 })
 const stageForLearningCount = (count: number) => Math.min(5, Math.max(1, count + 1))
 const stages = computed<Record<GardenId, number>>(() => ({
-  1: stageForLearningCount(learningCounts[1]),
-  2: stageForLearningCount(learningCounts[2]),
-  3: stageForLearningCount(learningCounts[3]),
+  // API 모드에서는 노력·다양성·숙달도를 종합한 Backend의 단계가 기준 원본이다.
+  // mock 모드의 클릭 성장만 기존 단순 카운트 계산을 유지한다.
+  1: learnerDataSource === 'api' ? backendStages[1] : stageForLearningCount(learningCounts[1]),
+  2: learnerDataSource === 'api' ? backendStages[2] : stageForLearningCount(learningCounts[2]),
+  3: learnerDataSource === 'api' ? backendStages[3] : stageForLearningCount(learningCounts[3]),
 }))
 const growingGarden = ref<GardenId | null>(null)
 const hoveredGarden = ref<GardenId | null>(null)
@@ -103,6 +106,7 @@ onMounted(async () => {
     const growthAreas = await fetchGrowthAreas()
     growthAreas.forEach((area) => {
       learningCounts[area.areaId] = area.learningCount
+      backendStages[area.areaId] = Math.min(5, Math.max(1, area.stage))
       const garden = gardens.find((item) => item.id === area.areaId)
       if (garden) garden.title = area.name
     })
