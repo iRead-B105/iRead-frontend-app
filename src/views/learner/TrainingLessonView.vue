@@ -15,6 +15,7 @@ import { useTrainingSession } from '@/composables/useTrainingSession'
 import { useDeviceStatus } from '@/composables/useDeviceStatus'
 import { useVoiceRecorder } from '@/composables/useVoiceRecorder'
 import {
+  getSkillChallengeLessons,
   isSkillChallengeTrackId,
   useSkillChallenge,
 } from '@/composables/useSkillChallenge'
@@ -49,6 +50,7 @@ import {
 import { getCachedStudent } from '@/services/learnerDataRepository'
 import { useLearnerErrorModalStore } from '@/stores/learnerErrorModal'
 import { learnerGazeRepository } from '@/features/learner/gaze'
+import { learnerTestRepository } from '@/features/learner/test'
 
 const route = useRoute()
 const router = useRouter()
@@ -58,12 +60,31 @@ const errorModal = useLearnerErrorModalStore()
 const { eyeTrackerConnected, microphoneAvailable } = useDeviceStatus()
 const voiceRecorder = useVoiceRecorder()
 
-const categoryId = computed(() => String(route.params.categoryId ?? ''))
-const lessonId = computed(() => String(route.params.lessonId ?? ''))
 const challengeTrackId = computed(() => {
-  const value = String(route.query.challenge ?? '')
+  const value = String(route.params.trackId ?? route.query.challenge ?? '')
   return isSkillChallengeTrackId(value) ? value : null
 })
+const challengePresentation = computed(() =>
+  challengeTrackId.value
+    ? getSkillChallengeLessons(challengeTrackId.value).find(
+      (item) => item.lessonId === String(route.params.lessonId ?? ''),
+    ) ?? getSkillChallengeLessons(challengeTrackId.value)[0] ?? null
+    : null,
+)
+const categoryId = computed(() => String(
+  route.params.categoryId ?? challengePresentation.value?.categoryId ?? '',
+))
+const lessonId = computed(() => String(
+  route.params.lessonId ?? challengePresentation.value?.lessonId ?? '',
+))
+const learningRepository = computed(() =>
+  challengeTrackId.value ? learnerTestRepository : learnerTrainingRepository,
+)
+const learningItemId = computed(() => String(
+  challengeTrackId.value
+    ? route.params.testId ?? route.query.testId ?? ''
+    : route.query.trainingId ?? '',
+))
 
 const fallbackLesson = computed(() => getLessonById(lessonId.value))
 const serverLesson = ref<TrainingLesson | null>(null)
@@ -208,20 +229,20 @@ onMounted(async () => {
     session.startLesson(lesson.value)
   }
   if (learnerDataSource === 'api') {
-    const trainingId = String(route.query.trainingId ?? '')
-    if (!/^\d+$/.test(trainingId)) {
-      integrationError.value = '서버 훈련 ID가 없어 학습을 시작할 수 없습니다.'
+    const itemId = learningItemId.value
+    if (!/^\d+$/.test(itemId)) {
+      integrationError.value = '서버 학습 ID가 없어 학습을 시작할 수 없습니다.'
     } else {
       try {
         const studentId = getCachedStudent().studentId
-        const intro = await learnerTrainingRepository.getIntro(studentId, trainingId)
-        const firstPayload = await learnerTrainingRepository.getQuestion(studentId, trainingId, 1)
+        const intro = await learningRepository.value.getIntro(studentId, itemId)
+        const firstPayload = await learningRepository.value.getQuestion(studentId, itemId, 1)
         const remainingPayloads = await Promise.all(
           Array.from(
             { length: Math.max(firstPayload.totalQuestions - 1, 0) },
-            (_, index) => learnerTrainingRepository.getQuestion(
+            (_, index) => learningRepository.value.getQuestion(
               studentId,
-              trainingId,
+              itemId,
               index + 2,
             ),
           ),
@@ -254,9 +275,9 @@ onMounted(async () => {
             throw new Error('이 문항은 선택 응답으로 제출할 수 없습니다.')
           }
           try {
-            const feedback = await learnerTrainingRepository.saveSubmission(
+            const feedback = await learningRepository.value.saveSubmission(
               studentId,
-              trainingId,
+              itemId,
               mapped.questionNumber,
               {
                 submissionId: crypto.randomUUID(),
@@ -302,12 +323,12 @@ const startPlaying = async () => {
   try {
     if (learnerDataSource === 'api') {
       const intro = serverIntro.value
-      const trainingId = String(route.query.trainingId ?? '')
-      if (!intro || !/^\d+$/.test(trainingId)) {
+      const itemId = learningItemId.value
+      if (!intro || !/^\d+$/.test(itemId)) {
         throw new Error('서버 훈련 정보를 확인할 수 없습니다.')
       }
       if (intro.status === 'NOT_STARTED') {
-        await learnerTrainingRepository.start(getCachedStudent().studentId, trainingId)
+        await learningRepository.value.start(getCachedStudent().studentId, itemId)
         serverIntro.value = { ...intro, status: 'IN_PROGRESS' }
       } else if (intro.status !== 'IN_PROGRESS') {
         throw new Error(`시작할 수 없는 훈련 상태입니다: ${intro.status}`)
@@ -318,8 +339,8 @@ const startPlaying = async () => {
       ) {
         const gazeSession = await learnerGazeRepository.start({
           studentId: getCachedStudent().studentId,
-          contentType: 'TRAINING',
-          trainingId,
+          contentType: challengeTrackId.value ? 'TEST' : 'TRAINING',
+          ...(challengeTrackId.value ? { testId: itemId } : { trainingId: itemId }),
           calibrationStatus: eyeTrackerConnected.value ? 'SUCCESS' : 'SKIPPED',
         })
         gazeSessionId.value = gazeSession.gazeSessionId
@@ -398,16 +419,16 @@ const goNext = async (response?: LearnerTraceSubmissionResponse) => {
   submittingQuestion.value = true
   try {
     if (learnerDataSource === 'api') {
-      const trainingId = String(route.query.trainingId ?? '')
+      const itemId = learningItemId.value
       const mapped = serverQuestions.value[session.progressState.currentQuestionIndex]
-      if (!mapped || !/^\d+$/.test(trainingId)) {
+      if (!mapped || !/^\d+$/.test(itemId)) {
         throw new Error('제출할 서버 훈련 문항을 확인할 수 없습니다.')
       }
       if (mapped.responseType === 'TRACE') {
         if (!response) throw new Error('시선 따라가기 결과가 없습니다.')
-        const feedback = await learnerTrainingRepository.saveSubmission(
+        const feedback = await learningRepository.value.saveSubmission(
           getCachedStudent().studentId,
-          trainingId,
+          itemId,
           mapped.questionNumber,
           {
             submissionId: crypto.randomUUID(),
@@ -441,17 +462,17 @@ const toggleVoiceRecording = () => {
 const submitVoiceRecording = async () => {
   const mapped = serverQuestions.value[session.progressState.currentQuestionIndex]
   const blob = voiceRecorder.audioBlob.value
-  const trainingId = String(route.query.trainingId ?? '')
-  if (!mapped || !blob || !mapped.expectedText || !/^\d+$/.test(trainingId)) {
+  const itemId = learningItemId.value
+  if (!mapped || !blob || !mapped.expectedText || !/^\d+$/.test(itemId)) {
     voiceFeedback.value = '녹음 정보를 확인할 수 없습니다.'
     return
   }
   voiceSubmitting.value = true
   try {
     const extension = blob.type.includes('mp4') ? 'm4a' : 'webm'
-    const result = await learnerTrainingRepository.saveRecording(
+    const result = await learningRepository.value.saveRecording(
       getCachedStudent().studentId,
-      trainingId,
+      itemId,
       mapped.questionNumber,
       {
         targetIndex: mapped.recordingTargetIndex ?? undefined,
@@ -461,11 +482,15 @@ const submitVoiceRecording = async () => {
         }),
       },
     )
-    voiceFeedback.value = result.passed
-      ? `${Math.round(result.pronunciationAccuracyScore)}점! 잘 읽었어요.`
-      : `${Math.round(result.pronunciationAccuracyScore)}점이에요. ${
-        result.canRetry ? '70점 이상을 목표로 한 번 더 읽어봐요.' : '힌트를 보고 연습을 마쳤어요.'
-      }`
+    voiceFeedback.value = challengeTrackId.value
+      ? '목소리를 잘 저장했어요.'
+      : result.passed
+        ? `${Math.round(result.pronunciationAccuracyScore)}점! 잘 읽었어요.`
+        : `${Math.round(result.pronunciationAccuracyScore)}점이에요. ${
+          result.canRetry
+            ? `${result.pronunciationThreshold}점 이상을 목표로 한 번 더 읽어봐요.`
+            : '힌트를 보고 연습을 마쳤어요.'
+        }`
     if (result.canRetry) {
       voiceRecorder.reset()
       return
@@ -490,8 +515,8 @@ const saveAndFinish = async () => {
     session.savingState.status = 'saving'
     session.savingState.errorMessage = null
     try {
-      const trainingId = String(route.query.trainingId ?? '')
-      if (!/^\d+$/.test(trainingId)) throw new Error('서버 훈련 ID가 올바르지 않습니다.')
+      const itemId = learningItemId.value
+      if (!/^\d+$/.test(itemId)) throw new Error('서버 학습 ID가 올바르지 않습니다.')
       if (gazeSessionId.value && !gazeSessionCompleted.value) {
         await learnerGazeRepository.end(
           gazeSessionId.value,
@@ -501,7 +526,7 @@ const saveAndFinish = async () => {
         )
         gazeSessionCompleted.value = true
       }
-      await learnerTrainingRepository.complete(getCachedStudent().studentId, trainingId)
+      await learningRepository.value.complete(getCachedStudent().studentId, itemId)
       session.savingState.status = 'success'
       ok = true
     } catch (error) {
@@ -515,11 +540,21 @@ const saveAndFinish = async () => {
   if (ok) {
     session.completeLesson()
     // 완료 화면으로 자동 이동
-    void router.replace({
-      name: 'training-complete',
-      params: { categoryId: categoryId.value, lessonId: lessonId.value },
-      query: challengeTrackId.value ? { challenge: challengeTrackId.value } : undefined,
-    })
+    void router.replace(
+      challengeTrackId.value
+        ? {
+          name: 'skill-challenge-question-complete',
+          params: {
+            trackId: challengeTrackId.value,
+            testId: learningItemId.value,
+          },
+          query: { lessonId: lessonId.value },
+        }
+        : {
+          name: 'training-complete',
+          params: { categoryId: categoryId.value, lessonId: lessonId.value },
+        },
+    )
   }
   // 실패 시 phase 는 'saving' 유지 → 저장 오버레이에서 재시도 버튼 노출
 }

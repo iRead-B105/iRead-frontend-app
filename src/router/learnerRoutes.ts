@@ -1,5 +1,9 @@
 import type { RouteRecordRaw } from 'vue-router'
 import { useTrainingSession } from '@/composables/useTrainingSession'
+import {
+  getSkillChallengeLessons,
+  isSkillChallengeTrackId,
+} from '@/composables/useSkillChallenge'
 import { isPlayableLesson, isValidCategoryId } from '@/mocks/trainingLookup'
 import { learnerDataSource } from '@/config/learnerDataSource'
 
@@ -37,6 +41,50 @@ const validateComplete: RouteRecordRaw['beforeEnter'] = (to) => {
     progressState.categoryId === categoryId
 
   return completed ? true : { name: 'training-lesson', params: { categoryId, lessonId } }
+}
+
+const validateChallengeLesson: RouteRecordRaw['beforeEnter'] = (to) => {
+  const trackId = String(to.params.trackId ?? '')
+  const testId = String(to.params.testId ?? '')
+  const lessonId = String(to.params.lessonId ?? '')
+  const lessons = isSkillChallengeTrackId(trackId)
+    ? getSkillChallengeLessons(trackId)
+    : []
+  const validTestId = learnerDataSource === 'mock'
+    ? testId === 'mock'
+    : /^\d+$/.test(testId)
+  return isSkillChallengeTrackId(trackId) &&
+    validTestId &&
+    lessons.length > 0 &&
+    (!lessonId || lessons.some((lesson) => lesson.lessonId === lessonId))
+    ? true
+    : { name: 'skill-challenge' }
+}
+
+const validateChallengeQuestionComplete: RouteRecordRaw['beforeEnter'] = (to) => {
+  const trackId = String(to.params.trackId ?? '')
+  const testId = String(to.params.testId ?? '')
+  const validTestId = learnerDataSource === 'mock'
+    ? testId === 'mock'
+    : /^\d+$/.test(testId)
+  if (!isSkillChallengeTrackId(trackId) || !validTestId) {
+    return { name: 'skill-challenge' }
+  }
+
+  const requestedLessonId = String(to.query.lessonId ?? '')
+  const lessons = getSkillChallengeLessons(trackId)
+  const presentation =
+    lessons.find((lesson) => lesson.lessonId === requestedLessonId) ?? lessons[0]
+  const { progressState } = useTrainingSession()
+  const completed =
+    presentation &&
+    progressState.isCompleted &&
+    progressState.lessonId === presentation.lessonId &&
+    progressState.categoryId === presentation.categoryId
+
+  return completed
+    ? true
+    : { name: 'skill-challenge-lesson', params: { trackId, testId } }
 }
 
 export const learnerLoginRoute: RouteRecordRaw = {
@@ -82,6 +130,19 @@ export const learnerRoutes: RouteRecordRaw = {
     },
     { path: 'growth', name: 'growth', component: () => import('@/views/learner/GrowthView.vue') },
     { path: 'challenge', name: 'skill-challenge', component: () => import('@/views/learner/SkillChallengeView.vue') },
+    {
+      path: 'challenge/:trackId/:testId/:lessonId?',
+      name: 'skill-challenge-lesson',
+      component: () => import('@/views/learner/TrainingLessonView.vue'),
+      beforeEnter: validateChallengeLesson,
+    },
+    {
+      path: 'challenge/:trackId/:testId/complete',
+      name: 'skill-challenge-question-complete',
+      component: () => import('@/views/learner/TrainingCompleteView.vue'),
+      beforeEnter: validateChallengeQuestionComplete,
+      meta: { hideLearnerHeader: true },
+    },
     {
       path: 'challenge/complete',
       name: 'skill-challenge-complete',

@@ -9,11 +9,15 @@ import { getLessonById } from '@/mocks/trainingLessons'
 import { useTrainingSession } from '@/composables/useTrainingSession'
 import { useDailyCurriculum, type DailyCurriculumItem } from '@/composables/useDailyCurriculum'
 import {
+  getSkillChallengeLessons,
   isSkillChallengeTrackId,
   useSkillChallenge,
   type SkillChallengeLesson,
 } from '@/composables/useSkillChallenge'
 import TrainingComplete from '@/components/training/TrainingComplete.vue'
+import { learnerDataSource } from '@/config/learnerDataSource'
+import { learnerTestRepository } from '@/features/learner/test'
+import { getCachedStudent } from '@/services/learnerDataRepository'
 
 const route = useRoute()
 const router = useRouter()
@@ -22,13 +26,28 @@ const dailyCurriculum = useDailyCurriculum()
 const skillChallenge = useSkillChallenge()
 const nextCurriculumItem = ref<DailyCurriculumItem | null>(null)
 const nextChallengeLesson = ref<SkillChallengeLesson | null>(null)
+const nextChallengeTestId = ref<string | null>(null)
 
-const lessonId = computed(() => String(route.params.lessonId ?? ''))
-const categoryId = computed(() => String(route.params.categoryId ?? ''))
 const challengeTrackId = computed(() => {
-  const value = String(route.query.challenge ?? '')
+  const value = String(route.params.trackId ?? route.query.challenge ?? '')
   return isSkillChallengeTrackId(value) ? value : null
 })
+const challengePresentation = computed(() =>
+  challengeTrackId.value
+    ? getSkillChallengeLessons(challengeTrackId.value).find(
+      (item) => item.lessonId === String(route.query.lessonId ?? ''),
+    ) ?? getSkillChallengeLessons(challengeTrackId.value)[0] ?? null
+    : null,
+)
+const lessonId = computed(() => String(
+  route.params.lessonId ?? challengePresentation.value?.lessonId ?? '',
+))
+const categoryId = computed(() => String(
+  route.params.categoryId ?? challengePresentation.value?.categoryId ?? '',
+))
+const currentTestId = computed(() => String(
+  route.params.testId ?? route.query.testId ?? '',
+))
 
 const lesson = computed(() => getLessonById(lessonId.value))
 
@@ -43,21 +62,51 @@ const completionMessage = computed(() => {
 })
 
 // 직접 진입(완료되지 않은 상태) 시 인트로로 보냄
-onMounted(() => {
+onMounted(async () => {
   const valid =
     session.progressState.isCompleted &&
     session.progressState.lessonId === lessonId.value &&
     session.progressState.categoryId === categoryId.value
   if (!valid) {
-    void router.replace({
-      name: 'training-lesson',
-      params: { categoryId: categoryId.value, lessonId: lessonId.value },
-    })
+    void router.replace(
+      challengeTrackId.value &&
+      (currentTestId.value === 'mock' || /^\d+$/.test(currentTestId.value))
+        ? {
+          name: 'skill-challenge-lesson',
+          params: {
+            trackId: challengeTrackId.value,
+            testId: currentTestId.value,
+            lessonId: lessonId.value,
+          },
+        }
+        : {
+          name: 'training-lesson',
+          params: { categoryId: categoryId.value, lessonId: lessonId.value },
+        },
+    )
     return
   }
   if (challengeTrackId.value) {
-    skillChallenge.ensureChallenge(challengeTrackId.value, lessonId.value)
-    nextChallengeLesson.value = skillChallenge.markLessonComplete(lessonId.value)
+    if (learnerDataSource === 'api') {
+      try {
+        const plan = await learnerTestRepository.getChallengePlan(
+          getCachedStudent().studentId,
+        )
+        const track = plan.tracks.find(
+          (item) => item.trackCode === challengeTrackId.value,
+        )
+        nextChallengeTestId.value = track?.nextTestId ?? null
+        nextChallengeLesson.value = nextChallengeTestId.value
+          ? getSkillChallengeLessons(challengeTrackId.value)[0] ?? null
+          : null
+      } catch {
+        nextChallengeLesson.value = null
+      }
+    } else {
+      skillChallenge.ensureChallenge(challengeTrackId.value, lessonId.value)
+      nextChallengeLesson.value = skillChallenge.markLessonComplete(lessonId.value)
+      nextChallengeTestId.value = nextChallengeLesson.value ? 'mock' : null
+    }
   } else {
     nextCurriculumItem.value = dailyCurriculum.markLessonComplete(lessonId.value)
   }
@@ -65,16 +114,26 @@ onMounted(() => {
 
 const handleRetry = () => {
   // 다시 하기 → 레슨 화면(인트로)으로 이동. startLesson 은 레슨 진입 시 재실행됨
-  void router.push({
-    name: 'training-lesson',
-    params: { categoryId: categoryId.value, lessonId: lessonId.value },
-    query: challengeTrackId.value ? { challenge: challengeTrackId.value } : undefined,
-  })
+  void router.push(
+    challengeTrackId.value
+      ? {
+        name: 'skill-challenge-lesson',
+        params: {
+          trackId: challengeTrackId.value,
+          testId: currentTestId.value,
+          lessonId: lessonId.value,
+        },
+      }
+      : {
+        name: 'training-lesson',
+        params: { categoryId: categoryId.value, lessonId: lessonId.value },
+      },
+  )
 }
 
 const handleContinue = () => {
   if (challengeTrackId.value) {
-    if (!nextChallengeLesson.value) {
+    if (!nextChallengeLesson.value || !nextChallengeTestId.value) {
       void router.push({
         name: 'skill-challenge-complete',
         query: { track: challengeTrackId.value },
@@ -83,12 +142,14 @@ const handleContinue = () => {
     }
 
     void router.push({
-      name: 'training-lesson',
+      name: 'skill-challenge-lesson',
       params: {
-        categoryId: nextChallengeLesson.value.categoryId,
-        lessonId: nextChallengeLesson.value.lessonId,
+        trackId: challengeTrackId.value,
+        testId: nextChallengeTestId.value,
+        ...(learnerDataSource === 'mock'
+          ? { lessonId: nextChallengeLesson.value.lessonId }
+          : {}),
       },
-      query: { challenge: challengeTrackId.value },
     })
     return
   }
