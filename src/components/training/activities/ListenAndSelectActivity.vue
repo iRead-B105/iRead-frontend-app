@@ -14,6 +14,9 @@ const { progressState } = session
 const choices = computed<TrainingChoice[]>(() => props.question.choices ?? [])
 const hasWordChoices = computed(() => choices.value.some((choice) => !choice.letter && choice.text))
 const isAnswered = computed(() => progressState.isCurrentCorrect === true)
+const targetAudioText = computed(() =>
+  props.question.audioText ?? props.question.targetText ?? '',
+)
 
 const cardState = (choice: TrainingChoice): 'default' | 'selected' | 'correct' | 'wrong' | 'disabled' => {
   if (isAnswered.value) return choice.id === props.question.answer ? 'correct' : 'disabled'
@@ -51,8 +54,8 @@ const handleSelect = (choice: TrainingChoice) => {
         </div>
         <strong v-if="question.targetText" class="target-word">{{ question.targetText }}</strong>
         <SoundButton
-          v-if="question.targetText"
-          :text="question.targetText"
+          v-if="targetAudioText"
+          :text="targetAudioText"
           size="medium"
           variant="primary"
         />
@@ -67,6 +70,7 @@ const handleSelect = (choice: TrainingChoice) => {
               :class="`word-choice--${cardState(choice)}`"
             >
               <SoundButton
+                v-if="question.choiceAudioEnabled !== false"
                 :text="choice.text"
                 size="medium"
                 variant="ghost"
