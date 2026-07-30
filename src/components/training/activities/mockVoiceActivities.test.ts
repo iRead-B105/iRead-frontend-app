@@ -1,9 +1,11 @@
 // @vitest-environment jsdom
 
+import { nextTick } from 'vue'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { useTrainingSession } from '@/composables/useTrainingSession'
 import type { TrainingActivityType, TrainingQuestion } from '@/types/training'
+import GazeTraceActivity from './GazeTraceActivity.vue'
 import WordReadingGridActivity from './WordReadingGridActivity.vue'
 import SentenceReadingActivity from './SentenceReadingActivity.vue'
 import ReadAloudActivity from './ReadAloudActivity.vue'
@@ -88,6 +90,30 @@ describe('mock voice activities', () => {
 
     expect(session.progressState.isCurrentCorrect).toBe(true)
     expect(wrapper.get('.action--primary').attributes('disabled')).toBeUndefined()
+    wrapper.unmount()
+  })
+
+  it('따라 보기의 음성 단계를 마이크 없이 완료한다', async () => {
+    const question: TrainingQuestion = {
+      id: 'vowel-trace',
+      instruction: '글자를 따라가 보세요.',
+      answer: 'ㅏ',
+      traceGlyph: 'ㅏ',
+      targetText: 'ㅏ',
+      traceStrokes: [[
+        { x: 100, y: 100 },
+        { x: 200, y: 200 },
+      ]],
+    }
+    startQuestion('gaze-trace', question)
+    const wrapper = mount(GazeTraceActivity, { props: { question } })
+
+    ;(wrapper.vm as unknown as { progress: number }).progress = 2
+    await nextTick()
+    await wrapper.get('.mic-button').trigger('click')
+
+    expect(session.progressState.isCurrentCorrect).toBe(true)
+    expect(wrapper.find('.next-button').exists()).toBe(true)
     wrapper.unmount()
   })
 })
