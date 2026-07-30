@@ -44,6 +44,7 @@ interface AnswerEvaluation {
   readonly questionCompleted: boolean
   readonly canRetry: boolean
   readonly hint?: string | null
+  readonly correctResponse?: unknown
 }
 
 type AnswerEvaluator = (
@@ -82,6 +83,28 @@ const hasNextQuestion = computed(() =>
 )
 const isSaving = computed(() => savingState.status === 'saving')
 
+const correctAnswerHint = (question: TrainingQuestion): string => {
+  const answerIds = Array.isArray(question.answer)
+    ? question.answer
+    : question.answer.split('|')
+  const choices = [
+    ...(question.choices ?? []),
+    ...(question.replacementChoices ?? []),
+  ]
+  const labels = answerIds
+    .map((answerId) => answerId.split(':').at(-1) ?? answerId)
+    .map((answerId) => choices.find((choice) => choice.id === answerId)?.text)
+    .filter((label): label is string => Boolean(label))
+
+  if (labels.length > 0) {
+    return `정답은 ${labels.join(' → ')}예요. 정답대로 다시 해보세요.`
+  }
+  const result = question.targetResult ?? question.combined
+  return result
+    ? `정답은 ${result}예요. 정답대로 다시 해보세요.`
+    : '정답 표시를 보고 정답대로 다시 해보세요.'
+}
+
 // ---- 액션 ----
 // 새 레슨 시작: 이전 정답/녹음/진행도를 모두 초기화(이전 답 리셋).
 const startLesson = (lesson: TrainingLesson): void => {
@@ -96,6 +119,7 @@ const startLesson = (lesson: TrainingLesson): void => {
   progressState.isCurrentCorrect = null
   progressState.isCompleted = false
   progressState.completedAt = null
+  currentHint.value = null
 
   savingState.status = 'idle'
   savingState.errorMessage = null
@@ -123,19 +147,27 @@ const submitAnswer = async (): Promise<boolean> => {
     try {
       const evaluation = await answerEvaluator(answer, question)
       progressState.attemptCount = evaluation.attemptNo
-      currentHint.value = evaluation.correct ? null : (evaluation.hint ?? '정답 카드를 살펴봐요.')
-      if (evaluation.correct || evaluation.questionCompleted) {
+      const shouldRevealCorrectAnswer =
+        !evaluation.correct && evaluation.correctResponse !== null
+        && evaluation.correctResponse !== undefined
+      currentHint.value = evaluation.correct
+        ? null
+        : shouldRevealCorrectAnswer
+          ? correctAnswerHint(question)
+          : (evaluation.hint ?? '정답 카드를 살펴봐요.')
+      if (evaluation.correct) {
         progressState.isCurrentCorrect = true
         if (!progressState.completedQuestionIds.includes(question.id)) {
           progressState.completedQuestionIds.push(question.id)
         }
-        storedAnswers[question.id] = evaluation.correct ? answer : question.answer
-        if (!evaluation.correct) progressState.hintLevel = 2
+        storedAnswers[question.id] = answer
       } else {
         progressState.isCurrentCorrect = false
-        progressState.hintLevel = Math.max(progressState.hintLevel, 1)
+        progressState.hintLevel = shouldRevealCorrectAnswer
+          ? 2
+          : Math.max(progressState.hintLevel, 1)
       }
-      return evaluation.correct || evaluation.questionCompleted
+      return evaluation.correct
     } finally {
       isSubmittingAnswer.value = false
     }
@@ -158,13 +190,8 @@ const submitAnswer = async (): Promise<boolean> => {
     progressState.isCurrentCorrect = false
     currentHint.value = '힌트를 보고 한 번 더 생각해 봐요.'
     if (progressState.attemptCount >= 2) {
-      progressState.isCurrentCorrect = true
       progressState.hintLevel = 2
-      if (!progressState.completedQuestionIds.includes(question.id)) {
-        progressState.completedQuestionIds.push(question.id)
-      }
-      storedAnswers[question.id] = question.answer
-      return true
+      currentHint.value = correctAnswerHint(question)
     }
     progressState.hintLevel = Math.max(progressState.hintLevel, 1)
   }

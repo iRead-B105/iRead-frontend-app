@@ -5,6 +5,7 @@ import type { LearnerTrainingRepository } from './repository'
 
 export * from './apiLearnerTrainingRepository'
 export * from './mockLearnerTrainingRepository'
+export * from './mockDeviceSubmissions'
 export * from './repository'
 export * from './trainingQuestionMapper'
 
