@@ -11,6 +11,9 @@ import { useTrainingSession } from '@/composables/useTrainingSession'
 import { useAudioPlayer } from '@/composables/useAudioPlayer'
 import { useVoiceRecorder } from '@/composables/useVoiceRecorder'
 import SoundButton from '../SoundButton.vue'
+import microphoneIcon from '@/assets/icons/microphone.svg'
+import stopIcon from '@/assets/icons/stop.svg'
+import checkIcon from '@/assets/icons/check.svg'
 
 const props = defineProps<{ question: TrainingQuestion }>()
 defineEmits<{ next: [] }>()
@@ -85,15 +88,15 @@ const micButtonLabel = computed(() => {
     case 'recording':
       return '녹음 중… 누르면 멈춰요'
     case 'requesting':
-      return '마이크 권한을 확인하고 있어요…'
+      return '마이크 권한을 확인하고 있어…'
     case 'recorded':
       return '녹음 완료! 다시 녹음하려면 눌러요'
     case 'denied':
-      return '마이크 권한이 필요해요. 다시 눌러 허용해 주세요.'
+      return '마이크 권한이 필요해. 다시 눌러서 허용해 줘.'
     case 'unsupported':
-      return '녹음 준비가 되었어요.'
+      return '녹음 준비가 됐어.'
     default:
-      return '누르면 내 목소리를 녹음해요'
+      return '누르면 내 목소리를 녹음해'
   }
 })
 </script>
@@ -134,16 +137,11 @@ const micButtonLabel = computed(() => {
           :aria-label="micButtonLabel"
           @click="handleMicToggle"
         >
-          <svg v-if="!isRecording && !hasRecording" viewBox="0 0 48 48" aria-hidden="true">
-            <rect x="19" y="8" width="10" height="20" rx="5" fill="currentColor" />
-            <path d="M12 24a12 12 0 0024 0M24 36v6" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" />
-          </svg>
-          <svg v-else-if="isRecording" viewBox="0 0 48 48" aria-hidden="true">
-            <rect x="16" y="16" width="16" height="16" rx="4" fill="currentColor" />
-          </svg>
-          <svg v-else viewBox="0 0 48 48" aria-hidden="true">
-            <path d="M14 24l7 7 13-14" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
-          </svg>
+          <img
+            :src="isRecording ? stopIcon : hasRecording ? checkIcon : microphoneIcon"
+            alt=""
+            aria-hidden="true"
+          />
         </button>
 
         <p class="record-status">
@@ -151,7 +149,7 @@ const micButtonLabel = computed(() => {
           {{ micButtonLabel }}
         </p>
 
-        <p v-if="status === 'denied'" class="denied-note">권한을 허용하면 녹음할 수 있어요.</p>
+        <p v-if="status === 'denied'" class="denied-note">권한을 허용하면 녹음할 수 있어.</p>
 
         <!-- 녹음 후 액션 -->
         <div v-if="hasRecording && !isRecording" class="record-actions">

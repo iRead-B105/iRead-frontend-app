@@ -6,9 +6,8 @@ import currentPlatform from '@/assets/training/learning-platform-current.png'
 import lockedPlatform from '@/assets/training/learning-platform-locked.png'
 import arrowLeft from '@/assets/navigation/training-arrow-left.svg'
 import arrowRight from '@/assets/navigation/training-arrow-right.svg'
-import dateCalendar from '@/assets/training/ui/curriculum-calendar.png'
-import titleSign from '@/assets/training/ui/curriculum-title-sign.png'
-import progressCard from '@/assets/training/ui/curriculum-progress-card.png'
+import integratedCurriculumHeader from '@/assets/training/ui/curriculum-integrated-header.webp'
+import checkIcon from '@/assets/icons/check.svg'
 import type { TrainingLessonSummary } from '@/types/training'
 
 export interface CurriculumPathStep {
@@ -124,26 +123,29 @@ const selectStep = (step: CurriculumPathStep) => {
 <template>
   <section class="curriculum-path" aria-labelledby="curriculum-title">
     <header class="curriculum-heading">
-      <div class="date-calendar">
-        <img :src="dateCalendar" alt="" aria-hidden="true" />
-        <strong>{{ studyDateLabel }}</strong>
-      </div>
+      <div
+        class="curriculum-heading-board"
+        :style="{ backgroundImage: `url(${integratedCurriculumHeader})` }"
+      >
+        <div class="date-calendar">
+          <strong>{{ studyDateLabel }}</strong>
+        </div>
 
-      <h1 id="curriculum-title" class="curriculum-title-sign">
-        <img :src="titleSign" alt="" aria-hidden="true" />
-        <span class="title-letter title-letter--tile">가</span>
-        <span class="title-letter title-letter--orange">글</span>
-        <span class="title-letter title-letter--green">자</span>
-        <span class="title-letter title-letter--blue">연</span>
-        <span class="title-letter title-letter--purple">습</span>
-      </h1>
+        <h1 id="curriculum-title" class="curriculum-title-sign">
+          <span class="title-letter title-letter--orange">글</span>
+          <span class="title-letter title-letter--green">자</span>
+          <span class="title-letter title-letter--blue">연</span>
+          <span class="title-letter title-letter--purple">습</span>
+        </h1>
 
-      <div class="progress-card" aria-label="오늘의 훈련 진행률">
-        <img :src="progressCard" alt="" aria-hidden="true" />
-        <span>오늘의 연습</span>
-        <strong>{{ currentStepNumber }}<small>/ {{ steps.length }}</small></strong>
-        <div class="progress-track">
-          <i :style="{ width: `${(currentStepNumber / Math.max(steps.length, 1)) * 100}%` }"></i>
+        <div
+          class="progress-card"
+          :aria-label="`훈련 진행 ${currentStepNumber}/${steps.length}`"
+        >
+          <strong>{{ currentStepNumber }}<small>/{{ steps.length }}</small></strong>
+          <div class="progress-track">
+            <i :style="{ width: `${(currentStepNumber / Math.max(steps.length, 1)) * 100}%` }"></i>
+          </div>
         </div>
       </div>
     </header>
@@ -204,7 +206,10 @@ const selectStep = (step: CurriculumPathStep) => {
               alt=""
             />
 
-            <span class="step-number">{{ step.status === 'complete' ? '✓' : index + 1 }}</span>
+            <span class="step-number">
+              <img v-if="step.status === 'complete'" :src="checkIcon" alt="" aria-hidden="true" />
+              <template v-else>{{ index + 1 }}</template>
+            </span>
             <img
               class="lesson-island"
               :src="platformImages[step.status]"

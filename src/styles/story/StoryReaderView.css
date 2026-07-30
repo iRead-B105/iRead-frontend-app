@@ -201,13 +201,10 @@
   animation: next-arrive .28s var(--learner-easing-bounce) both;
 }
 
-.next-page svg {
+.next-page > img {
   width: 30px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 3.4;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+  height: 30px;
+  object-fit: contain;
 }
 
 .next-page:hover {
@@ -333,12 +330,10 @@
   box-shadow: var(--learner-shadow-control),0 0 0 10px rgba(255,111,94,.12);
 }
 
-.listening-mic svg {
+.listening-mic img {
   width: 52%;
-  fill: currentColor;
-  stroke: currentColor;
-  stroke-width: 4;
-  stroke-linecap: round;
+  height: 52%;
+  object-fit: contain;
 }
 
 .listening-mic--active {

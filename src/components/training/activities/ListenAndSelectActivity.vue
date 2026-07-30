@@ -5,6 +5,7 @@ import { useTrainingSession } from '@/composables/useTrainingSession'
 import SoundButton from '../SoundButton.vue'
 import LetterCard from '../LetterCard.vue'
 import ResourceRequired from '../ResourceRequired.vue'
+import soundIcon from '@/assets/icons/sound-listen.svg'
 
 const props = defineProps<{ question: TrainingQuestion }>()
 defineEmits<{ next: [] }>()
@@ -43,10 +44,7 @@ const handleSelect = (choice: TrainingChoice) => {
           <img v-if="question.targetImage" class="target-image" :src="question.targetImage" :alt="question.targetText || '낱말 그림'" />
           <ResourceRequired v-else-if="question.targetImageLabel" :label="question.targetImageLabel" size="medium" />
           <div v-else class="target-sound-visual" aria-hidden="true">
-            <svg viewBox="0 0 64 64">
-              <path d="M13 25h12l15-11v36L25 39H13z" fill="currentColor" />
-              <path d="M46 23c4 5 4 13 0 18M52 17c8 9 8 21 0 30" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" />
-            </svg>
+            <img :src="soundIcon" alt="" />
           </div>
         </div>
         <strong v-if="question.targetText" class="target-word">{{ question.targetText }}</strong>
@@ -90,6 +88,7 @@ const handleSelect = (choice: TrainingChoice) => {
               :state="cardState(choice)"
               :selectable="!isAnswered"
               size="large"
+              surface="choice"
               @select="handleSelect(choice)"
             />
           </template>

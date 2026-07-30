@@ -73,7 +73,7 @@
   font-family: var(--learner-font-display);
   font-weight: 900;
   box-shadow: 0 5px 12px rgba(61,86,122,.12);
-  cursor: pointer;
+  cursor: default;
 }
 
 .source-listen {
@@ -81,16 +81,6 @@
   min-height: 70px;
   padding: 0 26px;
   font-size: 31px;
-}
-
-.source-listen svg,.speaker svg {
-  width: 31px;
-  height: 31px;
-}
-
-.source-listen:disabled,.target-listen:disabled {
-  opacity: .72;
-  cursor: default;
 }
 
 .source-parts {
@@ -135,11 +125,11 @@
   text-decoration-thickness: 5px;
 }
 
-.part-card svg {
+.part-card img {
   position: absolute;
   width: 74px;
   height: 74px;
-  color: #ed6c60;
+  object-fit: contain;
 }
 
 .part-card.correct {
@@ -166,21 +156,10 @@
   font-size: 20px;
 }
 
-.speaker {
-  display: grid;
-  place-items: center;
-  width: 42px;
-  height: 42px;
-  border-radius: 50%;
-  background: #6889e8;
-  color: #fff;
-}
-
 .arrow {
-  color: #7191e9;
-  font-size: 46px;
-  font-weight: 900;
-  line-height: 1;
+  width: 46px;
+  height: 46px;
+  object-fit: contain;
 }
 
 .result-card {

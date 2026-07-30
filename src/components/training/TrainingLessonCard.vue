@@ -5,6 +5,9 @@
 
 import { computed } from 'vue'
 import type { TrainingLessonSummary } from '@/types/training'
+import checkIcon from '@/assets/icons/check.svg'
+import pendingIcon from '@/assets/icons/pending.svg'
+import arrowRightIcon from '@/assets/icons/arrow-right.svg'
 
 const props = defineProps<{
   lesson: TrainingLessonSummary
@@ -35,13 +38,7 @@ const handleClick = () => {
     @click="handleClick"
   >
     <span class="lesson-icon" aria-hidden="true">
-      <svg v-if="isReady" viewBox="0 0 48 48">
-        <circle cx="24" cy="24" r="20" fill="none" stroke="currentColor" stroke-width="3" />
-        <path d="M18 24l6 6 10-14" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
-      </svg>
-      <svg v-else viewBox="0 0 48 48">
-        <circle cx="24" cy="24" r="20" fill="none" stroke="currentColor" stroke-width="3" stroke-dasharray="4 3" />
-      </svg>
+      <img :src="isReady ? checkIcon : pendingIcon" alt="" />
     </span>
     <span class="lesson-content">
       <span class="lesson-title">{{ lesson.title }}</span>
@@ -50,9 +47,7 @@ const handleClick = () => {
       <span v-else class="lesson-duration">약 {{ lesson.estimatedMinutes }}분</span>
     </span>
     <span v-if="isReady" class="lesson-arrow" aria-hidden="true">
-      <svg viewBox="0 0 24 24">
-        <path d="M9 6l8 6-8 6" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
-      </svg>
+      <img :src="arrowRightIcon" alt="" />
     </span>
   </button>
 </template>

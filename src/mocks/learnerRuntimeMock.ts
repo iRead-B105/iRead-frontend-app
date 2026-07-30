@@ -253,9 +253,9 @@ export const learnerRuntimeMock = {
   } satisfies Record<string, MockStoryDetail>,
 
   growthAreas: [
-    { areaId: 1, name: '파닉스', learningCount: 0, stage: 1, updatedAt: '2026-07-24T10:00:00+09:00' },
-    { areaId: 2, name: '읽기', learningCount: 0, stage: 1, updatedAt: '2026-07-24T10:00:00+09:00' },
-    { areaId: 3, name: '유창성', learningCount: 0, stage: 1, updatedAt: '2026-07-24T10:00:00+09:00' },
+    { areaId: 1, name: '파닉스', learningCount: 5, stage: 1, updatedAt: '2026-07-24T10:00:00+09:00' },
+    { areaId: 2, name: '읽기', learningCount: 4, stage: 1, updatedAt: '2026-07-24T10:00:00+09:00' },
+    { areaId: 3, name: '유창성', learningCount: 2, stage: 1, updatedAt: '2026-07-24T10:00:00+09:00' },
   ] satisfies MockGrowthArea[],
 
   storyFriends: [

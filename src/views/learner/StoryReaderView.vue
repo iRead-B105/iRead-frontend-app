@@ -4,6 +4,8 @@ import { useRoute, useRouter } from 'vue-router'
 import storyChoiceScene from '../../assets/story/story-choice-turtle-crossroads.png'
 import { getStoryDetail, unlockStoryFriend } from '@/services/learnerDataRepository'
 import PageBackButton from '@/components/common/PageBackButton.vue'
+import arrowRightIcon from '@/assets/icons/arrow-right.svg'
+import microphoneIcon from '@/assets/icons/microphone.svg'
 import type { VillageItem } from '@/types/village'
 import { learnerDataSource } from '@/config/learnerDataSource'
 
@@ -404,7 +406,7 @@ onBeforeUnmount(() => {
         </div>
         <button v-if="isPageRead" class="next-page story-next" type="button" @click="goNext">
           <span>{{ isLastPage ? (generatedPages.length ? '이야기 마치기' : '이야기 이어 만들기') : '다음 페이지' }}</span>
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 7 7-7 7" /></svg>
+          <img :src="arrowRightIcon" alt="" aria-hidden="true" />
         </button>
       </div>
 
@@ -424,11 +426,11 @@ onBeforeUnmount(() => {
             <h1>{{ story.question }}</h1>
             <section class="voice-answer" aria-label="말로 대답하기">
               <span class="listening-mic" :class="{ 'listening-mic--active': isListening }" aria-hidden="true">
-                <svg viewBox="0 0 48 48"><rect x="17" y="6" width="14" height="25" rx="7"/><path d="M11 23c0 8 5.8 14 13 14s13-6 13-14M24 37v7M17 44h14"/></svg>
+                <img :src="microphoneIcon" alt="" />
               </span>
               <div class="listening-copy">
-                <strong>{{ speechError ? '잘 듣지 못했어요' : '이야기를 들려주세요!' }}</strong>
-                <p>{{ speechError ? '천천히 다시 말해 볼까요?' : '지금 대답을 듣고 있어요…' }}</p>
+                <strong>{{ speechError ? '잘 듣지 못했어' : '이야기를 들려줘!' }}</strong>
+                <p>{{ speechError ? '천천히 다시 말해볼까?' : '지금 대답을 듣고 있어…' }}</p>
               </div>
               <button v-if="speechError" class="retry-button" type="button" @click="startListening">
                 다시 말하기
@@ -437,7 +439,7 @@ onBeforeUnmount(() => {
           </template>
 
           <template v-else>
-            <h1 class="making-title">다음 이야기를 만들고 있어요!</h1>
+            <h1 class="making-title">다음 이야기를 만들고 있어!</h1>
             <blockquote>“{{ transcript }}”</blockquote>
             <span class="making-dots" aria-label="다음 이야기 만드는 중"><i/><i/><i/></span>
           </template>
@@ -451,13 +453,19 @@ onBeforeUnmount(() => {
             <span class="reward-rays" aria-hidden="true" />
             <img :src="rewardedFriend.image" :alt="`${rewardedFriend.name} 캐릭터`" />
           </div>
-          <h1>{{ rewardedFriend.name }}를 만났어요!</h1>
-          <p>이야기를 끝까지 읽어서 새로운 친구가 찾아왔어요.</p>
+          <h1>{{ rewardedFriend.name }}를 만났어!</h1>
+          <p>이야기를 끝까지 읽어서 새로운 친구가 찾아왔어.</p>
           <div class="reward-actions">
             <button type="button" @click="router.push({ name: 'story-selection' })">
               이야기 나라로
             </button>
-            <button type="button" @click="router.push({ name: 'growth' })">
+            <button
+              type="button"
+              @click="router.push({
+                name: 'growth',
+                query: { placeFriend: rewardedFriend.id },
+              })"
+            >
               이야기 친구 보러 가기
             </button>
           </div>

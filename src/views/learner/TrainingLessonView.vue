@@ -35,7 +35,11 @@ import CardCombineActivity from '@/components/training/activities/CardCombineAct
 import SentenceChoiceActivity from '@/components/training/activities/SentenceChoiceActivity.vue'
 import ReadAloudActivity from '@/components/training/activities/ReadAloudActivity.vue'
 import PageBackButton from '@/components/common/PageBackButton.vue'
+import RiveGuideCharacter from '@/components/RiveGuideCharacter.vue'
 import leaveTrainingRabbit from '@/assets/training/ui/leave-training-rabbit.png'
+import lessonProgressTitleBoard from '@/assets/training/ui/lesson-progress-title-board-compact.webp'
+import eyeTrackerIcon from '@/assets/icons/eye-tracker.svg'
+import microphoneIcon from '@/assets/icons/microphone.svg'
 import { learnerDataSource } from '@/config/learnerDataSource'
 import { learnerTrainingRepository } from '@/features/learner/training'
 import { getCachedStudent } from '@/services/learnerDataRepository'
@@ -50,6 +54,7 @@ const { eyeTrackerConnected, microphoneAvailable } = useDeviceStatus()
 
 const categoryId = computed(() => String(route.params.categoryId ?? ''))
 const lessonId = computed(() => String(route.params.lessonId ?? ''))
+const debugMode = computed(() => import.meta.env.DEV && route.query.debug === '1')
 const challengeTrackId = computed(() => {
   const value = String(route.query.challenge ?? '')
   return isSkillChallengeTrackId(value) ? value : null
@@ -83,6 +88,7 @@ const activityComponent = computed<Component | null>(() =>
 
 type Phase = 'intro' | 'playing' | 'saving'
 const phase = ref<Phase>('intro')
+const activityGuideMessage = ref('')
 const deviceBlocker = ref<'eye-tracker' | 'microphone' | null>(null)
 const leaveConfirmationOpen = ref(false)
 const integrationError = ref('')
@@ -114,32 +120,28 @@ const microphoneRequired = computed(() =>
 
 const currentQuestion = computed(() => session.currentQuestion.value)
 const conciseInstructions: Partial<Record<TrainingActivityType, string>> = {
-  'gaze-trace': '글자를 따라가봐요',
-  'audio-letter-choice': '첫소리를 찾아봐요',
-  'listen-and-select': '같은 소리를 찾아봐요',
-  'sound-choice': '소리를 찾아봐요',
-  'letter-build': '글자를 만들어봐요',
-  'sound-manipulation': '낱말을 바꿔봐요',
-  'sound-omit': '소리를 빼봐요',
-  'sound-blend': '소리를 합쳐봐요',
-  'card-combine': '글자를 합쳐봐요',
-  'word-reading-grid': '낱말을 읽어봐요',
-  'sentence-reading': '문장을 읽어봐요',
-  'sentence-choice': '맞는 문장을 찾아봐요',
-  'fill-blank': '빈칸을 채워봐요',
-  'sentence-order': '문장을 만들어봐요',
-  'read-aloud': '소리 내어 읽어봐요',
+  'gaze-trace': '글자를 따라가 봐!',
+  'audio-letter-choice': '첫소리를 찾아봐!',
+  'listen-and-select': '같은 소리를 찾아봐!',
+  'sound-choice': '소리를 찾아봐!',
+  'letter-build': '글자를 만들어봐!',
+  'sound-manipulation': '낱말을 바꿔봐!',
+  'sound-omit': '소리를 빼봐!',
+  'sound-blend': '소리를 합쳐봐!',
+  'card-combine': '글자를 합쳐봐!',
+  'word-reading-grid': '낱말을 읽어봐!',
+  'sentence-reading': '문장을 읽어봐!',
+  'sentence-choice': '맞는 문장을 찾아봐!',
+  'fill-blank': '빈칸을 채워봐!',
+  'sentence-order': '문장을 만들어봐!',
+  'read-aloud': '소리 내어 읽어봐!',
 }
 const displayQuestion = computed(() => {
   const question = currentQuestion.value
   if (!question || !lesson.value) return question
   return {
     ...question,
-    instruction: lesson.value.activityType === 'gaze-trace'
-      ? conciseInstructions['gaze-trace']
-      : question.instruction.length <= 14
-      ? question.instruction.replace(/[.!?]+$/, '')
-      : (conciseInstructions[lesson.value.activityType] ?? '해봐요'),
+    instruction: conciseInstructions[lesson.value.activityType] ?? '해봐!',
     subInstruction: undefined,
   }
 })
@@ -153,7 +155,7 @@ onMounted(async () => {
   if (lesson.value) {
     session.startLesson(lesson.value)
   }
-  if (learnerDataSource === 'api') {
+  if (learnerDataSource === 'api' && !debugMode.value) {
     const trainingId = String(route.query.trainingId ?? '')
     if (!/^\d+$/.test(trainingId)) {
       integrationError.value = '서버 훈련 ID가 없어 학습을 시작할 수 없습니다.'
@@ -168,7 +170,7 @@ onMounted(async () => {
       }
     }
   }
-  phase.value = 'intro'
+  phase.value = debugMode.value ? 'playing' : 'intro'
 })
 
 const startPlaying = () => {
@@ -185,6 +187,7 @@ const startPlaying = () => {
 }
 
 onBeforeRouteLeave(() => {
+  if (debugMode.value) return true
   if (phase.value === 'intro' || session.progressState.isCompleted) return true
 
   leaveConfirmationOpen.value = true
@@ -208,6 +211,7 @@ onBeforeUnmount(() => {
 watch(
   [eyeTrackerConnected, microphoneAvailable],
   ([eyeConnected, micAvailable]) => {
+    if (debugMode.value) return
     if (deviceBlocker.value === 'eye-tracker' && eyeConnected) deviceBlocker.value = null
     if (deviceBlocker.value === 'microphone' && micAvailable) deviceBlocker.value = null
 
@@ -218,6 +222,10 @@ watch(
 )
 
 const exitToHome = () => {
+  if (debugMode.value) {
+    void router.push({ name: 'training-home', query: { debugPanel: '1' } })
+    return
+  }
   void router.push({ name: challengeTrackId.value ? 'skill-challenge' : 'training-home' })
 }
 
@@ -235,6 +243,10 @@ const saveAndFinish = async () => {
   const ok = await session.saveResult()
   if (ok) {
     session.completeLesson()
+    if (debugMode.value) {
+      void router.replace({ name: 'training-home', query: { debugPanel: '1' } })
+      return
+    }
     // 완료 화면으로 자동 이동
     void router.replace({
       name: 'training-complete',
@@ -246,6 +258,21 @@ const saveAndFinish = async () => {
 }
 
 const isSavingFailed = computed(() => session.savingState.status === 'failed')
+const guideMessage = computed(() => {
+  if (session.progressState.isCurrentCorrect === true) return '잘했어!\n정말 대단해!'
+  if (session.progressState.isCurrentCorrect === false) {
+    return session.progressState.attemptCount >= 2
+      ? '천천히 다시 해봐!\n할 수 있어!'
+      : '괜찮아!\n한 번 더 해봐!'
+  }
+  if (activityGuideMessage.value) return activityGuideMessage.value
+  if (session.progressState.hintLevel > 0) return '힌트를 보고\n천천히 해봐!'
+  if (lesson.value?.activityType === 'gaze-trace') return '반짝이는 점을 눈으로 따라가 봐!'
+  return '할 수 있어!\n같이 해보자!'
+})
+const guideMood = computed(() =>
+  session.progressState.isCurrentCorrect === true ? 'cheer' as const : 'idle' as const,
+)
 
 </script>
 
@@ -263,29 +290,52 @@ const isSavingFailed = computed(() => session.savingState.status === 'failed')
     />
 
     <!-- 문제 풀이 -->
-    <div v-else-if="phase === 'playing' && lesson" class="playing">
+    <div
+      v-else-if="phase === 'playing' && lesson"
+      class="playing"
+      :class="{ 'playing--first-sound': lesson.id === 'word-first-sound-choice' }"
+    >
       <div class="lesson-topbar lesson-topbar--inside">
         <PageBackButton label="학습을 그만하고 훈련 선택으로 돌아가기" @back="exitToHome" />
-        <div
-          class="topbar-progress"
+        <section
+          v-if="displayQuestion"
+          class="lesson-progress-board"
           role="status"
-          :aria-label="`현재 ${session.currentQuestionNumber.value}번, 전체 ${session.totalQuestions.value}문제`"
+          :aria-label="`${displayQuestion.instruction}. 현재 ${session.currentQuestionNumber.value}번, 전체 ${session.totalQuestions.value}문제`"
         >
-          <strong>{{ session.currentQuestionNumber.value }} / {{ session.totalQuestions.value }}</strong>
-          <span class="topbar-progress-dots" aria-hidden="true">
-            <span
-              v-for="i in session.totalQuestions.value"
-              :key="i"
-              class="prog-dot"
-              :class="{ active: i <= session.currentQuestionNumber.value }"
-            ></span>
-          </span>
-        </div>
+          <img
+            class="lesson-progress-board-image"
+            :src="lessonProgressTitleBoard"
+            alt=""
+            aria-hidden="true"
+          />
+          <div class="lesson-progress-board-content">
+            <div class="lesson-progress-copy">
+              <div class="topbar-progress">
+                <strong>{{ session.currentQuestionNumber.value }} / {{ session.totalQuestions.value }}</strong>
+                <span class="topbar-progress-dots" aria-hidden="true">
+                  <span
+                    v-for="i in session.totalQuestions.value"
+                    :key="i"
+                    class="prog-dot"
+                    :class="{
+                      active: i <= session.currentQuestionNumber.value,
+                      current: i === session.currentQuestionNumber.value,
+                    }"
+                  ></span>
+                </span>
+              </div>
+              <h1
+                v-if="lesson.activityType !== 'gaze-trace'"
+                class="learner-instruction lesson-instruction"
+              >
+                {{ displayQuestion.instruction }}
+              </h1>
+            </div>
+          </div>
+        </section>
         <span class="lesson-topbar-spacer" aria-hidden="true"></span>
       </div>
-      <h1 v-if="displayQuestion" class="learner-instruction lesson-instruction">
-        {{ displayQuestion.instruction }}
-      </h1>
       <div class="question-scroll">
         <component
           :is="activityComponent"
@@ -293,8 +343,16 @@ const isSavingFailed = computed(() => session.savingState.status === 'failed')
           :key="displayQuestion.id"
           :question="displayQuestion"
           @next="goNext"
+          @guide-message="activityGuideMessage = $event"
         />
       </div>
+      <RiveGuideCharacter
+        class="lesson-guide"
+        :message="guideMessage"
+        :mood="guideMood"
+        :show-bubble="lesson.activityType !== 'gaze-trace'"
+        :speak-message="lesson.activityType === 'gaze-trace'"
+      />
     </div>
 
     <!-- 저장 오버레이(저장 중 입력 잠금) -->
@@ -303,7 +361,7 @@ const isSavingFailed = computed(() => session.savingState.status === 'failed')
         <div class="saving-panel">
           <template v-if="!isSavingFailed">
             <span class="saving-spinner" aria-hidden="true"></span>
-            <p class="saving-text">학습을 마무리하고 있어요…</p>
+            <p class="saving-text">학습을 마무리하고 있어…</p>
           </template>
           <template v-else>
             <p class="saving-icon" aria-hidden="true">!</p>
@@ -324,18 +382,10 @@ const isSavingFailed = computed(() => session.savingState.status === 'failed')
       >
         <section class="device-blocker-panel">
           <span class="device-blocker-icon" aria-hidden="true">
-            <svg v-if="deviceBlocker === 'eye-tracker'" viewBox="0 0 64 48">
-              <ellipse cx="20" cy="24" rx="15" ry="20" />
-              <ellipse cx="44" cy="24" rx="15" ry="20" />
-              <circle cx="22" cy="26" r="8" />
-              <circle cx="46" cy="26" r="8" />
-              <circle class="device-icon-shine" cx="25" cy="22" r="3" />
-              <circle class="device-icon-shine" cx="49" cy="22" r="3" />
-            </svg>
-            <svg v-else viewBox="0 0 48 48">
-              <rect x="17" y="6" width="14" height="25" rx="7" />
-              <path d="M11 23c0 8 5.8 14 13 14s13-6 13-14M24 37v7M17 44h14" />
-            </svg>
+            <img
+              :src="deviceBlocker === 'eye-tracker' ? eyeTrackerIcon : microphoneIcon"
+              alt=""
+            />
           </span>
           <h2 :id="`${deviceBlocker}-title`">
             {{ deviceBlocker === 'eye-tracker' ? '아이트래커를 연결해 주세요' : '마이크를 켜 주세요' }}
@@ -360,8 +410,8 @@ const isSavingFailed = computed(() => session.savingState.status === 'failed')
       >
         <section class="leave-confirmation-panel">
           <img class="leave-confirmation-image" :src="leaveTrainingRabbit" alt="" aria-hidden="true" />
-          <h2 id="leave-confirmation-title">학습을 그만할까요?</h2>
-          <p>나가면 이 훈련은 다음에 처음부터 다시 시작해요.</p>
+          <h2 id="leave-confirmation-title">학습을 그만할까?</h2>
+          <p>나가면 이 훈련은 다음에 처음부터 다시 시작해.</p>
           <div>
             <button
               class="leave-confirmation-cancel"

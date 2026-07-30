@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import backIcon from '@/assets/icons/arrow-back.svg'
+
 withDefaults(
   defineProps<{
     label?: string
@@ -13,16 +15,7 @@ const emit = defineEmits<{ back: [] }>()
 
 <template>
   <button class="page-back-button" type="button" :aria-label="label" @click="emit('back')">
-    <svg viewBox="0 0 48 48" aria-hidden="true">
-      <path
-        d="M30 36L18 24l12-12"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="4"
-        stroke-linecap="round"
-        stroke-linejoin="round"
-      />
-    </svg>
+    <img :src="backIcon" alt="" aria-hidden="true" />
   </button>
 </template>
 

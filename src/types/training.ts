@@ -196,6 +196,7 @@ export interface TrainingProgressState {
   attemptCount: number
   hintLevel: number // 0 ~ 2
   completedQuestionIds: string[]
+  incorrectQuestionIds: string[]
   isCurrentCorrect: boolean | null
   isCompleted: boolean
   completedAt: string | null // 목업 완료 타임스탬프

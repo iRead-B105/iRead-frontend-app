@@ -26,8 +26,8 @@
   flex-direction: column;
   align-items: center;
   gap: clamp(14px, 2vh, 24px);
-  width: min(95%, 1178px);
-  height: min(95%, 722px);
+  width: min(95%, var(--learner-selection-frame-width));
+  height: min(95%, var(--learner-selection-frame-height));
   min-height: 0;
   padding: clamp(18px, 2.4vh, 30px) clamp(24px, 4vw, 64px);
   border: var(--learner-frame-border);
@@ -41,6 +41,12 @@
   display: flex;
   align-items: center;
   gap: clamp(18px, 2.4vw, 34px);
+}
+
+.library-heading-star {
+  width: clamp(34px, 3vw, 52px);
+  height: auto;
+  object-fit: contain;
 }
 
 .library-heading h1,
@@ -402,22 +408,13 @@ button {
   color: var(--learner-color-text-inverse);
 }
 
-.library-actions button:last-child small {
-  color: rgb(255 255 255 / 82%);
-}
-
 .library-actions strong {
   display: block;
   font-family: var(--learner-font-display);
-  font-size: clamp(24px, 2.2vw, 32px);
-}
-
-.library-actions small {
-  display: block;
-  margin-top: 3px;
-  color: #6b7895;
-  font-size: clamp(14px, 1.3vw, 18px);
-  font-weight: 700;
+  font-size: clamp(32px, 2.8vw, 42px);
+  font-weight: var(--learner-font-weight-heavy);
+  line-height: 1.15;
+  letter-spacing: -.035em;
 }
 
 .action-icon {

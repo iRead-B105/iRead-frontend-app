@@ -4,6 +4,8 @@ import type { TrainingChoice, TrainingQuestion } from '@/types/training'
 import { useAudioPlayer } from '@/composables/useAudioPlayer'
 import { useTrainingSession } from '@/composables/useTrainingSession'
 import ResourceRequired from '@/components/training/ResourceRequired.vue'
+import dragHandleIcon from '@/assets/icons/drag-handle.svg'
+import readingActiveIcon from '@/assets/icons/reading-active.svg'
 
 const props = defineProps<{ question: TrainingQuestion }>()
 defineEmits<{ next: [] }>()
@@ -24,7 +26,7 @@ const overTarget = ref(false)
 let wrongTimer: ReturnType<typeof setTimeout> | null = null
 let disposed = false
 
-const showHint = computed(() => attempts.value >= 3 && !placedChoice.value)
+const showHint = computed(() => attempts.value >= 2 && !placedChoice.value)
 
 const pointIsOverTarget = (clientX: number, clientY: number) => {
   const rect = targetSlot.value?.getBoundingClientRect()
@@ -33,7 +35,7 @@ const pointIsOverTarget = (clientX: number, clientY: number) => {
 
 const finishCorrectChoice = async (choice: TrainingChoice) => {
   placedChoice.value = choice
-  statusMessage.value = '잘 찾았어요!'
+  statusMessage.value = '잘 찾았어!'
   readingCorrect.value = true
   await Promise.race([
     replay(choice.text ?? props.question.targetText ?? '', 0.78),
@@ -56,7 +58,7 @@ const evaluateChoice = (choiceId: string) => {
   }
   attempts.value += 1
   wrongChoiceId.value = choice.id
-  statusMessage.value = '한 번 더 해봐요'
+  statusMessage.value = '한 번 더 해봐!'
   if (wrongTimer) clearTimeout(wrongTimer)
   wrongTimer = setTimeout(() => { wrongChoiceId.value = null }, 650)
 }
@@ -104,7 +106,7 @@ onBeforeUnmount(() => {
 <template>
   <section class="activity" :aria-label="question.instruction">
     <header class="activity-heading">
-      <h1>{{ placedChoice ? '그림과 문장이 연결됐어요!' : '그림에 맞는 문장을 연결해봐요' }}</h1>
+      <h1>{{ placedChoice ? '그림과 문장이 연결됐어!' : '그림에 맞는 문장을 연결해봐!' }}</h1>
       <p v-if="statusMessage" class="status-message" :class="{ success: placedChoice }" role="status" aria-live="polite">{{ statusMessage }}</p>
     </header>
 
@@ -141,7 +143,7 @@ onBeforeUnmount(() => {
         }"
         @pointerdown="startPointerDrag($event, choice)"
       >
-        <span class="grip" aria-hidden="true">⠿</span>
+        <img class="grip" :src="dragHandleIcon" alt="" aria-hidden="true" />
         <strong>{{ choice.text }}</strong>
       </article>
     </div>
@@ -156,7 +158,7 @@ onBeforeUnmount(() => {
     </Teleport>
 
     <footer class="action-bar">
-      <p v-if="readingCorrect" class="reading-state" role="status"><span aria-hidden="true">●</span> 문장을 읽고 있어요</p>
+      <p v-if="readingCorrect" class="reading-state" role="status"><img :src="readingActiveIcon" alt="" aria-hidden="true" /> 문장을 읽고 있어</p>
       <button v-else-if="isComplete" class="next-button" type="button" @click="$emit('next')">다음</button>
     </footer>
   </section>

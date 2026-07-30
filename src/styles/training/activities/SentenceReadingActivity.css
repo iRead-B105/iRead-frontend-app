@@ -50,9 +50,10 @@
   box-shadow: 0 5px 12px rgba(59,90,122,.1);
 }
 
-.reading-status span {
-  color: #73a2e8;
-  font-size: 14px;
+.reading-status img {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
 }
 
 .reading-status.retry {
@@ -143,8 +144,9 @@
   position: absolute;
   z-index: 3;
   bottom: 7px;
-  color: #6ec462;
-  font-size: 12px;
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
 }
 
 .sentence-chunk.assist {
@@ -213,14 +215,10 @@
   box-shadow: 0 8px 18px rgba(50,81,155,.25);
 }
 
-.start-button span {
-  display: grid;
-  place-items: center;
-  width: 34px;
-  height: 34px;
-  border: 3px solid rgba(255,255,255,.82);
-  border-radius: 50%;
-  font-size: 14px;
+.start-button img {
+  width: 26px;
+  height: 26px;
+  object-fit: contain;
 }
 
 .next-button {

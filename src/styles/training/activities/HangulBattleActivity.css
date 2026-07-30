@@ -304,10 +304,18 @@
 }
 
 .stars {
-  color: #f3bd39;
-  font-size: 36px;
-  letter-spacing: 8px;
-  text-shadow: 0 2px #c9861c;
+  display: flex;
+  gap: 8px;
+}
+
+.stars img {
+  width: 54px;
+  height: 54px;
+  object-fit: contain;
+}
+
+.stars .star--inactive {
+  opacity: .24;
 }
 
 .match-overlay strong {

@@ -108,7 +108,7 @@
   box-shadow: 0 10px 22px rgba(62,98,183,.24);
 }
 
-.target-sound-visual svg {
+.target-sound-visual img {
   width: 72px;
   height: 72px;
 }
@@ -403,7 +403,7 @@
     height: 92px;
   }
 
-  .target-sound-visual svg {
+  .target-sound-visual img {
     width: 48px;
     height: 48px;
   }
@@ -504,7 +504,7 @@
     height: 112px;
   }
 
-  .target-sound-visual svg {
+  .target-sound-visual img {
     width: 54px;
     height: 54px;
   }

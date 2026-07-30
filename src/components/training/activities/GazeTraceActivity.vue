@@ -1,15 +1,16 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { TracePoint, TrainingQuestion } from '@/types/training'
-import { useAudioPlayer } from '@/composables/useAudioPlayer'
 import { useTrainingSession } from '@/composables/useTrainingSession'
-import SoundButton from '../SoundButton.vue'
+import readingActiveIcon from '@/assets/icons/reading-active.svg'
 
 const props = defineProps<{ question: TrainingQuestion }>()
-defineEmits<{ next: [] }>()
+const emit = defineEmits<{
+  next: []
+  guideMessage: [message: string]
+}>()
 
 const session = useTrainingSession()
-const { replay, isPlaying } = useAudioPlayer()
 const stage = ref<SVGSVGElement | null>(null)
 const progress = ref(0)
 const cursor = ref({ x: 0, y: 0 })
@@ -46,7 +47,6 @@ const flatPoints = computed(() => strokes.value.flat())
 const totalPoints = computed(() => flatPoints.value.length)
 const traceCompleted = computed(() => totalPoints.value > 0 && progress.value >= totalPoints.value)
 const currentPoint = computed<TracePoint | null>(() => flatPoints.value[progress.value] ?? null)
-const glyphText = computed(() => props.question.traceGlyph ?? props.question.targetText ?? '')
 
 const pointString = (points: TracePoint[]) => points.map((point) => `${point.x},${point.y}`).join(' ')
 
@@ -61,7 +61,8 @@ const normalizeSpeech = (value: string) => value.replace(/[\s.,!?]/g, '').toLowe
 const finishSpeech = (isMock: boolean) => {
   if (speechState.value === 'success') return
   speechState.value = 'success'
-  speechMessage.value = '목소리를 잘 들었어요!'
+  speechMessage.value = '목소리를 잘 들었어!'
+  emit('guideMessage', speechMessage.value)
   session.markRecordingComplete({ isMock, audioUrl: null })
 }
 
@@ -76,7 +77,8 @@ const speechMatches = (transcript: string) => {
 const startSpeech = () => {
   if (!traceCompleted.value || speechState.value === 'listening' || speechState.value === 'success') return
   speechState.value = 'listening'
-  speechMessage.value = '말해 보세요!'
+  speechMessage.value = '소리 내어 말해봐!'
+  emit('guideMessage', speechMessage.value)
 
   const speechWindow = window as typeof window & {
     SpeechRecognition?: SpeechRecognitionConstructor
@@ -98,31 +100,24 @@ const startSpeech = () => {
     if (speechMatches(transcript)) finishSpeech(false)
     else {
       speechState.value = 'retry'
-      speechMessage.value = `${props.question.traceGlyph} 소리를 다시 말해봐요.`
+      speechMessage.value = `${props.question.traceGlyph} 소리를 다시 말해봐!`
+      emit('guideMessage', speechMessage.value)
     }
   }
   recognition.onerror = () => {
     speechState.value = 'retry'
-    speechMessage.value = '마이크를 켜고 다시 말해봐요.'
+    speechMessage.value = '마이크를 켜고 다시 말해봐!'
+    emit('guideMessage', speechMessage.value)
   }
   recognition.onend = () => {
     if (speechState.value === 'listening') {
       speechState.value = 'retry'
-      speechMessage.value = '한 번 더 또박또박 말해봐요.'
+      speechMessage.value = '한 번 더 또박또박 말해봐!'
+      emit('guideMessage', speechMessage.value)
     }
     recognition = null
   }
   recognition.start()
-}
-
-const speakGlyph = () => {
-  const glyph = props.question.traceGlyph ?? props.question.targetText
-  if (glyph && !isPlaying.value) void replay(glyph, 0.68)
-}
-
-const announceRepeat = async () => {
-  const glyph = props.question.traceGlyph ?? ''
-  await replay(`따라 해봐. ${glyph}`, 0.72)
 }
 
 const advanceFromClientPoint = (clientX: number, clientY: number) => {
@@ -163,17 +158,20 @@ const resetQuestion = () => {
   stalled.value = false
   speechState.value = 'waiting'
   speechMessage.value = ''
+  emit('guideMessage', '')
   lastAdvanceAt = 0
   recognition?.stop()
   recognition = null
   if (fallbackTimer) clearTimeout(fallbackTimer)
   fallbackTimer = null
-  void nextTick(speakGlyph)
 }
 
 watch(() => props.question.id, resetQuestion, { immediate: true })
 watch(traceCompleted, (completed, wasCompleted) => {
-  if (completed && !wasCompleted) void announceRepeat()
+  if (completed && !wasCompleted) emit('guideMessage', '이제 소리 내어 말해봐!')
+})
+watch(stalled, (isStalled) => {
+  if (isStalled) emit('guideMessage', '반짝이는 곳부터 다시 봐!')
 })
 
 onMounted(() => {
@@ -195,12 +193,7 @@ onBeforeUnmount(() => {
 
 <template>
   <section class="activity" :aria-label="question.instruction">
-    <header class="activity-heading">
-      <h1>{{ traceCompleted ? `${question.traceGlyph} 완성!` : question.instruction }}</h1>
-      <SoundButton :text="glyphText" size="medium" variant="primary" />
-    </header>
-
-    <div class="trace-layout">
+    <div class="trace-layout" :class="{ 'trace-layout--complete': traceCompleted }">
       <div
         class="trace-stage"
         :class="{ complete: traceCompleted }"
@@ -223,28 +216,25 @@ onBeforeUnmount(() => {
           <circle v-if="currentPoint" class="resume-point" :class="{ stalled }" :cx="currentPoint.x" :cy="currentPoint.y" r="21" />
           <circle v-if="traceCompleted" class="complete-ring" cx="320" cy="250" r="205" />
         </svg>
-        <p v-if="stalled" class="resume-message" role="status">반짝이는 곳부터 다시 봐요!</p>
       </div>
 
-      <aside class="speech-panel" :class="{ active: traceCompleted }">
-        <template v-if="!traceCompleted">
-          <span class="eye-icon" aria-hidden="true">◉</span>
-          <strong>글자를 따라가봐요</strong>
-        </template>
-        <template v-else>
-          <span class="speech-glyph" aria-hidden="true">{{ question.traceGlyph }}</span>
-          <strong>따라 말해봐요</strong>
-          <button v-if="speechState !== 'success'" class="mic-button" type="button" :disabled="speechState === 'listening'" @click="startSpeech">
-            <span aria-hidden="true">●</span>
-            {{ speechState === 'listening' ? '듣고 있어요' : '말하기' }}
-          </button>
-          <p v-if="speechMessage" class="speech-message" role="status">{{ speechMessage }}</p>
-        </template>
+      <aside v-if="traceCompleted" class="speech-panel active">
+        <span class="speech-glyph" aria-hidden="true">{{ question.traceGlyph }}</span>
+        <button
+          v-if="speechState !== 'success'"
+          class="mic-button"
+          type="button"
+          :disabled="speechState === 'listening'"
+          :aria-label="speechState === 'listening' ? '목소리 듣는 중' : `${question.traceGlyph} 소리 말하기`"
+          @click="startSpeech"
+        >
+          <img :src="readingActiveIcon" alt="" aria-hidden="true" />
+        </button>
       </aside>
     </div>
 
     <div class="action-bar">
-      <button v-if="speechState === 'success'" class="next-button" type="button" @click="$emit('next')">다음 문제</button>
+      <button v-if="speechState === 'success'" class="next-button" type="button" @click="emit('next')">다음 문제</button>
     </div>
   </section>
 </template>

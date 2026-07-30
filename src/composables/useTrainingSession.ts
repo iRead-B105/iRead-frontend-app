@@ -24,6 +24,7 @@ const progressState = reactive<TrainingProgressState>({
   attemptCount: 0,
   hintLevel: 0,
   completedQuestionIds: [],
+  incorrectQuestionIds: [],
   isCurrentCorrect: null,
   isCompleted: false,
   completedAt: null,
@@ -64,6 +65,11 @@ const hasNextQuestion = computed(() =>
   progressState.currentQuestionIndex < totalQuestions.value - 1,
 )
 const isSaving = computed(() => savingState.status === 'saving')
+const isPerfectLesson = computed(() =>
+  totalQuestions.value === 5
+  && progressState.completedQuestionIds.length === totalQuestions.value
+  && progressState.incorrectQuestionIds.length === 0,
+)
 
 // ---- 액션 ----
 // 새 레슨 시작: 이전 정답/녹음/진행도를 모두 초기화(이전 답 리셋).
@@ -76,6 +82,7 @@ const startLesson = (lesson: TrainingLesson): void => {
   progressState.attemptCount = 0
   progressState.hintLevel = 0
   progressState.completedQuestionIds = []
+  progressState.incorrectQuestionIds = []
   progressState.isCurrentCorrect = null
   progressState.isCompleted = false
   progressState.completedAt = null
@@ -116,8 +123,11 @@ const submitAnswer = (): boolean => {
     storedAnswers[question.id] = answer
   } else {
     progressState.isCurrentCorrect = false
-    // 최대 3회 직접 시도한 뒤 1단계 시각 힌트를 자동으로 활성화
-    if (progressState.attemptCount >= 3 && progressState.hintLevel < 1) {
+    if (!progressState.incorrectQuestionIds.includes(question.id)) {
+      progressState.incorrectQuestionIds.push(question.id)
+    }
+    // 두 번 틀리면 1단계 시각 힌트를 자동으로 활성화
+    if (progressState.attemptCount >= 2 && progressState.hintLevel < 1) {
       progressState.hintLevel = 1
     }
   }
@@ -199,6 +209,7 @@ const resetSession = (): void => {
   progressState.attemptCount = 0
   progressState.hintLevel = 0
   progressState.completedQuestionIds = []
+  progressState.incorrectQuestionIds = []
   progressState.isCurrentCorrect = null
   progressState.isCompleted = false
   progressState.completedAt = null
@@ -222,6 +233,7 @@ export function useTrainingSession() {
     progressPercent,
     savingState,
     isSaving,
+    isPerfectLesson,
     storedAnswers,
     storedRecordings,
     // 계산

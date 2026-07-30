@@ -80,16 +80,6 @@
   pointer-events: none;
 }
 
-.bubble::after {
-  content: '';
-  position: absolute;
-  right: -25px;
-  bottom: 20px;
-  border: 16px solid transparent;
-  border-left-color: var(--learner-color-surface);
-  transform: rotate(16deg);
-}
-
 @media (max-width:900px) {
   .guide {
     right: -4%;

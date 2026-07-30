@@ -114,6 +114,15 @@
   --learner-control-height-medium: 60px;
   --learner-control-height-large: 72px;
   --learner-touch-target: 52px;
+  /* Child-facing choice cards and listening control */
+  --learner-choice-card-letter-ratio: 1;
+  --learner-choice-card-word-ratio: 1.5;
+  --learner-choice-card-sentence-ratio: 2;
+  --learner-sound-control-width: clamp(118px, 9.5vw, 148px);
+  --learner-sound-control-height: clamp(78px, 7.4vw, 96px);
+  --learner-sound-control-background: #ff7968;
+  --learner-sound-control-background-hover: #ff6d5b;
+  --learner-sound-control-background-playing: #f45f54;
   /* 모달 */
   --learner-modal-backdrop: rgb(23 38 80 / 48%);
   --learner-modal-blur: 5px;
@@ -140,6 +149,9 @@
   --learner-reading-width: 1080px;
   --learner-safe-width: min(94vw, 1600px);
   --learner-page-padding: clamp(16px, 2.4vmin, 48px);
+  /* 훈련·이야기·실력도전 선택 화면의 공통 콘텐츠 프레임 */
+  --learner-selection-frame-width: 1178px;
+  --learner-selection-frame-height: 722px;
   /*학습자 애니메이션*/
   --learner-duration-fast: 160ms;
   --learner-duration-normal: 240ms;

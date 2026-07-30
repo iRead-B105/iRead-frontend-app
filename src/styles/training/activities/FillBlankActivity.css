@@ -151,8 +151,9 @@
   position: absolute;
   top: 10px;
   right: 14px;
-  color: #a8b2c1;
-  font-size: 24px;
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
 }
 
 .word-card.wrong {
@@ -204,14 +205,10 @@
   box-shadow: 0 8px 18px rgba(50,81,155,.25);
 }
 
-.speak-button span {
-  display: grid;
-  place-items: center;
-  width: 34px;
-  height: 34px;
-  border: 3px solid rgba(255,255,255,.82);
-  border-radius: 50%;
-  font-size: 14px;
+.speak-button img {
+  width: 26px;
+  height: 26px;
+  object-fit: contain;
 }
 
 .speak-button:disabled {

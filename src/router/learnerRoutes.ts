@@ -1,6 +1,7 @@
 import type { RouteRecordRaw } from 'vue-router'
 import { useTrainingSession } from '@/composables/useTrainingSession'
 import { isPlayableLesson, isValidCategoryId } from '@/mocks/trainingLookup'
+import { getLessonById } from '@/mocks/trainingLessons'
 import { learnerDataSource } from '@/config/learnerDataSource'
 
 const redirectTrainingHome = '/learner/training'
@@ -13,11 +14,15 @@ const validateCategory: RouteRecordRaw['beforeEnter'] = (to) => {
 const validateLesson: RouteRecordRaw['beforeEnter'] = (to) => {
   const categoryId = String(to.params.categoryId ?? '')
   const lessonId = String(to.params.lessonId ?? '')
+  const isDebugPreview = import.meta.env.DEV && to.query.debug === '1'
+  const debugLesson = isDebugPreview ? getLessonById(lessonId) : null
+  const isDebugLessonPlayable =
+    debugLesson !== null && debugLesson.categoryId === categoryId
   const hasServerTrainingId =
     typeof to.query.trainingId === 'string' && /^\d+$/.test(to.query.trainingId)
   return isValidCategoryId(categoryId) &&
-    isPlayableLesson(categoryId, lessonId) &&
-    (learnerDataSource === 'mock' || hasServerTrainingId)
+    (isPlayableLesson(categoryId, lessonId) || isDebugLessonPlayable) &&
+    (learnerDataSource === 'mock' || hasServerTrainingId || isDebugLessonPlayable)
     ? true
     : redirectTrainingHome
 }

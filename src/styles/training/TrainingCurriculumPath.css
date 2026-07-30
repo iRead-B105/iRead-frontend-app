@@ -5,7 +5,12 @@
 /* 학습 선택 전체 크기: width는 좌우 크기, padding은 내부 여백입니다. */
 .curriculum-path {
   position: relative;
-  width: min(95%, 1178px);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: clamp(120px, 18vh, 180px) minmax(0, 1fr);
+  width: min(95%, var(--learner-selection-frame-width));
+  height: min(95%, var(--learner-selection-frame-height));
+  min-height: 0;
   max-width: var(--learner-safe-width);
   margin: 0 auto;
   padding: clamp(20px, 2vw, 30px) clamp(22px, 3.6vw, 56px) 36px;
@@ -20,105 +25,105 @@
   box-shadow: var(--learner-frame-shadow);
 }
 
-/* 상단 한 줄 배치: 달력 + 글자 연습 간판 + 오늘의 연습 게이지 */
+/* 상단 한 줄 배치: 달력 + 글자 연습 제목 + 현재 진행 수치 */
 .curriculum-heading {
   position: relative;
   z-index: 4;
   display: grid;
-  grid-template-columns: minmax(150px, 175px) minmax(360px, 420px) minmax(255px, 300px);
-  align-items: center;
-  justify-content: space-between;
-  gap: clamp(18px, 2.2vw, 32px);
-  min-height: 198px;
+  place-items: center;
+  width: 100%;
+  max-width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: visible;
+}
+
+.curriculum-heading-board {
+  position: relative;
+  display: block;
+  width: min(86%, 1050px);
+  height: clamp(120px, 16vh, 170px);
+  min-width: 640px;
+  min-height: 120px;
+  margin: 0 auto;
+  padding: 0;
+  background-position: center;
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+  filter: drop-shadow(0 10px 10px rgb(107 69 23 / 16%));
+}
+
+.date-calendar,
+.curriculum-title-sign,
+.progress-card {
+  position: relative;
 }
 
 .curriculum-heading h1 {
+  min-width: 0;
   margin: 0;
   color: var(--learner-color-text);
   font-family: var(--learner-font-display);
   font-weight: 900;
   line-height: 1.05;
+  white-space: nowrap;
 }
 
 /* 날짜 달력 크기와 달력 안 글자 위치 */
 .date-calendar {
-  position: relative;
-  width: 100%;
-  max-width: 175px;
-  aspect-ratio: 1.81 / 1;
+  position: absolute;
+  top: 20%;
+  left: 5.2%;
+  width: 15.2%;
+  height: 65%;
   display: grid;
   place-items: center;
-  justify-self: start;
-  filter: drop-shadow(0 7px 7px rgb(107 69 23 / 18%));
-}
-
-.date-calendar img {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
+  box-sizing: border-box;
+  min-height: 0;
+  padding: 0;
 }
 
 .date-calendar strong {
   position: relative;
   z-index: 1;
-  margin-top: 14%;
+  margin: 0;
   color: #6f3814;
   font-family: var(--learner-font-display);
-  font-size: clamp(21px, 1.7vw, 28px);
+  font-size: clamp(18px, 1.65vw, 27px);
   font-weight: 900;
   line-height: 1;
   text-shadow: 0 2px 0 rgb(255 255 255 / 82%);
   white-space: nowrap;
+  transform: translateY(12px);
 }
 
 /* 가운데 글자 연습 나무 간판 크기 */
 .curriculum-title-sign {
-  position: relative;
-  width: 100%;
-  max-width: 420px;
-  aspect-ratio: 2.12 / 1;
+  position: absolute;
+  top: 0;
+  left: 24%;
+  width: 48%;
+  height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
-  justify-self: center;
-  gap: .01em;
-  padding: 0 11% 2% 9%;
-  filter: drop-shadow(0 8px 8px rgb(104 69 24 / 16%));
-}
-
-.curriculum-title-sign > img {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
+  gap: .035em;
+  padding: 1.5% 2% 0;
+  white-space: nowrap;
 }
 
 .title-letter {
   position: relative;
   z-index: 1;
-  font-size: clamp(32px, 3.15vw, 48px);
+  flex: 0 1 auto;
+  font-size: clamp(32px, 3.2vw, 52px);
   font-weight: 900;
   line-height: 1;
   letter-spacing: -.08em;
   -webkit-text-stroke: 5px #fff;
   paint-order: stroke fill;
   text-shadow: 0 4px 0 rgb(63 75 104 / 14%);
-}
-
-.title-letter--tile {
-  display: grid;
-  place-items: center;
-  width: 1.08em;
-  height: 1.08em;
-  margin-right: .14em;
-  border-radius: .24em;
-  background: #64bf37;
-  color: #fff;
-  -webkit-text-stroke: 0;
-  box-shadow: inset 0 -5px 0 rgb(52 140 38 / 30%), 0 4px 0 rgb(52 140 38 / 20%);
 }
 
 .title-letter--orange {
@@ -137,51 +142,49 @@
   color: #8655d6;
 }
 
-/* 오른쪽 오늘의 연습 카드 크기와 내부 여백 */
+/* 오른쪽 진행 수치와 게이지 크기 */
 .progress-card {
-  position: relative;
-  width: 100%;
+  position: absolute;
+  top: 24.5%;
+  left: 74.4%;
+  width: 19.3%;
+  height: 59%;
   min-width: 0;
-  max-width: 300px;
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: 1fr;
+  justify-items: center;
   align-items: center;
-  gap: 8px 14px;
-  min-height: 126px;
-  padding: 25px 27px 23px;
-  justify-self: end;
+  gap: clamp(5px, .7vw, 9px) clamp(8px, 1vw, 14px);
+  min-height: 0;
+  box-sizing: border-box;
+  padding: 9px 18px 8px;
   border: 0;
   background: transparent;
   box-shadow: none;
   color: var(--learner-color-text);
   font-family: var(--learner-font-display);
   font-size: clamp(15px, 1.35vw, 21px);
-  font-weight: 900;
-}
-
-.progress-card > img {
-  position: absolute;
-  z-index: -1;
-  inset: -11%;
-  width: 122%;
-  height: 122%;
-  object-fit: fill;
-  pointer-events: none;
+  font-weight: var(--learner-font-weight-heavy);
 }
 
 .progress-card strong {
   color: #2869dc;
   font-size: clamp(24px, 2.2vw, 34px);
+  font-weight: var(--learner-font-weight-heavy);
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .progress-card small {
   margin-left: 5px;
   color: var(--learner-color-text);
   font-size: .58em;
+  font-weight: var(--learner-font-weight-heavy);
 }
 
 .progress-track {
   grid-column: 1 / -1;
+  width: 88%;
   height: 15px;
   overflow: hidden;
   border-radius: 999px;
@@ -202,7 +205,8 @@
 .path-scroll {
   position: relative;
   width: 100%;
-  margin-top: 20px;
+  height: 100%;
+  margin-top: 0;
   overflow-x: hidden;
   overflow-y: hidden;
   overscroll-behavior-inline: contain;
@@ -211,6 +215,9 @@
 
 .path-viewport {
   position: relative;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
 }
 
 /* 좌우 이동 화살표의 크기와 세로 위치 */
@@ -388,6 +395,12 @@
   font-weight: 900;
 }
 
+.step-number img {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+}
+
 .lesson-node--current .step-number {
   background: #ff9d17;
 }
@@ -419,17 +432,28 @@
 }
 
 @media (max-width: 760px) {
-  .curriculum-heading {
-    grid-template-columns: 1fr;
-    justify-items: center;
+  .curriculum-heading-board {
+    grid-template-columns: 22% 48% 24%;
+    width: 96%;
+    min-width: 0;
     min-height: 0;
   }
 
-  .date-calendar,
-  .curriculum-title-sign,
+  .title-letter {
+    -webkit-text-stroke-width: 3px;
+  }
+
   .progress-card {
-    width: 100%;
-    justify-self: center;
+    padding-inline: 9%;
+    font-size: clamp(9px, 1.35vw, 14px);
+  }
+
+  .progress-card strong {
+    font-size: clamp(15px, 2.2vw, 22px);
+  }
+
+  .progress-track {
+    height: 9px;
   }
 
   .lesson-node {
@@ -459,18 +483,14 @@
     padding: 16px 28px 26px;
   }
 
-  .curriculum-heading {
-    grid-template-columns: 150px minmax(330px, 380px) minmax(230px, 270px);
+  .curriculum-heading-board {
+    grid-template-columns: 22% 48% 24%;
     align-items: center;
-    min-height: 172px;
+    min-height: 0;
   }
 
   .curriculum-heading h1 {
     font-size: clamp(32px, 3.4vw, 46px);
-  }
-
-  .date-calendar {
-    width: 150px;
   }
 
   .date-calendar strong {
@@ -478,9 +498,8 @@
   }
 
   .progress-card {
-    width: 260px;
-    min-height: 110px;
-    padding: 20px 23px 18px;
+    min-height: 0;
+    padding: 7px 15px 6px;
   }
 
   .progress-track {

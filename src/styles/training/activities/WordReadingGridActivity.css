@@ -51,8 +51,9 @@
 }
 
 .status-icon {
-  color: #73a2e8;
-  font-size: 14px;
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
 }
 
 .reading-status.retry {
@@ -131,16 +132,9 @@
   right: 19px;
   top: 15px;
   z-index: 3;
-  display: grid;
-  place-items: center;
   width: 42px;
   height: 42px;
-  border-radius: 50%;
-  background: #70c363;
-  color: #fff;
-  font-family: var(--learner-font-display);
-  font-size: 27px;
-  font-weight: 900;
+  object-fit: contain;
 }
 
 .word-card.assist {
@@ -209,14 +203,10 @@
   box-shadow: 0 8px 18px rgba(50,81,155,.25);
 }
 
-.start-button span {
-  display: grid;
-  place-items: center;
-  width: 34px;
-  height: 34px;
-  border: 3px solid rgba(255,255,255,.82);
-  border-radius: 50%;
-  font-size: 14px;
+.start-button img {
+  width: 26px;
+  height: 26px;
+  object-fit: contain;
 }
 
 .next-button {

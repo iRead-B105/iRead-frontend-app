@@ -130,7 +130,7 @@
   box-shadow: var(--learner-shadow-focus);
 }
 
-.mic-button svg {
+.mic-button img {
   width: 60px;
   height: 60px;
 }
@@ -344,7 +344,7 @@
   height: 100px;
 }
 
-.mic-button svg {
+.mic-button img {
   width: 50px;
   height: 50px;
 }
@@ -421,7 +421,7 @@
     height: 82px;
   }
 
-  .mic-button svg {
+  .mic-button img {
     width: 42px;
     height: 42px;
   }

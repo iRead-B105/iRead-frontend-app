@@ -1,24 +1,32 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted } from 'vue'
 import type { VillageItem } from '@/types/village'
-import { fetchStoryFriends } from '@/services/learnerDataRepository'
+import closeIcon from '@/assets/icons/close.svg'
 
-const emit = defineEmits<{ close: [] }>()
-const storyFriends = ref<VillageItem[]>([])
-const loadError = ref('')
-const acquiredFriends = computed(() => storyFriends.value.filter((friend) => friend.unlocked))
+const props = withDefaults(defineProps<{
+  friends: VillageItem[]
+  placedFriendIds: string[]
+  loadError?: string
+  maxPlaced?: number
+}>(), {
+  loadError: '',
+  maxPlaced: 4,
+})
+
+const emit = defineEmits<{
+  close: []
+  togglePlacement: [friendId: string]
+}>()
+
+const acquiredFriends = computed(() => props.friends.filter((friend) => friend.unlocked))
+const gardenIsFull = computed(() => props.placedFriendIds.length >= props.maxPlaced)
+const isPlaced = (friendId: string) => props.placedFriendIds.includes(friendId)
 
 const onKeydown = (event: KeyboardEvent) => {
   if (event.key === 'Escape') emit('close')
 }
 
 onMounted(async () => {
-  try {
-    storyFriends.value = [...await fetchStoryFriends()]
-  } catch (error) {
-    loadError.value =
-      error instanceof Error ? error.message : '이야기 친구를 불러오지 못했어요.'
-  }
   document.addEventListener('keydown', onKeydown)
 })
 
@@ -37,25 +45,32 @@ onBeforeUnmount(() => {
             <h2 id="collection-title">이야기 친구들</h2>
           </div>
           <button class="collection-close" type="button" aria-label="닫기" @click="emit('close')">
-            <svg viewBox="0 0 32 32" aria-hidden="true">
-              <path d="M8 8l16 16M24 8 8 24" />
-            </svg>
+            <img :src="closeIcon" alt="" aria-hidden="true" />
           </button>
         </header>
 
         <div v-if="acquiredFriends.length" class="collection-grid">
           <article v-for="friend in acquiredFriends" :key="friend.id" class="collection-card">
             <div class="collection-picture">
-              <img :src="friend.image" :alt="friend.name" />
+              <img :src="friend.image" :alt="friend.name" loading="lazy" decoding="async" />
             </div>
             <strong>{{ friend.name }}</strong>
             <p>{{ friend.storyTitle }}</p>
+            <button
+              class="collection-placement"
+              type="button"
+              :class="{ 'collection-placement--active': isPlaced(friend.id) }"
+              :disabled="gardenIsFull && !isPlaced(friend.id)"
+              @click="emit('togglePlacement', friend.id)"
+            >
+              {{ isPlaced(friend.id) ? '정원에서 쉬기' : '정원에 놓기' }}
+            </button>
           </article>
         </div>
 
         <div v-else class="collection-empty">
-          <strong>{{ loadError || '아직 만난 친구가 없어요!' }}</strong>
-          <p v-if="!loadError">이야기를 읽어서 친구를 모아봐요!</p>
+          <strong>{{ props.loadError || '아직 만난 친구가 없어요!' }}</strong>
+          <p v-if="!props.loadError">이야기를 읽어서 친구를 모아봐!</p>
         </div>
       </section>
     </div>

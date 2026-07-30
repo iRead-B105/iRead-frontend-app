@@ -4,6 +4,7 @@ import type { SoundManipulationUnit, TrainingChoice, TrainingQuestion } from '@/
 import { useAudioPlayer } from '@/composables/useAudioPlayer'
 import { useTrainingSession } from '@/composables/useTrainingSession'
 import SoundButton from '../SoundButton.vue'
+import arrowRightIcon from '@/assets/icons/arrow-right.svg'
 
 const props = defineProps<{ question: TrainingQuestion }>()
 defineEmits<{ next: [] }>()
@@ -72,7 +73,7 @@ const submit = () => {
   const completed = session.submitAnswer()
   if (completed) {
     void audio.speak(props.question.targetResult ?? '', 0.8)
-  } else if (session.progressState.attemptCount >= 3 && session.progressState.hintLevel < 2) {
+  } else if (session.progressState.attemptCount >= 2 && session.progressState.hintLevel < 2) {
     session.showHint()
     selectedUnitIds.value = []
     selectedReplacementId.value = null
@@ -123,13 +124,13 @@ watch(
             </button>
           </div>
 
-          <span class="arrow" aria-hidden="true">→</span>
+          <img class="arrow" :src="arrowRightIcon" alt="" aria-hidden="true" />
           <div class="target-card" :class="{ 'target-card--complete': isCorrect }">
             {{ question.targetResult }}
           </div>
         </div>
 
-        <div v-if="isReplace" class="replacement-area" aria-label="바꿀 소리 카드">
+          <div v-if="isReplace" class="replacement-area choices" aria-label="바꿀 소리 카드">
           <button
             v-for="replacement in replacements"
             :key="replacement.id"
@@ -149,7 +150,7 @@ watch(
     </div>
 
     <div class="action-row">
-      <p v-if="session.progressState.isCurrentCorrect === false" role="status">소리를 다시 눌러봐요.</p>
+      <p v-if="session.progressState.isCurrentCorrect === false" role="status">소리를 다시 눌러봐!</p>
       <span v-else></span>
       <button v-if="!isCorrect" class="action action--check" type="button" :disabled="!canSubmit" @click="submit">
         완성하기

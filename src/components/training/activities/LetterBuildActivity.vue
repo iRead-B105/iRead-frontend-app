@@ -101,7 +101,7 @@ const submit = () => {
 
   if (completed) {
     void audio.speak(props.question.combined ?? props.question.audioText ?? '', 0.78)
-  } else if (session.progressState.attemptCount >= 3 && session.progressState.hintLevel < 2) {
+  } else if (session.progressState.attemptCount >= 2 && session.progressState.hintLevel < 2) {
     session.showHint()
     clearPlacements()
   }
@@ -161,7 +161,7 @@ watch(
           </div>
         </div>
 
-        <div class="card-pool" aria-label="끌어 놓을 글자 카드">
+          <div class="card-pool choices" aria-label="끌어 놓을 글자 카드">
           <div
             v-for="choice in choices"
             :key="choice.id"
@@ -185,7 +185,7 @@ watch(
     </div>
 
     <div class="action-row">
-      <p v-if="session.progressState.isCurrentCorrect === false" role="status">카드를 다시 놓아봐요.</p>
+      <p v-if="session.progressState.isCurrentCorrect === false" role="status">카드를 다시 놓아봐!</p>
       <span v-else></span>
       <button v-if="!isCorrect" class="action action--check" type="button" :disabled="!allFilled" @click="submit">
         완성하기

@@ -5,6 +5,7 @@ import { useAudioPlayer } from '@/composables/useAudioPlayer'
 import { useTrainingSession } from '@/composables/useTrainingSession'
 import { getCachedStudent } from '@/services/learnerDataRepository'
 import SoundButton from '../SoundButton.vue'
+import progressStar from '@/assets/training/ui/progress-star.png'
 
 import rabbitSmile from '@/assets/battle/rabbit-smile.png'
 import rabbitJump from '@/assets/battle/rabbit-jump.png'
@@ -295,14 +296,30 @@ onUnmounted(() => {
         </div>
 
         <div v-else-if="phase === 'round-result'" class="board-overlay result-overlay" role="status">
-          <div class="stars" aria-hidden="true">{{ roundWinner === 'player' ? '★ ★ ★' : '☆ ☆ ☆' }}</div>
+          <div class="stars" aria-hidden="true">
+            <img
+              v-for="starIndex in 3"
+              :key="starIndex"
+              :class="{ 'star--inactive': roundWinner !== 'player' }"
+              :src="progressStar"
+              alt=""
+            />
+          </div>
           <strong>{{ roundWinner === 'player' ? `${studentName} 승리!` : `${opponentName} 승리!` }}</strong>
           <p>{{ currentRound.word }}</p>
           <button type="button" @click="advanceRound">{{ isFinalRound ? '최종 결과' : '다음 낱말' }}</button>
         </div>
 
         <div v-else-if="phase === 'match-result'" class="board-overlay match-overlay" role="status">
-          <div class="stars" aria-hidden="true">{{ playerWonMatch ? '★ ★ ★' : '☆ ★ ☆' }}</div>
+          <div class="stars" aria-hidden="true">
+            <img
+              v-for="starIndex in 3"
+              :key="starIndex"
+              :class="{ 'star--inactive': !playerWonMatch && starIndex !== 2 }"
+              :src="progressStar"
+              alt=""
+            />
+          </div>
           <strong>{{ playerWonMatch ? `${studentName} 최종 승리!` : `${opponentName} 최종 승리!` }}</strong>
           <p>{{ playerWins }} : {{ opponentWins }}</p>
           <button type="button" @click="finishMatch">대결 끝내기</button>

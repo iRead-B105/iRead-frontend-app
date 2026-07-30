@@ -2,6 +2,8 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { TrainingChoice, TrainingQuestion } from '@/types/training'
 import { useTrainingSession } from '@/composables/useTrainingSession'
+import dragHandleIcon from '@/assets/icons/drag-handle.svg'
+import readingActiveIcon from '@/assets/icons/reading-active.svg'
 
 const props = defineProps<{ question: TrainingQuestion }>()
 defineEmits<{ next: [] }>()
@@ -77,7 +79,7 @@ const sentenceMatches = (transcript: string) => {
 const finishSpeech = () => {
   if (isComplete.value) return
   speechState.value = 'success'
-  statusMessage.value = '다 읽었어요!'
+  statusMessage.value = '다 읽었어!'
   session.markRecordingComplete({ isMock: false, audioUrl: null })
 }
 const handleTranscript = (transcript: string) => {
@@ -85,13 +87,13 @@ const handleTranscript = (transcript: string) => {
   if (sentenceMatches(transcript)) finishSpeech()
   else {
     speechState.value = 'retry'
-    statusMessage.value = '한 번 더 읽어봐요'
+    statusMessage.value = '한 번 더 읽어봐!'
   }
 }
 const startSpeech = () => {
   if (!assemblyCorrect.value || speechState.value === 'listening' || isComplete.value) return
   speechState.value = 'listening'
-  statusMessage.value = '문장을 읽어봐요'
+  statusMessage.value = '문장을 읽어봐!'
   const speechWindow = window as typeof window & {
     SpeechRecognition?: SpeechRecognitionConstructor
     webkitSpeechRecognition?: SpeechRecognitionConstructor
@@ -114,13 +116,13 @@ const startSpeech = () => {
     }
     if (event.error !== 'aborted') {
       speechState.value = 'retry'
-      statusMessage.value = '한 번 더 읽어봐요'
+      statusMessage.value = '한 번 더 읽어봐!'
     }
   }
   recognition.onend = () => {
     if (speechState.value === 'listening') {
       speechState.value = 'retry'
-      statusMessage.value = '한 번 더 읽어봐요'
+      statusMessage.value = '한 번 더 읽어봐!'
     }
     recognition = null
   }
@@ -142,7 +144,7 @@ const evaluateSentence = () => {
 
   attempts.value += 1
   wrongIndices.value = wrong
-  statusMessage.value = '한 번 더 해봐요'
+  statusMessage.value = '한 번 더 해봐!'
   if (wrongTimer) clearTimeout(wrongTimer)
   wrongTimer = setTimeout(() => {
     const next = [...slots.value]
@@ -225,7 +227,7 @@ onBeforeUnmount(() => {
 <template>
   <section class="activity" :aria-label="question.instruction">
     <header class="activity-heading">
-      <h1>{{ assemblyCorrect ? '완성한 문장을 읽어봐요' : '문장을 만들어봐요' }}</h1>
+      <h1>{{ assemblyCorrect ? '완성한 문장을 읽어봐!' : '문장을 만들어봐!' }}</h1>
       <p v-if="statusMessage" class="status-message" :class="speechState" role="status" aria-live="polite">{{ statusMessage }}</p>
     </header>
 
@@ -250,7 +252,7 @@ onBeforeUnmount(() => {
       </div>
     </div>
 
-    <div class="source-cards" :style="{ '--card-count': remaining.length || choices.length }" aria-label="문장 카드">
+    <div class="source-cards choices" :style="{ '--card-count': remaining.length || choices.length }" aria-label="문장 카드">
       <article
         v-for="choice in remaining"
         :key="choice.id"
@@ -258,7 +260,7 @@ onBeforeUnmount(() => {
         :class="{ hint: hintChoiceId === choice.id }"
         @pointerdown="startPointerDrag($event, choice.id, null)"
       >
-        <span class="grip" aria-hidden="true">⠿</span>
+        <img class="grip" :src="dragHandleIcon" alt="" aria-hidden="true" />
         <strong>{{ choice.text }}</strong>
       </article>
     </div>
@@ -274,8 +276,8 @@ onBeforeUnmount(() => {
 
     <footer class="action-bar">
       <button v-if="assemblyCorrect && !isComplete" class="speak-button" type="button" :disabled="speechState === 'listening'" @click="startSpeech">
-        <span aria-hidden="true">●</span>
-        {{ speechState === 'listening' ? '듣고 있어요' : '문장 읽기' }}
+        <img :src="readingActiveIcon" alt="" aria-hidden="true" />
+        {{ speechState === 'listening' ? '듣고 있어' : '문장 읽기' }}
       </button>
       <button v-else-if="isComplete" class="next-button" type="button" @click="$emit('next')">다음</button>
     </footer>

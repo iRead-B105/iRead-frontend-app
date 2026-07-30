@@ -31,7 +31,7 @@ const finish = () => {
         <img :src="completeRabbit" alt="" />
       </div>
       <p class="challenge-complete__eyebrow">실력 검증 완료</p>
-      <h1>{{ track?.title ?? '선택한' }} 훈련을<br />모두 해냈어요!</h1>
+      <h1>{{ track?.title ?? '선택한' }} 훈련을<br />모두 해냈어!</h1>
       <p>끝까지 집중해서 정말 멋져요.</p>
       <div class="challenge-complete__summary">
         <span>완료한 훈련</span>

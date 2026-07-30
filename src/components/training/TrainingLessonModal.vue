@@ -7,6 +7,7 @@
 import { nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import type { TrainingCategory } from '@/types/training'
 import TrainingLessonCard from './TrainingLessonCard.vue'
+import closeIcon from '@/assets/icons/close.svg'
 
 const props = defineProps<{
   open: boolean
@@ -81,16 +82,14 @@ onBeforeUnmount(() => {
         >
           <header class="modal-heading">
             <div class="heading-icon">
-              <img :src="category.image" :alt="category.title" />
+              <img :src="category.image" :alt="category.title" decoding="async" />
             </div>
             <div class="heading-text">
               <h2 class="heading-title">{{ category.title }}</h2>
               <p class="heading-desc">{{ category.description }}</p>
             </div>
             <button class="modal-close" type="button" aria-label="닫기" @click="emit('close')">
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" />
-              </svg>
+              <img :src="closeIcon" alt="" aria-hidden="true" />
             </button>
           </header>
 

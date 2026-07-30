@@ -47,7 +47,7 @@
   color: var(--learner-color-text-soft);
 }
 
-.lesson-icon svg {
+.lesson-icon img {
   width: 100%;
   height: 100%;
 }
@@ -98,7 +98,7 @@
   color: var(--learner-color-primary);
 }
 
-.lesson-arrow svg {
+.lesson-arrow img {
   width: 100%;
   height: 100%;
 }

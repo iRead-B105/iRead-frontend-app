@@ -37,9 +37,9 @@ const completionMessage = computed(() => {
   const questions = lesson.value?.questions
   if (questions && questions.length > 0) {
     const last = questions[questions.length - 1]
-    return last?.feedback?.completed ?? '훈련을 무사히 마쳤어요!'
+    return '훈련을 끝까지 해냈어!'
   }
-  return '훈련을 무사히 마쳤어요!'
+  return '훈련을 끝까지 해냈어!'
 })
 
 // 직접 진입(완료되지 않은 상태) 시 인트로로 보냄
@@ -114,6 +114,7 @@ const handleContinue = () => {
     :lesson-title="lesson.title"
     :completed-at="session.progressState.completedAt"
     :completion-message="completionMessage"
+    :perfect="session.isPerfectLesson.value"
     :primary-label="challengeTrackId
       ? (nextChallengeLesson ? '다음 검증 이어가기' : '실력 검증 완료')
       : (nextCurriculumItem ? '다음 훈련 시작' : '오늘 학습 완료')"

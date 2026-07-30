@@ -8,6 +8,7 @@ import newBookIcon from '../../assets/story/ui/new-book-icon.png'
 import continueStoryIcon from '../../assets/story/ui/continue-story-icon.png'
 import { fetchStoryLibrary, startStorySession } from '@/services/learnerDataRepository'
 import PageBackButton from '@/components/common/PageBackButton.vue'
+import progressStar from '@/assets/training/ui/progress-star.png'
 
 type StoryStatus = 'UNREAD' | 'IN_PROGRESS' | 'COMPLETED'
 type LibraryMode = 'home' | 'other' | 'new'
@@ -123,7 +124,7 @@ async function openBook(book: StoryTemplate | StorySession) {
 
 function progressLabel(book: StorySession) {
   if (book.status === 'COMPLETED') return '다 읽은 이야기'
-  if (book.status === 'IN_PROGRESS') return `${book.progress}% 읽었어요`
+  if (book.status === 'IN_PROGRESS') return `${book.progress}% 읽었어`
   return ''
 }
 
@@ -140,9 +141,9 @@ function sessionTitle(book: StorySession) {
     <section class="library-panel" aria-labelledby="story-library-title">
       <template v-if="mode === 'home'">
         <header class="library-heading">
-          <span aria-hidden="true">★</span>
+          <img class="library-heading-star" :src="progressStar" alt="" aria-hidden="true" />
           <h1 id="story-library-title">이야기 나라</h1>
-          <span aria-hidden="true">★</span>
+          <img class="library-heading-star" :src="progressStar" alt="" aria-hidden="true" />
         </header>
 
         <button
@@ -162,14 +163,14 @@ function sessionTitle(book: StorySession) {
           </template>
           <template v-else>
             <span class="empty-story-art" aria-hidden="true">
-              <span class="empty-story-spark empty-story-spark--one">★</span>
-              <span class="empty-story-spark empty-story-spark--two">●</span>
+              <img class="empty-story-spark empty-story-spark--one" :src="progressStar" alt="" />
+              <img class="empty-story-spark empty-story-spark--two" :src="progressStar" alt="" />
               <img :src="newBookIcon" alt="" />
             </span>
             <span class="empty-story-copy">
-              <small>아직 읽고 있는 책이 없어요</small>
+              <small>아직 읽고 있는 책이 없어</small>
               <strong>새 이야기를 만나러 가요!</strong>
-              <b>마음에 드는 첫 번째 책을 골라 보세요</b>
+              <b>마음에 드는 첫 번째 책을 골라봐!</b>
             </span>
             <span class="empty-story-action">
               <span>책 고르기</span>
@@ -181,11 +182,11 @@ function sessionTitle(book: StorySession) {
         <div class="library-actions">
           <button type="button" @click="mode = 'other'">
             <img class="action-icon" :src="otherBooksIcon" alt="" aria-hidden="true" />
-            <span><strong>읽던 책 고르기</strong><small>읽던 책과 다 읽은 책 보기</small></span>
+            <strong>읽던 책 고르기</strong>
           </button>
           <button type="button" @click="mode = 'new'">
             <img class="action-icon" :src="newBookIcon" alt="" aria-hidden="true" />
-            <span><strong>새 이야기 시작하기</strong><small>새로운 이야기를 처음부터 만들기</small></span>
+            <strong>새 이야기 시작하기</strong>
           </button>
         </div>
       </template>
@@ -209,7 +210,12 @@ function sessionTitle(book: StorySession) {
             @click="openBook(book)"
           >
             <span class="book-cover">
-              <img :src="book.coverImage" :alt="`${mode === 'other' ? sessionTitle(book as StorySession) : book.title} 표지`" />
+              <img
+                :src="book.coverImage"
+                :alt="`${mode === 'other' ? sessionTitle(book as StorySession) : book.title} 표지`"
+                loading="lazy"
+                decoding="async"
+              />
               <span
                 class="status-badge"
                 :class="mode === 'new' ? 'status-badge--new' : `status-badge--${(book as StorySession).status.toLowerCase()}`"
@@ -235,7 +241,7 @@ function sessionTitle(book: StorySession) {
 
         <div v-else class="catalog-empty">
           <img :src="otherBooksIcon" alt="" aria-hidden="true" />
-          <strong>아직 보여 줄 책이 없어요!</strong>
+          <strong>아직 보여 줄 책이 없어!</strong>
           <button type="button" @click="mode = 'new'">새로운 책 고르기</button>
         </div>
       </template>

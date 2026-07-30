@@ -94,9 +94,10 @@
   box-shadow: 0 8px 18px rgba(62,98,183,.22);
 }
 
-.sound-piece svg {
+.sound-piece img {
   width: 44px;
   height: 44px;
+  object-fit: contain;
 }
 
 .piece-plus {
@@ -385,7 +386,7 @@
     height: 68px;
   }
 
-  .sound-piece svg {
+  .sound-piece img {
     width: 34px;
     height: 34px;
   }

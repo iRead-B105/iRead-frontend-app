@@ -3,13 +3,16 @@ import { computed, ref, watch } from 'vue'
 import type { TrainingQuestion } from '@/types/training'
 import { useTrainingSession } from '@/composables/useTrainingSession'
 import { useAudioPlayer } from '@/composables/useAudioPlayer'
+import arrowRightIcon from '@/assets/icons/arrow-right.svg'
+import closeIcon from '@/assets/icons/close.svg'
+import SoundButton from '../SoundButton.vue'
 
 const props = defineProps<{ question: TrainingQuestion }>()
 defineEmits<{ next: [] }>()
 
 const session = useTrainingSession()
 const { progressState } = session
-const { isPlaying, replay } = useAudioPlayer()
+const { isPlaying } = useAudioPlayer()
 const omittedIndex = ref<number | null>(null)
 
 const parts = computed(() => props.question.soundParts ?? [])
@@ -33,17 +36,6 @@ const choosePart = (index: number) => {
   session.selectAnswer(resultText.value)
 }
 
-const playSource = async () => {
-  if (!isPlaying.value && props.question.targetText) {
-    await replay(props.question.targetText, 0.76)
-  }
-}
-
-const playTarget = async () => {
-  if (!isPlaying.value && props.question.audioText) {
-    await replay(props.question.audioText, 0.72)
-  }
-}
 </script>
 
 <template>
@@ -55,15 +47,19 @@ const playTarget = async () => {
 
     <div class="play-area">
       <div class="word-panel">
-        <button class="source-listen" type="button" :disabled="isPlaying" @click="playSource">
-          <svg viewBox="0 0 32 32" aria-hidden="true">
-            <path d="M7 12h6l8-6v20l-8-6H7z" fill="currentColor" />
-            <path d="M24 11c3 3 3 7 0 10" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" />
-          </svg>
+        <div class="source-listen">
           <span>{{ question.targetText }}</span>
-        </button>
+          <SoundButton
+            :text="question.targetText || ''"
+            :rate="0.76"
+            :disabled="isPlaying"
+            size="medium"
+            variant="ghost"
+            label="원래 낱말"
+          />
+        </div>
 
-        <div class="source-parts" aria-label="원래 낱말의 소리 조각">
+        <div class="source-parts choices" aria-label="원래 낱말의 소리 조각">
           <button
             v-for="(part, index) in parts"
             :key="`${part}-${index}`"
@@ -80,25 +76,25 @@ const playTarget = async () => {
             @click="choosePart(index)"
           >
             <span>{{ part }}</span>
-            <svg v-if="omittedIndex === index" viewBox="0 0 64 64" aria-hidden="true">
-              <path d="M15 15l34 34M49 15L15 49" fill="none" stroke="currentColor" stroke-width="8" stroke-linecap="round" />
-            </svg>
+            <img v-if="omittedIndex === index" :src="closeIcon" alt="" aria-hidden="true" />
           </button>
         </div>
       </div>
 
       <div class="target-panel">
-        <button class="target-listen" type="button" :disabled="isPlaying" @click="playTarget">
-          <span class="speaker" aria-hidden="true">
-            <svg viewBox="0 0 32 32">
-              <path d="M7 12h6l8-6v20l-8-6H7z" fill="currentColor" />
-              <path d="M24 11c3 3 3 7 0 10" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" />
-            </svg>
-          </span>
+        <div class="target-listen">
+          <SoundButton
+            :text="question.audioText || ''"
+            :rate="0.72"
+            :disabled="isPlaying || !question.audioText"
+            size="medium"
+            variant="ghost"
+            label="만들 소리"
+          />
           <span>이 소리 만들기</span>
-        </button>
+        </div>
 
-        <div class="arrow" aria-hidden="true">→</div>
+        <img class="arrow" :src="arrowRightIcon" alt="" aria-hidden="true" />
 
         <div
           class="result-card"

@@ -2,6 +2,8 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import type { TrainingChoice, TrainingQuestion } from '@/types/training'
 import { useTrainingSession } from '@/composables/useTrainingSession'
+import dragHandleIcon from '@/assets/icons/drag-handle.svg'
+import readingActiveIcon from '@/assets/icons/reading-active.svg'
 
 const props = defineProps<{ question: TrainingQuestion }>()
 defineEmits<{ next: [] }>()
@@ -44,7 +46,7 @@ let recognition: SpeechRecognitionLike | null = null
 let wrongTimer: ReturnType<typeof setTimeout> | null = null
 
 const isFilled = computed(() => placedChoice.value?.id === props.question.answer)
-const showHint = computed(() => attempts.value >= 3 && !isFilled.value)
+const showHint = computed(() => attempts.value >= 2 && !isFilled.value)
 const isComplete = computed(() => speechState.value === 'success')
 
 const normalize = (value: string) => value.replace(/[\s.,!?~'"’“”]/g, '').toLowerCase()
@@ -58,7 +60,7 @@ const sentenceMatches = (transcript: string) => {
 const finishSpeech = () => {
   if (isComplete.value) return
   speechState.value = 'success'
-  speechMessage.value = '다 읽었어요!'
+  speechMessage.value = '다 읽었어!'
   session.markRecordingComplete({ isMock: false, audioUrl: null })
 }
 
@@ -67,14 +69,14 @@ const handleTranscript = (transcript: string) => {
   if (sentenceMatches(transcript)) finishSpeech()
   else {
     speechState.value = 'retry'
-    speechMessage.value = '한 번 더 읽어봐요'
+    speechMessage.value = '한 번 더 읽어봐!'
   }
 }
 
 const startSpeech = () => {
   if (!isFilled.value || speechState.value === 'listening' || isComplete.value) return
   speechState.value = 'listening'
-  speechMessage.value = '문장을 읽어봐요'
+  speechMessage.value = '문장을 읽어봐!'
 
   const speechWindow = window as typeof window & {
     SpeechRecognition?: SpeechRecognitionConstructor
@@ -98,13 +100,13 @@ const startSpeech = () => {
     }
     if (event.error !== 'aborted') {
       speechState.value = 'retry'
-      speechMessage.value = '한 번 더 읽어봐요'
+      speechMessage.value = '한 번 더 읽어봐!'
     }
   }
   recognition.onend = () => {
     if (speechState.value === 'listening') {
       speechState.value = 'retry'
-      speechMessage.value = '한 번 더 읽어봐요'
+      speechMessage.value = '한 번 더 읽어봐!'
     }
     recognition = null
   }
@@ -126,7 +128,7 @@ const evaluateChoice = (choiceId: string) => {
 
   attempts.value += 1
   wrongChoiceId.value = choice.id
-  speechMessage.value = '한 번 더 해봐요'
+  speechMessage.value = '한 번 더 해봐!'
   if (wrongTimer) clearTimeout(wrongTimer)
   wrongTimer = setTimeout(() => {
     wrongChoiceId.value = null
@@ -185,7 +187,7 @@ onBeforeUnmount(() => {
 <template>
   <section class="activity" :aria-label="question.instruction">
     <header class="activity-heading">
-      <h1>{{ isFilled ? '완성한 문장을 읽어봐요' : '빈칸에 낱말을 넣어봐요' }}</h1>
+      <h1>{{ isFilled ? '완성한 문장을 읽어봐!' : '빈칸에 낱말을 넣어봐!' }}</h1>
       <p v-if="speechMessage" class="status-message" :class="speechState" role="status" aria-live="polite">
         {{ speechMessage }}
       </p>
@@ -215,7 +217,7 @@ onBeforeUnmount(() => {
         }"
         @pointerdown="startPointerDrag($event, choice)"
       >
-        <span class="grip" aria-hidden="true">⠿</span>
+        <img class="grip" :src="dragHandleIcon" alt="" aria-hidden="true" />
         <strong>{{ choice.text }}</strong>
       </article>
     </div>
@@ -239,8 +241,8 @@ onBeforeUnmount(() => {
         :disabled="speechState === 'listening'"
         @click="startSpeech"
       >
-        <span aria-hidden="true">●</span>
-        {{ speechState === 'listening' ? '듣고 있어요' : '문장 읽기' }}
+        <img :src="readingActiveIcon" alt="" aria-hidden="true" />
+        {{ speechState === 'listening' ? '듣고 있어' : '문장 읽기' }}
       </button>
       <button v-else-if="isComplete" class="next-button" type="button" @click="$emit('next')">다음</button>
     </footer>

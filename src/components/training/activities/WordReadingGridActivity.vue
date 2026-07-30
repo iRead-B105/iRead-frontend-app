@@ -3,6 +3,9 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import type { TrainingQuestion } from '@/types/training'
 import { useAudioPlayer } from '@/composables/useAudioPlayer'
 import { useTrainingSession } from '@/composables/useTrainingSession'
+import readingActiveIcon from '@/assets/icons/reading-active.svg'
+import checkIcon from '@/assets/icons/check.svg'
+import progressStar from '@/assets/training/ui/progress-star.png'
 
 const props = defineProps<{ question: TrainingQuestion }>()
 defineEmits<{ next: [] }>()
@@ -55,12 +58,12 @@ const allComplete = computed(() => items.value.length > 0 && completedIds.value.
 const activeWord = computed(() => items.value[activeIndex.value] ?? null)
 const statusMessage = computed(() => {
   switch (messageState.value) {
-    case 'listening': return '읽고 있어요'
-    case 'retry': return '한 번 더 읽어봐요'
-    case 'help': return '빛나는 낱말을 바라봐요'
-    case 'complete': return '다 읽었어요!'
+    case 'listening': return '읽고 있어'
+    case 'retry': return '한 번 더 읽어봐!'
+    case 'help': return '빛나는 낱말을 바라봐!'
+    case 'complete': return '다 읽었어!'
     case 'denied': return '마이크를 켜고 다시 눌러요'
-    default: return '준비되면 시작해요'
+    default: return '준비되면 시작해!'
   }
 })
 
@@ -276,9 +279,9 @@ onBeforeUnmount(() => {
 <template>
   <section class="activity" :aria-label="question.instruction">
     <header class="activity-heading">
-      <h1>{{ allComplete ? '다 읽었어요!' : question.instruction }}</h1>
+      <h1>{{ allComplete ? '다 읽었어!' : question.instruction }}</h1>
       <div class="reading-status" :class="messageState" role="status" aria-live="polite">
-        <span class="status-icon" aria-hidden="true">{{ allComplete ? '★' : '●' }}</span>
+        <img class="status-icon" :src="allComplete ? progressStar : readingActiveIcon" alt="" aria-hidden="true" />
         {{ statusMessage }}
       </div>
     </header>
@@ -295,7 +298,7 @@ onBeforeUnmount(() => {
           assist: assistIndex === index,
         }"
       >
-        <span v-if="completedIds.includes(word.id)" class="complete-mark" aria-label="읽기 완료">✓</span>
+        <img v-if="completedIds.includes(word.id)" class="complete-mark" :src="checkIcon" alt="읽기 완료" />
         <strong>{{ word.text }}</strong>
         <span v-if="assistIndex === index" class="assist-sweep" aria-hidden="true"></span>
       </article>
@@ -303,7 +306,7 @@ onBeforeUnmount(() => {
 
     <footer class="action-bar">
       <button v-if="!started" class="start-button" type="button" @click="startReading">
-        <span aria-hidden="true">●</span> 읽기 시작
+        <img :src="readingActiveIcon" alt="" aria-hidden="true" /> 읽기 시작
       </button>
       <button v-else-if="messageState === 'denied'" class="start-button" type="button" @click="startReading">다시 시작</button>
       <button v-else-if="allComplete" class="next-button" type="button" @click="$emit('next')">다음</button>
