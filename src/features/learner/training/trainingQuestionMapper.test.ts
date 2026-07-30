@@ -82,4 +82,29 @@ describe('backend training question mapper', () => {
     expect(mapped.recordingTargetIndex).toBe(0)
     expect(buildTrainingResponse(mapped, 'choice-0')).toEqual({ selectedIndex: 0 })
   })
+
+  it('CONSONANT_VOWEL_CLASSIFICATION 내부 값을 한글 선택지로 표시한다', () => {
+    const mapped = mapTrainingQuestion({
+      trainingId: '4004',
+      questionNumber: 1,
+      totalQuestions: 1,
+      question: {
+        questionType: 'CONSONANT_VOWEL_CLASSIFICATION',
+        responseType: 'SINGLE_CHOICE',
+        content: {
+          audioText: 'ㄱ',
+          choices: ['CONSONANT', 'VOWEL'],
+        },
+        answer: { answerIndex: 0 },
+        requiredInputs: [],
+      },
+    })
+
+    expect(mapped.question.instruction).toBe('자음·모음을 골라봐요')
+    expect(mapped.question.audioText).toBe('ㄱ')
+    expect(mapped.question.choiceAudioEnabled).toBe(false)
+    expect(mapped.question.choices?.map((choice) => choice.text))
+      .toEqual(['자음', '모음'])
+    expect(buildTrainingResponse(mapped, 'choice-0')).toEqual({ selectedIndex: 0 })
+  })
 })

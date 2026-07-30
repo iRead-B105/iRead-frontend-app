@@ -156,6 +156,7 @@ export interface TrainingQuestion {
   targetSymbol?: string // 관련 이미지 에셋이 없을 때 쓰는 목업용 의미 기호
   targetImageLabel?: string // 리소스 추가 필요 코멘트용 설명
   choices?: TrainingChoice[]
+  choiceAudioEnabled?: boolean
   soundParts?: string[] // 소리 탈락의 원 낱말 또는 합성할 음절 단위
   traceGlyph?: string // 시선으로 따라 볼 한글 자모 또는 음절
   traceStrokes?: TracePoint[][] // 획순대로 정렬된 시선 체크포인트
