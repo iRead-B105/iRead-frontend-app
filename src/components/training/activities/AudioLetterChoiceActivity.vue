@@ -13,6 +13,8 @@ const session = useTrainingSession()
 const audio = useAudioPlayer()
 const choices = computed<TrainingChoice[]>(() => props.question.choices ?? [])
 const isCorrect = computed(() => session.progressState.isCurrentCorrect === true)
+const showAnswerHint = (choice: TrainingChoice) =>
+  session.progressState.hintLevel >= 2 && choice.id === props.question.answer
 
 const cardState = (choice: TrainingChoice) => {
   if (isCorrect.value) return choice.id === props.question.answer ? 'correct' : 'disabled'
@@ -61,6 +63,7 @@ watch(
           :jamo="choice.letter?.jamo ?? ''"
           :type="choice.letter?.type ?? 'consonant'"
           :state="cardState(choice)"
+          :class="{ 'answer-hint': showAnswerHint(choice) }"
           :selectable="!isCorrect"
           size="large"
           @select="choose(choice)"
