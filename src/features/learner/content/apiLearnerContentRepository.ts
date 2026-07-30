@@ -49,6 +49,7 @@ interface CharacterListDto {
   readonly characters: readonly {
     readonly characterId: number
     readonly storyId: number
+    readonly storyTitle: string
     readonly imageUrl: string
     readonly name: string
   }[]
@@ -260,6 +261,7 @@ export class ApiLearnerContentRepository implements LearnerContentRepository {
       name: character.name,
       image: character.imageUrl,
       kind: 'character',
+      storyTitle: character.storyTitle,
       unlocked: true,
     }))
   }
