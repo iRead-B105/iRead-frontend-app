@@ -191,8 +191,8 @@ const displayedHint = computed(() => presentTrainingHint(
   session.currentHint.value,
   session.progressState.hintLevel,
 ))
-const voiceDeviceFallbackEnabled = import.meta.env.DEV || mockVoiceSubmissionsEnabled
-const gazeDeviceFallbackEnabled = import.meta.env.DEV || mockGazeSubmissionsEnabled
+const voiceDeviceFallbackEnabled = mockVoiceSubmissionsEnabled
+const gazeDeviceFallbackEnabled = mockGazeSubmissionsEnabled
 
 const updateGazeTransferDebug = (patch: Partial<typeof gazeTransferDebug.value>) => {
   gazeTransferDebug.value = {
