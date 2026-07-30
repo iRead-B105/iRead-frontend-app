@@ -4,6 +4,7 @@ import type { TracePoint, TrainingQuestion } from '@/types/training'
 import { useAudioPlayer } from '@/composables/useAudioPlayer'
 import { useTrainingSession } from '@/composables/useTrainingSession'
 import type { LearnerTraceSubmissionResponse } from '@/features/learner/training'
+import { mockDeviceSubmissionsEnabled } from '@/features/learner/training/mockDeviceSubmissions'
 import SoundButton from '../SoundButton.vue'
 
 const props = defineProps<{ question: TrainingQuestion }>()
@@ -93,6 +94,10 @@ const speechMatches = (transcript: string) => {
 
 const startSpeech = () => {
   if (!traceCompleted.value || speechState.value === 'listening' || speechState.value === 'success') return
+  if (mockDeviceSubmissionsEnabled) {
+    finishSpeech(true)
+    return
+  }
   speechState.value = 'listening'
   speechMessage.value = '말해 보세요!'
 

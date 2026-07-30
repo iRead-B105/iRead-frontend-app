@@ -42,8 +42,10 @@ export const getCachedStudent = (): LearnerStudent => {
   return { ...learnerRuntimeMock.auth.linkedStudents[0]! }
 }
 
-export const fetchCurrentCurriculum = (): Promise<LearnerCurrentCurriculum> =>
-  learnerContentRepository.getCurrentCurriculum(activeStudentId())
+export const fetchCurrentCurriculum = (
+  studentId: string = activeStudentId(),
+): Promise<LearnerCurrentCurriculum> =>
+  learnerContentRepository.getCurrentCurriculum(studentId)
 
 export const fetchStoryLibrary = (): Promise<LearnerStoryLibrary> =>
   learnerContentRepository.getStoryLibrary(activeStudentId())

@@ -52,7 +52,10 @@ type AnswerEvaluator = (
   question: TrainingQuestion,
 ) => Promise<AnswerEvaluation>
 
+type AnswerCompletedHandler = () => Promise<void> | void
+
 let answerEvaluator: AnswerEvaluator | null = null
+let answerCompletedHandler: AnswerCompletedHandler | null = null
 
 // 문제별 목업 저장소: 선택한 정답
 const storedAnswers = reactive<Record<string, string | string[]>>({})
@@ -166,6 +169,9 @@ const submitAnswer = async (): Promise<boolean> => {
         progressState.hintLevel = shouldRevealCorrectAnswer
           ? 2
           : Math.max(progressState.hintLevel, 1)
+      }
+      if (evaluation.questionCompleted) {
+        await answerCompletedHandler?.()
       }
       return evaluation.correct
     } finally {
@@ -291,6 +297,10 @@ const setAnswerEvaluator = (evaluator: AnswerEvaluator | null): void => {
   answerEvaluator = evaluator
 }
 
+const setAnswerCompletedHandler = (handler: AnswerCompletedHandler | null): void => {
+  answerCompletedHandler = handler
+}
+
 export function useTrainingSession() {
   return {
     // 상태
@@ -314,6 +324,7 @@ export function useTrainingSession() {
     selectAnswer,
     submitAnswer,
     setAnswerEvaluator,
+    setAnswerCompletedHandler,
     markRecordingComplete,
     showHint,
     nextQuestion,

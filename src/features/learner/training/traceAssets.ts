@@ -11,6 +11,20 @@ const traceAssets: Readonly<Record<string, TracePoint[][]>> = {
     ...line({ x: 365, y: 105 }, { x: 365, y: 405 }, 8),
     ...line({ x: 225, y: 255 }, { x: 365, y: 255 }, 5),
   ]],
+  vowel_0: [[
+    ...line({ x: 365, y: 105 }, { x: 365, y: 405 }, 8),
+    ...line({ x: 225, y: 255 }, { x: 365, y: 255 }, 5),
+  ]],
+  consonant_0: [
+    line({ x: 210, y: 150 }, { x: 390, y: 150 }, 6),
+    line({ x: 390, y: 150 }, { x: 390, y: 390 }, 8),
+  ],
+  syllable_0: [
+    line({ x: 155, y: 155 }, { x: 285, y: 155 }, 5),
+    line({ x: 285, y: 155 }, { x: 285, y: 385 }, 7),
+    line({ x: 405, y: 125 }, { x: 405, y: 415 }, 8),
+    line({ x: 320, y: 270 }, { x: 405, y: 270 }, 4),
+  ],
 }
 
 export function getTraceAsset(assetKey: string): TracePoint[][] {
