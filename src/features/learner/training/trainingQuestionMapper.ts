@@ -203,7 +203,17 @@ function mapChoice(number: number, source: StudentQuestionDto): {
   question: TrainingQuestion
 } {
   const answer = choiceId(requiredInteger(source.answer, 'answerIndex'))
-  const choices = choicesFromUnknown(source.content)
+  const isConsonantVowelClassification =
+    source.questionType === 'CONSONANT_VOWEL_CLASSIFICATION'
+  const choices = choicesFromUnknown(source.content).map((choice) => ({
+    ...choice,
+    text: isConsonantVowelClassification
+      ? ({
+          CONSONANT: '자음',
+          VOWEL: '모음',
+        } as const)[choice.text as 'CONSONANT' | 'VOWEL'] ?? choice.text
+      : choice.text,
+  }))
   const audioText = optionalString(source.content, 'audioText')
     ?? optionalString(source.content, 'targetAudioText')
     ?? ''
@@ -220,10 +230,17 @@ function mapChoice(number: number, source: StudentQuestionDto): {
         ? 'audio-letter-choice'
         : 'listen-and-select'
   const question = {
-    ...baseQuestion(number, '소리를 듣고 알맞은 것을 골라요', answer),
+    ...baseQuestion(
+      number,
+      isConsonantVowelClassification
+        ? '자음·모음을 골라봐요'
+        : '소리를 듣고 알맞은 것을 골라요',
+      answer,
+    ),
     audioText,
     targetText: source.questionType === 'SAME_INITIAL_WORD_CHOICE' ? audioText : undefined,
     targetImage: optionalString(source.content, 'imageUrl') ?? undefined,
+    choiceAudioEnabled: !isConsonantVowelClassification,
     choices,
   }
   return { activityType, question }
