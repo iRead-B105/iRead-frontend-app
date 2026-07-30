@@ -15,9 +15,14 @@ describe('API learner content repository', () => {
           storyTemplateId: 4,
           createdAt: '2026-07-29T10:00:00',
           storyStatus: 'IN_PROGRESS',
+          progress: 65,
         },
       ],
-      storyTemplates: [{ storyTemplateId: 4, templateTitle: '용감한 토끼' }],
+      storyTemplates: [{
+        storyTemplateId: 4,
+        templateTitle: '용감한 토끼',
+        imageUrl: '/images/brave-rabbit.png',
+      }],
     })
     const repository = new ApiLearnerContentRepository()
 
@@ -31,10 +36,13 @@ describe('API learner content repository', () => {
       templateId: '4',
       title: '용감한 토끼',
       status: 'IN_PROGRESS',
+      progress: 65,
+      coverImageUrl: '/images/brave-rabbit.png',
     })
     expect(result.templates[0]).toMatchObject({
       templateId: '4',
       title: '용감한 토끼',
+      coverImageUrl: '/images/brave-rabbit.png',
     })
   })
 
@@ -47,7 +55,8 @@ describe('API learner content repository', () => {
           imageUrl: '/uploads/scene.png',
           requiresBranchInput: true,
           lineText: '토끼가 숲길을 걸었어요.',
-          lineOrder: 2,
+          sceneOrder: 2,
+          lineOrder: 1,
           readAt: null,
         },
         {
@@ -56,7 +65,8 @@ describe('API learner content repository', () => {
           imageUrl: null,
           requiresBranchInput: false,
           lineText: '아침이 밝았어요.',
-          lineOrder: 1,
+          sceneOrder: 1,
+          lineOrder: 2,
           readAt: '2026-07-29T10:01:00',
         },
       ],

@@ -21,6 +21,11 @@ export interface LearnerStoryTtsResult {
 
 export interface LearnerStoryRepository {
   readonly source: 'mock' | 'api'
+  readonly markLineRead: (
+    studentId: string,
+    storyId: string,
+    lineId: string,
+  ) => Promise<void>
   readonly chooseDirection: (
     studentId: string,
     storyId: string,
@@ -38,4 +43,5 @@ export interface LearnerStoryRepository {
     storyId: string,
     lineId: string,
   ) => Promise<LearnerStoryTtsResult>
+  readonly downloadAudio: (audioUrl: string) => Promise<Blob>
 }

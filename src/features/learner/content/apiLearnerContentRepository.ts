@@ -19,10 +19,12 @@ interface StoryShelfDto {
     readonly storyTemplateId: number
     readonly createdAt: string
     readonly storyStatus: 'UNREAD' | 'IN_PROGRESS' | 'COMPLETED'
+    readonly progress: number
   }[]
   readonly storyTemplates: readonly {
     readonly storyTemplateId: number
     readonly templateTitle: string
+    readonly imageUrl: string | null
   }[]
 }
 
@@ -33,6 +35,7 @@ interface StoryLinesDto {
     readonly imageUrl: string | null
     readonly requiresBranchInput: boolean
     readonly lineText: string
+    readonly sceneOrder?: number
     readonly lineOrder: number
     readonly readAt: string | null
   }[]
@@ -148,7 +151,7 @@ export class ApiLearnerContentRepository implements LearnerContentRepository {
       templates: response.storyTemplates.map((template) => ({
         templateId: String(template.storyTemplateId),
         title: template.templateTitle,
-        coverImageUrl: fallbackCover,
+        coverImageUrl: template.imageUrl || fallbackCover,
       })),
       stories: response.stories.map((story, index) => {
         const template = templates.get(String(story.storyTemplateId))
@@ -159,9 +162,9 @@ export class ApiLearnerContentRepository implements LearnerContentRepository {
           createdAt: story.createdAt,
           lastReadAt: null,
           title: template?.templateTitle ?? '나의 이야기',
-          coverImageUrl: fallbackCover,
+          coverImageUrl: template?.imageUrl || fallbackCover,
           status: story.storyStatus,
-          progress: story.storyStatus === 'COMPLETED' ? 100 : 0,
+          progress: story.progress,
         }
       }),
     }
@@ -182,7 +185,10 @@ export class ApiLearnerContentRepository implements LearnerContentRepository {
       character: '이야기 친구',
       branchQuestion: '다음에는 어떤 일이 일어날까요?',
       pages: [...response.storyLines]
-        .sort((left, right) => left.lineOrder - right.lineOrder)
+        .sort((left, right) => (
+          (left.sceneOrder ?? 0) - (right.sceneOrder ?? 0)
+          || left.lineOrder - right.lineOrder
+        ))
         .map((line) => ({
           lineId: String(line.lineId),
           order: line.lineOrder,
