@@ -379,6 +379,59 @@
   gap: var(--learner-space-4);
 }
 
+.gaze-debug-panel {
+  position: fixed;
+  z-index: 9999;
+  right: 18px;
+  bottom: 18px;
+  width: min(300px, calc(100% - 28px));
+  padding: 12px 14px;
+  border: 3px solid #f59e0b;
+  border-radius: 8px;
+  background: rgb(255 251 235 / 96%);
+  color: #111827;
+  box-shadow: 0 12px 30px rgb(17 24 39 / 28%);
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.35;
+  pointer-events: none;
+}
+
+.gaze-debug-panel strong {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+
+.gaze-debug-panel dl {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+}
+
+.gaze-debug-panel dl > div {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  gap: 8px;
+}
+
+.gaze-debug-panel dt {
+  color: #4b5563;
+}
+
+.gaze-debug-panel dd {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-weight: 700;
+}
+
+.gaze-debug-panel p {
+  margin: 8px 0 0;
+  color: var(--learner-color-error);
+  font-weight: 700;
+}
+
 .fade-enter-active,
 .fade-leave-active {
   transition: opacity var(--learner-duration-normal) var(--learner-easing-standard);

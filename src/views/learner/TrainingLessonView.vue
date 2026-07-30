@@ -27,6 +27,7 @@ import leaveTrainingRabbit from '@/assets/training/ui/leave-training-rabbit.png'
 import { learnerDataSource } from '@/config/learnerDataSource'
 import {
   learnerTrainingRepository,
+  createRealGazeSubmission,
   buildTrainingResponse,
   createMockGazeSubmission,
   createMockVoiceFile,
@@ -35,6 +36,7 @@ import {
   type LearnerTraceSubmissionResponse,
   type LearnerTrainingIntro,
   type MappedTrainingQuestion,
+  type DeviceGazeSample,
 } from '@/features/learner/training'
 import { getCachedStudent } from '@/services/learnerDataRepository'
 import { useLearnerErrorModalStore } from '@/stores/learnerErrorModal'
@@ -93,12 +95,21 @@ const pendingNextResponse = ref<LearnerTraceSubmissionResponse | undefined>()
 const recordedQuestionNumbers = new Set<number>()
 const gazeSessionId = ref<string | null>(null)
 const gazeSessionCompleted = ref(false)
-const gazeSamples: Array<{
-  x: number
-  y: number
-  capturedAtMs: number
-  questionNumber: number
-}> = []
+const gazeSamples: DeviceGazeSample[] = []
+const gazeDebugVisible = computed(() =>
+  import.meta.env.DEV
+  || route.query.gazeDebug === '1'
+  || import.meta.env.VITE_GAZE_DEBUG_PANEL === 'true',
+)
+const gazeTransferDebug = ref({
+  source: mockDeviceSubmissionsEnabled ? 'mock' : 'real',
+  start: 'idle',
+  end: 'idle',
+  sessionId: '',
+  sampleCount: 0,
+  lastSampleAt: '',
+  lastError: '',
+})
 // 구현된 액티비티 컴포넌트만 매핑. 준비 중 유형은 여기 없으며(도달 불가),
 // 향후 추가 시 이 맵에만 등록하면 됩니다.
 const activityComponent = computed<Component | null>(() =>
@@ -182,6 +193,19 @@ const displayedHint = computed(() => presentTrainingHint(
 ))
 const deviceFallbackEnabled = import.meta.env.DEV || mockDeviceSubmissionsEnabled
 
+const updateGazeTransferDebug = (patch: Partial<typeof gazeTransferDebug.value>) => {
+  gazeTransferDebug.value = {
+    ...gazeTransferDebug.value,
+    ...patch,
+    sampleCount: gazeSamples.length,
+    source: mockDeviceSubmissionsEnabled ? 'mock' : 'real',
+  }
+  window.localStorage.setItem(
+    'iread-gaze-transfer-debug',
+    JSON.stringify(gazeTransferDebug.value),
+  )
+}
+
 const onGazeSample = (event: Event) => {
   if (phase.value !== 'playing' || !gazeSessionId.value) return
   const detail = (event as CustomEvent<Record<string, unknown>>).detail
@@ -194,6 +218,7 @@ const onGazeSample = (event: Event) => {
     capturedAtMs: Date.now(),
     questionNumber: session.currentQuestionNumber.value,
   })
+  updateGazeTransferDebug({ lastSampleAt: new Date().toLocaleTimeString() })
 }
 
 onMounted(async () => {
@@ -319,6 +344,7 @@ const startPlaying = async () => {
         serverQuestions.value.some((question) => question.requiredInputs.includes('GAZE'))
         && !gazeSessionId.value
       ) {
+        updateGazeTransferDebug({ start: 'sending', lastError: '' })
         const gazeSession = await learnerGazeRepository.start({
           studentId: getCachedStudent().studentId,
           contentType: challengeTrackId.value ? 'TEST' : 'TRAINING',
@@ -331,6 +357,10 @@ const startPlaying = async () => {
                 : 'SKIPPED',
         })
         gazeSessionId.value = gazeSession.gazeSessionId
+        updateGazeTransferDebug({
+          start: 'sent',
+          sessionId: gazeSession.gazeSessionId,
+        })
       }
     }
     phase.value = 'playing'
@@ -547,7 +577,8 @@ const saveAndFinish = async () => {
       if (gazeSessionId.value && !gazeSessionCompleted.value) {
         const gazeData = mockDeviceSubmissionsEnabled
           ? createMockGazeSubmission(serverQuestions.value)
-          : { schemaVersion: 1, samples: gazeSamples }
+          : createRealGazeSubmission(serverQuestions.value, gazeSamples)
+        updateGazeTransferDebug({ end: 'sending', lastError: '' })
         await learnerGazeRepository.end(
           gazeSessionId.value,
           getCachedStudent().studentId,
@@ -555,6 +586,7 @@ const saveAndFinish = async () => {
           gazeData,
         )
         gazeSessionCompleted.value = true
+        updateGazeTransferDebug({ end: 'sent' })
       }
       if (!challengeTrackId.value) {
         await dailyCurriculum.loadCurrentCurriculum()
@@ -570,6 +602,9 @@ const saveAndFinish = async () => {
       session.savingState.status = 'success'
       ok = true
     } catch (error) {
+      updateGazeTransferDebug({
+        lastError: error instanceof Error ? error.message : 'gaze 전송 확인 중 오류가 발생했습니다.',
+      })
       session.savingState.status = 'failed'
       session.savingState.errorMessage =
         error instanceof Error ? error.message : '학습을 마무리하지 못했습니다.'
@@ -783,6 +818,37 @@ const isSavingFailed = computed(() => session.savingState.status === 'failed')
         </section>
       </div>
     </Transition>
+
+    <aside v-if="gazeDebugVisible" class="gaze-debug-panel" aria-live="polite">
+      <strong>Gaze transfer</strong>
+      <dl>
+        <div>
+          <dt>source</dt>
+          <dd>{{ gazeTransferDebug.source }}</dd>
+        </div>
+        <div>
+          <dt>start</dt>
+          <dd>{{ gazeTransferDebug.start }}</dd>
+        </div>
+        <div>
+          <dt>end</dt>
+          <dd>{{ gazeTransferDebug.end }}</dd>
+        </div>
+        <div>
+          <dt>session</dt>
+          <dd>{{ gazeTransferDebug.sessionId || '-' }}</dd>
+        </div>
+        <div>
+          <dt>samples</dt>
+          <dd>{{ gazeTransferDebug.sampleCount }}</dd>
+        </div>
+        <div>
+          <dt>last</dt>
+          <dd>{{ gazeTransferDebug.lastSampleAt || '-' }}</dd>
+        </div>
+      </dl>
+      <p v-if="gazeTransferDebug.lastError">{{ gazeTransferDebug.lastError }}</p>
+    </aside>
 
     <!-- 폴백: 알 수 없는 레슨 -->
     <div v-if="!lesson" class="fallback">

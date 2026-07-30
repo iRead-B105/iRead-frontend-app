@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { MappedTrainingQuestion } from './trainingQuestionMapper'
 import {
   createMockGazeSubmission,
+  createRealGazeSubmission,
   createMockVoiceFile,
   mockDeviceSubmissionsEnabled,
 } from './mockDeviceSubmissions'
@@ -69,5 +70,20 @@ describe('mock device submissions', () => {
         visitCount: 1,
       }),
     ])
+  })
+
+  it('real gaze samples create backend-compatible word metrics', () => {
+    const gazeData = createRealGazeSubmission([mappedQuestion()], [
+      { x: 320, y: 240, capturedAtMs: 1_000, questionNumber: 1 },
+      { x: 340, y: 260, capturedAtMs: 1_100, questionNumber: 1 },
+    ])
+
+    expect(gazeData.samples).toHaveLength(2)
+    expect(gazeData.words).toHaveLength(2)
+    expect(gazeData.words[0]).toMatchObject({
+      questionNo: 1,
+      targetIndex: 0,
+      visitCount: 2,
+    })
   })
 })

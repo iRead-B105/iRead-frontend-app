@@ -1,7 +1,19 @@
 import type { MappedTrainingQuestion } from './trainingQuestionMapper'
 
 // 실제 장치 연동 전까지 API 모드의 VOICE/GAZE 필수 입력을 목데이터로 제출한다.
-export const mockDeviceSubmissionsEnabled = true
+function parseBooleanEnv(value: string | undefined, defaultValue: boolean): boolean {
+  if (value === undefined || value === '') return defaultValue
+  if (['1', 'true', 'yes', 'on'].includes(value.toLowerCase())) return true
+  if (['0', 'false', 'no', 'off'].includes(value.toLowerCase())) return false
+  throw new TypeError(
+    `[아동 환경설정] VITE_MOCK_DEVICE_SUBMISSIONS는 true 또는 false여야 합니다. 현재 값: ${value}`,
+  )
+}
+
+export const mockDeviceSubmissionsEnabled = parseBooleanEnv(
+  import.meta.env.VITE_MOCK_DEVICE_SUBMISSIONS,
+  true,
+)
 
 const MOCK_SAMPLE_RATE = 8_000
 const MOCK_AUDIO_DURATION_MS = 250
@@ -62,6 +74,46 @@ export interface MockGazeSubmission {
   }[]
 }
 
+export interface DeviceGazeSample {
+  readonly x: number
+  readonly y: number
+  readonly capturedAtMs: number
+  readonly questionNumber: number
+}
+
+function createWordMetrics(
+  questions: readonly MappedTrainingQuestion[],
+  samples: readonly DeviceGazeSample[],
+): MockGazeSubmission['words'] {
+  return questions
+    .filter((question) => question.requiredInputs.includes('GAZE'))
+    .flatMap((question) => {
+      const sourceText =
+        question.expectedText
+        ?? question.question.targetText
+        ?? question.question.targetResult
+        ?? ''
+      const questionSamples = samples.filter((sample) =>
+        sample.questionNumber === question.questionNumber,
+      )
+      const firstSeenMs = 0
+      const lastSeenMs = questionSamples.length > 0
+        ? Math.max(240, questionSamples.length * 80)
+        : 0
+      return wordsFrom(sourceText).map((text, tokenIndex) => ({
+        questionNo: question.questionNumber,
+        targetIndex: question.recordingTargetIndex ?? 0,
+        tokenIndex,
+        text,
+        dwellMs: lastSeenMs,
+        visitCount: questionSamples.length > 0 ? Math.max(1, questionSamples.length) : 0,
+        regressionCount: 0,
+        firstSeenMs,
+        lastSeenMs,
+      }))
+    })
+}
+
 export function createMockGazeSubmission(
   questions: readonly MappedTrainingQuestion[],
 ): MockGazeSubmission {
@@ -75,28 +127,21 @@ export function createMockGazeSubmission(
     capturedAtMs: baseTime + index * 500,
     questionNumber: question.questionNumber,
   }))
-  const words = gazeQuestions.flatMap((question) => {
-    const sourceText =
-      question.expectedText
-      ?? question.question.targetText
-      ?? question.question.targetResult
-      ?? ''
-    return wordsFrom(sourceText).map((text, tokenIndex) => ({
-      questionNo: question.questionNumber,
-      targetIndex: question.recordingTargetIndex ?? 0,
-      tokenIndex,
-      text,
-      dwellMs: 420,
-      visitCount: 1,
-      regressionCount: 0,
-      firstSeenMs: tokenIndex * 500,
-      lastSeenMs: tokenIndex * 500 + 420,
-    }))
-  })
 
   return {
     schemaVersion: 1,
     samples,
-    words,
+    words: createWordMetrics(questions, samples),
+  }
+}
+
+export function createRealGazeSubmission(
+  questions: readonly MappedTrainingQuestion[],
+  samples: readonly DeviceGazeSample[],
+): MockGazeSubmission {
+  return {
+    schemaVersion: 1,
+    samples,
+    words: createWordMetrics(questions, samples),
   }
 }
