@@ -165,6 +165,7 @@ const handleContinue = () => {
       categoryId: nextCurriculumItem.value.categoryId,
       lessonId: nextCurriculumItem.value.lesson.id,
     },
+    query: { trainingId: nextCurriculumItem.value.trainingId },
   })
 }
 </script>

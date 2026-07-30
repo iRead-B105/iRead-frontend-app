@@ -49,6 +49,15 @@ const loadCurrentCurriculum = () => {
   return loadPromise
 }
 
+const reloadCurrentCurriculum = async () => {
+  if (loadPromise) await loadPromise
+  loadPromise = null
+  await loadCurrentCurriculum()
+  if (curriculumError.value) {
+    throw new Error(curriculumError.value)
+  }
+}
+
 void loadCurrentCurriculum()
 
 export function useDailyCurriculum() {
@@ -76,5 +85,6 @@ export function useDailyCurriculum() {
     isTodayComplete,
     markLessonComplete,
     loadCurrentCurriculum,
+    reloadCurrentCurriculum,
   }
 }

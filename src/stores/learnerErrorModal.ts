@@ -11,7 +11,10 @@ const FRIENDLY_ERROR_NAMES: Readonly<Record<string, string>> = {
 
 export function resolveLearnerErrorName(error: unknown, fallback = '알 수 없는 오류'): string {
   if (error instanceof ApiError) {
-    return FRIENDLY_ERROR_NAMES[error.code] ?? error.code
+    const message = error.message.trim()
+    const friendlyName = FRIENDLY_ERROR_NAMES[error.code]
+    if (friendlyName && message) return `${friendlyName}: ${message}`
+    return message || friendlyName || error.code
   }
 
   if (error instanceof Error) {

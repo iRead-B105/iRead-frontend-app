@@ -722,18 +722,24 @@ function emitState() {
   )
 }
 
-export function useTobiiGazeBridge() {
+export function useTobiiGazeBridge(options: { autoConnect?: boolean } = {}) {
+  const autoConnect = options.autoConnect ?? true
   onMounted(() => {
     consumers += 1
     if (consumers > 1) {
       emitState()
       return
     }
-    userStopped = false
     readStoredTransform()
     readStoredAnchors()
     installControls()
-    connect()
+    if (autoConnect) {
+      userStopped = false
+      connect()
+    } else {
+      userStopped = true
+      emitState()
+    }
   })
 
   onBeforeUnmount(() => {
