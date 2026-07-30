@@ -21,22 +21,7 @@ import {
   useSkillChallenge,
 } from '@/composables/useSkillChallenge'
 import TrainingIntro from '@/components/training/TrainingIntro.vue'
-import ListenAndSelectActivity from '@/components/training/activities/ListenAndSelectActivity.vue'
-import AudioLetterChoiceActivity from '@/components/training/activities/AudioLetterChoiceActivity.vue'
-import GazeTraceActivity from '@/components/training/activities/GazeTraceActivity.vue'
-import LetterBuildActivity from '@/components/training/activities/LetterBuildActivity.vue'
-import SoundManipulationActivity from '@/components/training/activities/SoundManipulationActivity.vue'
-import HangulBattleActivity from '@/components/training/activities/HangulBattleActivity.vue'
-import WordReadingGridActivity from '@/components/training/activities/WordReadingGridActivity.vue'
-import SentenceReadingActivity from '@/components/training/activities/SentenceReadingActivity.vue'
-import SoundBuildActivity from '@/components/training/activities/SoundBuildActivity.vue'
-import SoundOmitActivity from '@/components/training/activities/SoundOmitActivity.vue'
-import SoundChoiceActivity from '@/components/training/activities/SoundChoiceActivity.vue'
-import FillBlankActivity from '@/components/training/activities/FillBlankActivity.vue'
-import SentenceOrderActivity from '@/components/training/activities/SentenceOrderActivity.vue'
-import CardCombineActivity from '@/components/training/activities/CardCombineActivity.vue'
-import SentenceChoiceActivity from '@/components/training/activities/SentenceChoiceActivity.vue'
-import ReadAloudActivity from '@/components/training/activities/ReadAloudActivity.vue'
+import { trainingActivityComponents } from '@/components/training/activityRegistry'
 import PageBackButton from '@/components/common/PageBackButton.vue'
 import leaveTrainingRabbit from '@/assets/training/ui/leave-training-rabbit.png'
 import { learnerDataSource } from '@/config/learnerDataSource'
@@ -115,27 +100,8 @@ const gazeSamples: Array<{
 }> = []
 // 구현된 액티비티 컴포넌트만 매핑. 준비 중 유형은 여기 없으며(도달 불가),
 // 향후 추가 시 이 맵에만 등록하면 됩니다.
-const activityComponents: Partial<Record<TrainingActivityType, Component>> = {
-  'gaze-trace': GazeTraceActivity,
-  'audio-letter-choice': AudioLetterChoiceActivity,
-  'letter-build': LetterBuildActivity,
-  'sound-manipulation': SoundManipulationActivity,
-  'hangul-battle': HangulBattleActivity,
-  'word-reading-grid': WordReadingGridActivity,
-  'sentence-reading': SentenceReadingActivity,
-  'listen-and-select': ListenAndSelectActivity,
-  'sound-choice': SoundChoiceActivity,
-  'sound-omit': SoundOmitActivity,
-  'sound-blend': SoundBuildActivity,
-  'card-combine': CardCombineActivity,
-  'sentence-choice': SentenceChoiceActivity,
-  'read-aloud': ReadAloudActivity,
-  'fill-blank': FillBlankActivity,
-  'sentence-order': SentenceOrderActivity,
-}
-
 const activityComponent = computed<Component | null>(() =>
-  lesson.value ? (activityComponents[lesson.value.activityType] ?? null) : null,
+  lesson.value ? (trainingActivityComponents[lesson.value.activityType] ?? null) : null,
 )
 
 type Phase = 'intro' | 'playing' | 'saving'

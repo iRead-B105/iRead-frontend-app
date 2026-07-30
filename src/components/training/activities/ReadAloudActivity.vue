@@ -10,6 +10,7 @@ import type { TrainingQuestion } from '@/types/training'
 import { useTrainingSession } from '@/composables/useTrainingSession'
 import { useAudioPlayer } from '@/composables/useAudioPlayer'
 import { useVoiceRecorder } from '@/composables/useVoiceRecorder'
+import { mockDeviceSubmissionsEnabled } from '@/features/learner/training/mockDeviceSubmissions'
 import SoundButton from '../SoundButton.vue'
 
 const props = defineProps<{ question: TrainingQuestion }>()
@@ -53,6 +54,10 @@ watch(
 )
 
 const handleMicToggle = () => {
+  if (mockDeviceSubmissionsEnabled) {
+    session.markRecordingComplete({ isMock: true, audioUrl: null })
+    return
+  }
   if (isRecording.value) {
     recorder.stop()
   } else {
