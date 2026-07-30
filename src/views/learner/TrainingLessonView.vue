@@ -178,6 +178,9 @@ const displayQuestion = computed(() => {
   if (!question || !lesson.value) return question
   return {
     ...question,
+    requiredInputs: learnerDataSource === 'api'
+      ? serverQuestions.value[session.progressState.currentQuestionIndex]?.requiredInputs
+      : undefined,
     instruction: lesson.value.activityType === 'gaze-trace'
       ? conciseInstructions['gaze-trace']
       : question.instruction.length <= 14

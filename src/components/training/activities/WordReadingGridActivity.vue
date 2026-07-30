@@ -3,7 +3,10 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import type { TrainingQuestion } from '@/types/training'
 import { useAudioPlayer } from '@/composables/useAudioPlayer'
 import { useTrainingSession } from '@/composables/useTrainingSession'
-import { mockVoiceSubmissionsEnabled } from '@/features/learner/training/mockDeviceSubmissions'
+import {
+  mockGazeSubmissionsEnabled,
+  mockVoiceSubmissionsEnabled,
+} from '@/features/learner/training/mockDeviceSubmissions'
 
 const props = defineProps<{ question: TrainingQuestion }>()
 defineEmits<{ next: [] }>()
@@ -54,6 +57,11 @@ let disposed = false
 const items = computed(() => props.question.readingWords ?? [])
 const allComplete = computed(() => items.value.length > 0 && completedIds.value.length === items.value.length)
 const activeWord = computed(() => items.value[activeIndex.value] ?? null)
+const completeByRealGaze = computed(() =>
+  mockVoiceSubmissionsEnabled
+  && !mockGazeSubmissionsEnabled
+  && props.question.requiredInputs?.includes('GAZE'),
+)
 const statusMessage = computed(() => {
   switch (messageState.value) {
     case 'listening': return '읽고 있어요'
@@ -185,11 +193,12 @@ const startReading = () => {
   started.value = true
   messageState.value = 'listening'
   lastProgressAt = Date.now()
-  if (mockVoiceSubmissionsEnabled) {
+  if (mockVoiceSubmissionsEnabled && !completeByRealGaze.value) {
     completedIds.value = items.value.map((item) => item.id)
     finishAllWords()
     return
   }
+  if (completeByRealGaze.value) return
   startRecognition()
 }
 
@@ -256,6 +265,17 @@ onMounted(() => {
   window.addEventListener('iread:speech', onExternalSpeech)
   stateTimer = setInterval(() => {
     if (!started.value || allComplete.value || readingHelp) return
+    if (completeByRealGaze.value) {
+      if (gazeIndex.value === activeIndex.value) {
+        if (!dwellStartedAt) dwellStartedAt = Date.now()
+        dwellProgress.value = Math.min(1, (Date.now() - dwellStartedAt) / 900)
+        if (dwellProgress.value >= 1) acceptCurrentWord()
+      } else {
+        dwellStartedAt = 0
+        dwellProgress.value = 0
+      }
+      return
+    }
     if (assistIndex.value === null && Date.now() - lastProgressAt >= 8000) activateAssist()
 
     if (assistIndex.value !== null && gazeIndex.value === assistIndex.value) {
