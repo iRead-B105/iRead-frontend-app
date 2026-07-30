@@ -67,4 +67,51 @@ describe('useDailyCurriculum', () => {
     expect(secondStudent.currentIndex.value).toBe(0)
     expect(secondStudent.curriculumItems).toHaveLength(1)
   })
+
+  it('같은 학습자로 다시 들어오면 모든 훈련 상태를 서버 값으로 갱신한다', async () => {
+    learnerState.studentId = '2099'
+    learnerState.fetchCurrentCurriculum
+      .mockResolvedValueOnce({
+        ...curriculum('190001', 'READY', 1),
+        trainings: [
+          {
+            ...curriculum('190001', 'READY', 1).trainings[0],
+            status: 'CURRENT' as const,
+          },
+          {
+            ...curriculum('190001', 'READY', 1).trainings[0],
+            trainingId: '190001-2',
+            order: 2,
+            status: 'LOCKED' as const,
+          },
+        ],
+      })
+      .mockResolvedValueOnce({
+        ...curriculum('190001', 'READY', 2),
+        trainings: [
+          {
+            ...curriculum('190001', 'READY', 1).trainings[0],
+            status: 'COMPLETED' as const,
+          },
+          {
+            ...curriculum('190001', 'READY', 1).trainings[0],
+            trainingId: '190001-2',
+            order: 2,
+            status: 'CURRENT' as const,
+          },
+        ],
+      })
+
+    const dailyCurriculum = useDailyCurriculum()
+    await dailyCurriculum.loadCurrentCurriculum()
+    expect(dailyCurriculum.curriculumItems.map((item) => item.status))
+      .toEqual(['CURRENT', 'LOCKED'])
+
+    await dailyCurriculum.reloadCurrentCurriculum()
+
+    expect(learnerState.fetchCurrentCurriculum).toHaveBeenCalledTimes(2)
+    expect(dailyCurriculum.currentIndex.value).toBe(1)
+    expect(dailyCurriculum.curriculumItems.map((item) => item.status))
+      .toEqual(['COMPLETED', 'CURRENT'])
+  })
 })

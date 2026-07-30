@@ -1,12 +1,14 @@
 import { computed, reactive, ref } from 'vue'
 import { findLessonSummary } from '@/mocks/trainingLookup'
 import { fetchCurrentCurriculum, getCachedStudent } from '@/services/learnerDataRepository'
+import type { LearnerTrainingStatus } from '@/features/learner/model'
 import type { TrainingLessonSummary } from '@/types/training'
 
 export interface DailyCurriculumItem {
   trainingId: string
   categoryId: string
   lesson: TrainingLessonSummary
+  status: LearnerTrainingStatus
 }
 
 export type CurriculumRoundStatus = 'preparing' | 'ready' | 'rest' | 'completed'
@@ -49,7 +51,12 @@ const loadCurrentCurriculum = () => {
         ...response.trainings.flatMap((training) => {
           const lesson = findLessonSummary(training.categoryId, training.lessonId)
           return lesson
-            ? [{ trainingId: training.trainingId, categoryId: training.categoryId, lesson }]
+            ? [{
+                trainingId: training.trainingId,
+                categoryId: training.categoryId,
+                lesson,
+                status: training.status,
+              }]
             : []
         }),
       )
@@ -75,7 +82,11 @@ const loadCurrentCurriculum = () => {
 
 const reloadCurrentCurriculum = async () => {
   const studentId = getCachedStudent().studentId
-  if (loadPromise && loadingStudentId === studentId) await loadPromise
+  if (loadPromise && loadingStudentId === studentId) {
+    await loadPromise
+    if (curriculumError.value) throw new Error(curriculumError.value)
+    return
+  }
   loadedStudentId = null
   await loadCurrentCurriculum()
   if (curriculumError.value) {
@@ -94,6 +105,10 @@ export function useDailyCurriculum() {
   const markLessonComplete = (lessonId: string) => {
     const lessonIndex = curriculumItems.findIndex((item) => item.lesson.id === lessonId)
     if (lessonIndex === currentIndex.value) {
+      const completed = curriculumItems[lessonIndex]
+      const next = curriculumItems[lessonIndex + 1]
+      if (completed) completed.status = 'COMPLETED'
+      if (next) next.status = 'CURRENT'
       currentIndex.value += 1
       if (currentIndex.value >= curriculumItems.length) curriculumStatus.value = 'completed'
     }

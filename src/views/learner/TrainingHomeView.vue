@@ -21,6 +21,8 @@ const categories = getAllCategories()
 const showAllTrainings = ref(false)
 const dailyCurriculum = useDailyCurriculum()
 
+void dailyCurriculum.reloadCurrentCurriculum().catch(() => undefined)
+
 watchEffect(() => {
   if (dailyCurriculum.isTodayComplete.value) {
     void router.replace({ name: 'training-today-complete' })
@@ -28,11 +30,11 @@ watchEffect(() => {
 })
 
 const curriculumSteps = computed<CurriculumPathStep[]>(() =>
-  dailyCurriculum.curriculumItems.map((step, index) => ({
+  dailyCurriculum.curriculumItems.map((step) => ({
     ...step,
-    status: index < dailyCurriculum.currentIndex.value
+    status: step.status === 'COMPLETED'
       ? 'complete'
-      : index === dailyCurriculum.currentIndex.value
+      : step.status === 'CURRENT'
         ? 'current'
         : 'locked',
   })),
