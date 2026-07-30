@@ -6,6 +6,7 @@ describe('useTrainingSession', () => {
 
   beforeEach(() => {
     session.setAnswerEvaluator(null)
+    session.setAnswerCompletedHandler(null)
     session.resetSession()
     session.startLesson({
       id: 'lesson-1',
@@ -80,5 +81,23 @@ describe('useTrainingSession', () => {
     await expect(session.submitAnswer()).resolves.toBe(true)
     expect(session.progressState.isCurrentCorrect).toBe(true)
     expect(session.progressState.completedQuestionIds).toEqual(['question-1'])
+  })
+
+  it('서버가 문항 제출을 완료하면 등록된 다음 문항 핸들러를 한 번 호출한다', async () => {
+    const onCompleted = vi.fn()
+    session.setAnswerEvaluator(vi.fn().mockResolvedValue({
+      attemptNo: 1,
+      correct: true,
+      questionCompleted: true,
+      canRetry: false,
+      hint: null,
+      correctResponse: null,
+    }))
+    session.setAnswerCompletedHandler(onCompleted)
+
+    session.selectAnswer('choice-1')
+    await expect(session.submitAnswer()).resolves.toBe(true)
+
+    expect(onCompleted).toHaveBeenCalledOnce()
   })
 })

@@ -305,6 +305,11 @@ onMounted(async () => {
             }
           }
         })
+        session.setAnswerCompletedHandler(
+          challengeTrackId.value
+            ? () => goNext()
+            : null,
+        )
       } catch (error) {
         integrationError.value =
           error instanceof Error ? error.message : '서버 훈련 정보를 불러오지 못했습니다.'
@@ -390,6 +395,7 @@ onBeforeUnmount(() => {
     )
   }
   session.setAnswerEvaluator(null)
+  session.setAnswerCompletedHandler(null)
   resolveLeaveConfirmation?.(false)
   resolveLeaveConfirmation = null
 })
