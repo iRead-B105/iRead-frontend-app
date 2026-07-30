@@ -39,6 +39,7 @@ onMounted(async () => {
       <RouterView v-slot="{ Component }">
         <component
           :is="Component"
+          :key="route.fullPath"
           :class="{ 'learner-screen-with-header': !hideHeader }"
         />
       </RouterView>

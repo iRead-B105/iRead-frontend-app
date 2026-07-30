@@ -2,6 +2,7 @@ import type {
   LearnerCurrentCurriculum,
   LearnerDeviceStatus,
   LearnerGrowthArea,
+  LearnerGazeCalibrationGuide,
   LearnerRequestOptions,
   LearnerStoryDetail,
   LearnerStoryFriend,
@@ -43,4 +44,8 @@ export interface LearnerContentRepository {
     studentId: string,
     options?: LearnerRequestOptions,
   ) => Promise<LearnerDeviceStatus>
+  readonly getGazeCalibrationGuide: (
+    studentId: string,
+    options?: LearnerRequestOptions,
+  ) => Promise<LearnerGazeCalibrationGuide>
 }

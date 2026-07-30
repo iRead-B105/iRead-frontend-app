@@ -3,6 +3,8 @@ import type { LearnerRequestOptions } from '../model'
 export interface LearnerTrainingIntro {
   readonly trainingId: string
   readonly trainingTemplateId: string
+  readonly dailyCurriculumId: string
+  readonly sequenceNo: number
   readonly status: string
   readonly trainingName: string
   readonly generatedData: unknown
@@ -17,15 +19,65 @@ export interface LearnerTrainingQuestionPayload {
   readonly question: unknown
 }
 
-export interface LearnerTrainingSelectionInput {
-  readonly wordId: number
-  readonly isCorrect: boolean
-  readonly totalScore: number
+export type LearnerTrainingResponseType =
+  | 'TRACE'
+  | 'SINGLE_CHOICE'
+  | 'ORDERING'
+  | 'COMPONENT_BUILD'
+  | 'TEXT_INPUT'
+  | 'AUDIO'
+
+export interface LearnerTrainingSubmissionInput {
+  readonly submissionId: string
+  readonly responseType: LearnerTrainingResponseType
+  readonly response: Readonly<Record<string, unknown>>
+}
+
+export interface LearnerTraceSubmissionResponse {
+  readonly canvasWidth: number
+  readonly canvasHeight: number
+  readonly strokes: readonly {
+    readonly points: readonly {
+      readonly x: number
+      readonly y: number
+      readonly elapsedMs: number
+      readonly pressure?: number
+    }[]
+  }[]
+}
+
+export interface LearnerTrainingFeedback {
+  readonly submissionId: string
+  readonly attemptNo: number
+  readonly maxAttempts: number
+  readonly remainingAttempts: number
+  readonly correct: boolean
+  readonly questionCompleted: boolean
+  readonly canRetry: boolean
+  readonly hint: string | null
+  readonly correctResponse: unknown
+}
+
+export interface LearnerTrainingRecordingResult {
+  readonly trainingId: string
+  readonly questionNumber: number
+  readonly pronunciationAccuracyScore: number
+  readonly pronunciationThreshold: number
+  readonly attemptNo: number
+  readonly maxAttempts: number
+  readonly passed: boolean
+  readonly questionCompleted: boolean
+  readonly canRetry: boolean
+  readonly words: readonly {
+    readonly surfaceText: string
+    readonly pronunciationAccuracyScore: number
+    readonly pronunciationErrorType: string
+  }[]
 }
 
 export interface LearnerTrainingRecordingInput {
-  readonly wordId: number
-  readonly targetIndex: number
+  readonly wordId?: number
+  readonly targetIndex?: number
   readonly tokenIndex?: number
   readonly expectedText: string
   readonly audioFile: File
@@ -48,22 +100,17 @@ export interface LearnerTrainingRepository {
   ) => Promise<LearnerTrainingQuestionPayload>
   readonly start: (studentId: string, trainingId: string) => Promise<void>
   readonly reset: (studentId: string, trainingId: string) => Promise<void>
-  readonly saveSelection: (
+  readonly saveSubmission: (
     studentId: string,
     trainingId: string,
     questionNumber: number,
-    input: LearnerTrainingSelectionInput,
-  ) => Promise<void>
+    input: LearnerTrainingSubmissionInput,
+  ) => Promise<LearnerTrainingFeedback>
   readonly saveRecording: (
     studentId: string,
     trainingId: string,
     questionNumber: number,
     input: LearnerTrainingRecordingInput,
-  ) => Promise<void>
-  readonly complete: (
-    studentId: string,
-    trainingId: string,
-    result: unknown,
-    completedAt: string,
-  ) => Promise<void>
+  ) => Promise<LearnerTrainingRecordingResult>
+  readonly complete: (studentId: string, trainingId: string) => Promise<void>
 }

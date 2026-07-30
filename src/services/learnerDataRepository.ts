@@ -9,6 +9,7 @@ import { learnerContentRepository } from '@/features/learner/content'
 import type {
   LearnerCurrentCurriculum,
   LearnerDeviceStatus,
+  LearnerGazeCalibrationGuide,
   LearnerGrowthArea,
   LearnerStudent,
   LearnerStoryDetail,
@@ -41,8 +42,10 @@ export const getCachedStudent = (): LearnerStudent => {
   return { ...learnerRuntimeMock.auth.linkedStudents[0]! }
 }
 
-export const fetchCurrentCurriculum = (): Promise<LearnerCurrentCurriculum> =>
-  learnerContentRepository.getCurrentCurriculum(activeStudentId())
+export const fetchCurrentCurriculum = (
+  studentId: string = activeStudentId(),
+): Promise<LearnerCurrentCurriculum> =>
+  learnerContentRepository.getCurrentCurriculum(studentId)
 
 export const fetchStoryLibrary = (): Promise<LearnerStoryLibrary> =>
   learnerContentRepository.getStoryLibrary(activeStudentId())
@@ -77,6 +80,9 @@ export const getInitialDeviceStatus = (): LearnerDeviceStatus =>
 
 export const fetchDeviceStatus = (): Promise<LearnerDeviceStatus> =>
   learnerContentRepository.getDeviceStatus(activeStudentId())
+
+export const fetchGazeCalibrationGuide = (): Promise<LearnerGazeCalibrationGuide> =>
+  learnerContentRepository.getGazeCalibrationGuide(activeStudentId())
 
 export const personalizeRuntimeValue = <T>(value: T): T => {
   const studentName = getCachedStudent().name

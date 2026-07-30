@@ -15,6 +15,11 @@ const { progressState } = session
 const choices = computed<TrainingChoice[]>(() => props.question.choices ?? [])
 const hasWordChoices = computed(() => choices.value.some((choice) => !choice.letter && choice.text))
 const isAnswered = computed(() => progressState.isCurrentCorrect === true)
+const showAnswerHint = (choice: TrainingChoice) =>
+  progressState.hintLevel >= 2 && choice.id === props.question.answer
+const targetAudioText = computed(() =>
+  props.question.audioText ?? props.question.targetText ?? '',
+)
 
 const cardState = (choice: TrainingChoice): 'default' | 'selected' | 'correct' | 'wrong' | 'disabled' => {
   if (isAnswered.value) return choice.id === props.question.answer ? 'correct' : 'disabled'
@@ -49,8 +54,8 @@ const handleSelect = (choice: TrainingChoice) => {
         </div>
         <strong v-if="question.targetText" class="target-word">{{ question.targetText }}</strong>
         <SoundButton
-          v-if="question.targetText"
-          :text="question.targetText"
+          v-if="targetAudioText"
+          :text="targetAudioText"
           size="medium"
           variant="primary"
         />
@@ -62,9 +67,13 @@ const handleSelect = (choice: TrainingChoice) => {
             <div
               v-if="!choice.letter && choice.text"
               class="word-choice"
-              :class="`word-choice--${cardState(choice)}`"
+              :class="[
+                `word-choice--${cardState(choice)}`,
+                { 'answer-hint': showAnswerHint(choice) },
+              ]"
             >
               <SoundButton
+                v-if="question.choiceAudioEnabled !== false"
                 :text="choice.text"
                 size="medium"
                 variant="ghost"
@@ -78,6 +87,12 @@ const handleSelect = (choice: TrainingChoice) => {
                 :aria-label="`${choice.text} 선택`"
                 @click="handleSelect(choice)"
               >
+                <img
+                  v-if="choice.imageUrl"
+                  class="word-choice-image"
+                  :src="choice.imageUrl"
+                  :alt="choice.text"
+                />
                 <strong>{{ choice.text }}</strong>
               </button>
             </div>
@@ -86,6 +101,7 @@ const handleSelect = (choice: TrainingChoice) => {
               :jamo="choice.letter?.jamo ?? ''"
               :type="choice.letter?.type ?? 'consonant'"
               :state="cardState(choice)"
+              :class="{ 'answer-hint': showAnswerHint(choice) }"
               :selectable="!isAnswered"
               size="large"
               surface="choice"

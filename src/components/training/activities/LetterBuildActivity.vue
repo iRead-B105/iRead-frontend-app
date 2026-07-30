@@ -54,6 +54,18 @@ const placeChoice = (choiceId: string, slotId: string) => {
   session.selectAnswer('배치 중')
 }
 
+const placeChoiceByClick = (choiceId: string) => {
+  if (isCorrect.value) return
+  const targetSlot = slots.value.find((slot) => choiceId.startsWith(`${slot.id}-`))
+  if (!targetSlot) return
+  if (placements[targetSlot.id] === choiceId) {
+    delete placements[targetSlot.id]
+    session.selectAnswer('배치 중')
+    return
+  }
+  placeChoice(choiceId, targetSlot.id)
+}
+
 const dropOn = (event: DragEvent, slotId: string) => {
   if (isCorrect.value) return
   const choiceId = event.dataTransfer?.getData('text/plain') || draggedChoiceId.value
@@ -90,14 +102,14 @@ const releasePointer = () => {
 onMounted(() => window.addEventListener('pointerup', releasePointer))
 onUnmounted(() => window.removeEventListener('pointerup', releasePointer))
 
-const submit = () => {
+const submit = async () => {
   if (!allFilled.value || isCorrect.value) return
   const correctArrangement = slots.value.every(
     (item) => placements[item.id] === item.answerChoiceId,
   )
   const arrangedValue = slots.value.map((item) => placements[item.id]).join('|')
   session.selectAnswer(correctArrangement ? props.question.answer : arrangedValue)
-  const completed = session.submitAnswer()
+  const completed = await session.submitAnswer()
 
   if (completed) {
     void audio.speak(props.question.combined ?? props.question.audioText ?? '', 0.78)
@@ -177,6 +189,9 @@ watch(
             @dragstart="startDrag($event, choice.id)"
             @dragend="activeSlotId = null"
             @pointerdown="startPointerDrag(choice.id)"
+            @click="placeChoiceByClick(choice.id)"
+            @keydown.enter.prevent="placeChoiceByClick(choice.id)"
+            @keydown.space.prevent="placeChoiceByClick(choice.id)"
           >
             {{ choice.text }}
           </div>

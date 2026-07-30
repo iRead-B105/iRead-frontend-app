@@ -9,20 +9,20 @@ import {
 describe('learner error modal', () => {
   beforeEach(() => setActivePinia(createPinia()))
 
-  it('API 오류 코드를 짧은 오류명으로 표시한다', () => {
+  it('알려진 API 오류는 짧은 오류명과 상세 메시지를 함께 표시한다', () => {
     expect(resolveLearnerErrorName(new ApiError({
       status: 0,
       code: 'NETWORK_ERROR',
       message: 'fetch failed',
-    }))).toBe('네트워크 연결 오류')
+    }))).toBe('네트워크 연결 오류: fetch failed')
   })
 
-  it('알 수 없는 API 코드는 그대로 표시한다', () => {
+  it('알 수 없는 API 오류도 코드 대신 상세 메시지를 표시한다', () => {
     expect(resolveLearnerErrorName(new ApiError({
       status: 500,
       code: 'CURRICULUM_LOAD_FAILED',
       message: 'failed',
-    }))).toBe('CURRICULUM_LOAD_FAILED')
+    }))).toBe('failed')
   })
 
   it('열기와 닫기 상태를 관리한다', () => {

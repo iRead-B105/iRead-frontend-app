@@ -6,6 +6,7 @@ import { useTrainingSession } from '@/composables/useTrainingSession'
 import readingActiveIcon from '@/assets/icons/reading-active.svg'
 import checkIcon from '@/assets/icons/check.svg'
 import progressStar from '@/assets/training/ui/progress-star.png'
+import { mockDeviceSubmissionsEnabled } from '@/features/learner/training/mockDeviceSubmissions'
 
 const props = defineProps<{ question: TrainingQuestion }>()
 defineEmits<{ next: [] }>()
@@ -187,6 +188,11 @@ const startReading = () => {
   started.value = true
   messageState.value = 'listening'
   lastProgressAt = Date.now()
+  if (mockDeviceSubmissionsEnabled) {
+    completedIds.value = items.value.map((item) => item.id)
+    finishAllWords()
+    return
+  }
   startRecognition()
 }
 

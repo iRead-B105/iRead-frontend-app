@@ -1,10 +1,11 @@
 import fallbackCover from '@/assets/story/ui/new-book-icon.png'
 import fallbackScene from '@/assets/story/story-reader-turtle-scene-mock.png'
 import { learnerApiClient } from '../learnerApiClient'
-import { LearnerContractUnavailableError } from '../integrationError'
+import { getGrowthAreaId, getTrainingTemplateMapping } from './trainingTemplateMapping'
 import type {
   LearnerCurrentCurriculum,
   LearnerDeviceStatus,
+  LearnerGazeCalibrationGuide,
   LearnerGrowthArea,
   LearnerStoryDetail,
   LearnerStoryFriend,
@@ -18,10 +19,12 @@ interface StoryShelfDto {
     readonly storyTemplateId: number
     readonly createdAt: string
     readonly storyStatus: 'UNREAD' | 'IN_PROGRESS' | 'COMPLETED'
+    readonly progress: number
   }[]
   readonly storyTemplates: readonly {
     readonly storyTemplateId: number
     readonly templateTitle: string
+    readonly imageUrl: string | null
   }[]
 }
 
@@ -32,6 +35,7 @@ interface StoryLinesDto {
     readonly imageUrl: string | null
     readonly requiresBranchInput: boolean
     readonly lineText: string
+    readonly sceneOrder?: number
     readonly lineOrder: number
     readonly readAt: string | null
   }[]
@@ -54,14 +58,78 @@ interface GazeDeviceStatusDto {
   readonly connected: boolean
 }
 
+interface CurrentTrainingListDto {
+  readonly curriculumId: number
+  readonly curriculumStatus: 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED'
+  readonly trainings: readonly {
+    readonly trainingId: number
+    readonly trainingTemplateId: number
+    readonly sequenceNo: number
+    readonly unitName: string
+    readonly trainingName: string
+    readonly status: 'NOT_READY' | 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED'
+  }[]
+}
+
+interface GrowthDto {
+  readonly trainingProgress: readonly {
+    readonly trainingTemplateId: number
+    readonly trainingTemplateName: string
+    readonly completedCount: number
+  }[]
+  readonly growthAreas?: readonly {
+    readonly areaId: 1 | 2 | 3
+    readonly name: string
+    readonly stage: number
+    readonly completedCount: number
+    readonly updatedAt: string | null
+  }[]
+}
+
 export class ApiLearnerContentRepository implements LearnerContentRepository {
   readonly source = 'api' as const
 
-  async getCurrentCurriculum(_studentId: string): Promise<LearnerCurrentCurriculum> {
-    throw new LearnerContractUnavailableError(
-      'LEARNER_CURRENT_CURRICULUM_CONTRACT_REQUIRED',
-      '학습 앱 권한으로 현재 커리큘럼을 조회하는 백엔드 계약이 필요합니다.',
+  async getCurrentCurriculum(
+    studentId: string,
+    options: Parameters<LearnerContentRepository['getCurrentCurriculum']>[1] = {},
+  ): Promise<LearnerCurrentCurriculum> {
+    const response = await learnerApiClient.request<CurrentTrainingListDto>(
+      `/api/app/training/${encodeURIComponent(studentId)}`,
+      { signal: options.signal },
     )
+    const orderedTrainings = [...response.trainings].sort(
+      (left, right) => left.sequenceNo - right.sequenceNo,
+    )
+    const current = orderedTrainings.find((training) => (
+      training.status === 'NOT_STARTED' || training.status === 'IN_PROGRESS'
+    ))
+    const allCompleted = orderedTrainings.length > 0
+      && orderedTrainings.every((training) => training.status === 'COMPLETED')
+
+    return {
+      curriculumId: String(response.curriculumId),
+      studyDate: null,
+      status: response.curriculumStatus === 'COMPLETED' || allCompleted ? 'COMPLETED' : 'READY',
+      currentOrder: current?.sequenceNo ?? orderedTrainings.length + 1,
+      trainings: orderedTrainings.flatMap((training) => {
+        const mapping = getTrainingTemplateMapping(training.trainingTemplateId)
+        if (!mapping) return []
+        return [{
+          trainingId: String(training.trainingId),
+          trainingTemplateId: String(training.trainingTemplateId),
+          order: training.sequenceNo,
+          categoryId: mapping.categoryId,
+          lessonId: mapping.lessonId,
+          unitName: training.unitName,
+          name: training.trainingName,
+          status: training.status === 'COMPLETED'
+            ? 'COMPLETED' as const
+            : training.trainingId === current?.trainingId
+              ? 'CURRENT' as const
+              : 'LOCKED' as const,
+        }]
+      }),
+    }
   }
 
   async getStoryLibrary(
@@ -83,7 +151,7 @@ export class ApiLearnerContentRepository implements LearnerContentRepository {
       templates: response.storyTemplates.map((template) => ({
         templateId: String(template.storyTemplateId),
         title: template.templateTitle,
-        coverImageUrl: fallbackCover,
+        coverImageUrl: template.imageUrl || fallbackCover,
       })),
       stories: response.stories.map((story, index) => {
         const template = templates.get(String(story.storyTemplateId))
@@ -94,9 +162,9 @@ export class ApiLearnerContentRepository implements LearnerContentRepository {
           createdAt: story.createdAt,
           lastReadAt: null,
           title: template?.templateTitle ?? '나의 이야기',
-          coverImageUrl: fallbackCover,
+          coverImageUrl: template?.imageUrl || fallbackCover,
           status: story.storyStatus,
-          progress: story.storyStatus === 'COMPLETED' ? 100 : 0,
+          progress: story.progress,
         }
       }),
     }
@@ -117,7 +185,10 @@ export class ApiLearnerContentRepository implements LearnerContentRepository {
       character: '이야기 친구',
       branchQuestion: '다음에는 어떤 일이 일어날까요?',
       pages: [...response.storyLines]
-        .sort((left, right) => left.lineOrder - right.lineOrder)
+        .sort((left, right) => (
+          (left.sceneOrder ?? 0) - (right.sceneOrder ?? 0)
+          || left.lineOrder - right.lineOrder
+        ))
         .map((line) => ({
           lineId: String(line.lineId),
           order: line.lineOrder,
@@ -137,11 +208,43 @@ export class ApiLearnerContentRepository implements LearnerContentRepository {
     return String(response.storyId)
   }
 
-  async getGrowthAreas(_studentId: string): Promise<readonly LearnerGrowthArea[]> {
-    throw new LearnerContractUnavailableError(
-      'LEARNER_GROWTH_MAPPING_REQUIRED',
-      '훈련 템플릿별 완료 횟수를 세 성장 영역과 단계로 변환하는 제품 규칙이 필요합니다.',
+  async getGrowthAreas(
+    studentId: string,
+    options: Parameters<LearnerContentRepository['getGrowthAreas']>[1] = {},
+  ): Promise<readonly LearnerGrowthArea[]> {
+    const response = await learnerApiClient.request<GrowthDto>(
+      `/api/app/student/${encodeURIComponent(studentId)}/growth`,
+      { signal: options.signal },
     )
+    if (response.growthAreas) {
+      return response.growthAreas.map((area) => ({
+        areaId: area.areaId,
+        name: area.name,
+        learningCount: area.completedCount,
+        stage: Math.min(5, Math.max(1, area.stage)),
+        updatedAt: area.updatedAt ?? '',
+      }))
+    }
+
+    // 구버전 Backend 응답과의 순차 배포 호환용이다. 새 Backend에서는 growthAreas를 사용한다.
+    const learningCounts: Record<1 | 2 | 3, number> = { 1: 0, 2: 0, 3: 0 }
+    response.trainingProgress.forEach((progress) => {
+      const areaId = getGrowthAreaId(progress.trainingTemplateId)
+      if (areaId) learningCounts[areaId] += progress.completedCount
+    })
+    const names: Record<1 | 2 | 3, string> = {
+      1: '파닉스',
+      2: '읽기',
+      3: '유창성',
+    }
+
+    return ([1, 2, 3] as const).map((areaId) => ({
+      areaId,
+      name: names[areaId],
+      learningCount: learningCounts[areaId],
+      stage: Math.min(5, Math.max(1, learningCounts[areaId] + 1)),
+      updatedAt: '',
+    }))
   }
 
   async getStoryFriends(
@@ -183,5 +286,16 @@ export class ApiLearnerContentRepository implements LearnerContentRepository {
       microphoneAvailable: typeof navigator !== 'undefined' && !!navigator.mediaDevices,
       microphoneActive: false,
     }
+  }
+
+  async getGazeCalibrationGuide(
+    studentId: string,
+    options: Parameters<LearnerContentRepository['getGazeCalibrationGuide']>[1] = {},
+  ): Promise<LearnerGazeCalibrationGuide> {
+    const params = new URLSearchParams({ studentId })
+    return learnerApiClient.request(
+      `/api/app/gaze/calibration-guide?${params.toString()}`,
+      { signal: options.signal },
+    )
   }
 }

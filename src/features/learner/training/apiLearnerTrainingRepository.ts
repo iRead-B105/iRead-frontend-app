@@ -2,15 +2,19 @@ import { jsonBody } from '@/lib/api'
 import { learnerApiClient } from '../learnerApiClient'
 import type {
   LearnerTrainingIntro,
+  LearnerTrainingFeedback,
   LearnerTrainingQuestionPayload,
   LearnerTrainingRecordingInput,
+  LearnerTrainingRecordingResult,
   LearnerTrainingRepository,
-  LearnerTrainingSelectionInput,
+  LearnerTrainingSubmissionInput,
 } from './repository'
 
 interface TrainingIntroDto {
   readonly trainingId: number
   readonly trainingTemplateId: number
+  readonly dailyCurriculumId: number
+  readonly sequenceNo: number
   readonly status: string
   readonly trainingName: string
   readonly generatedData: unknown
@@ -23,6 +27,22 @@ interface TrainingQuestionDto {
   readonly questionNumber: number
   readonly totalQuestions: number
   readonly question: unknown
+}
+
+interface TrainingFeedbackDto {
+  readonly submissionId: string
+  readonly attemptNo: number
+  readonly maxAttempts: number
+  readonly remainingAttempts: number
+  readonly correct: boolean
+  readonly questionCompleted: boolean
+  readonly canRetry: boolean
+  readonly hint: string | null
+  readonly correctResponse: unknown
+}
+
+interface TrainingRecordingDto extends Omit<LearnerTrainingRecordingResult, 'trainingId'> {
+  readonly trainingId: number
 }
 
 function trainingPath(studentId: string, trainingId: string): string {
@@ -45,6 +65,7 @@ export class ApiLearnerTrainingRepository implements LearnerTrainingRepository {
       ...response,
       trainingId: String(response.trainingId),
       trainingTemplateId: String(response.trainingTemplateId),
+      dailyCurriculumId: String(response.dailyCurriculumId),
     }
   }
 
@@ -78,13 +99,13 @@ export class ApiLearnerTrainingRepository implements LearnerTrainingRepository {
     )
   }
 
-  async saveSelection(
+  async saveSubmission(
     studentId: string,
     trainingId: string,
     questionNumber: number,
-    input: LearnerTrainingSelectionInput,
-  ): Promise<void> {
-    await learnerApiClient.request(
+    input: LearnerTrainingSubmissionInput,
+  ): Promise<LearnerTrainingFeedback> {
+    return learnerApiClient.request<TrainingFeedbackDto>(
       `${trainingPath(studentId, trainingId)}/questions/${questionNumber}/responses`,
       { method: 'POST', body: jsonBody(input) },
     )
@@ -95,10 +116,10 @@ export class ApiLearnerTrainingRepository implements LearnerTrainingRepository {
     trainingId: string,
     questionNumber: number,
     input: LearnerTrainingRecordingInput,
-  ): Promise<void> {
+  ): Promise<LearnerTrainingRecordingResult> {
     const body = new FormData()
-    body.append('wordId', String(input.wordId))
-    body.append('targetIndex', String(input.targetIndex))
+    if (input.wordId !== undefined) body.append('wordId', String(input.wordId))
+    if (input.targetIndex !== undefined) body.append('targetIndex', String(input.targetIndex))
     if (input.tokenIndex !== undefined) body.append('tokenIndex', String(input.tokenIndex))
     body.append('expectedText', input.expectedText)
     body.append('audioFile', input.audioFile)
@@ -108,24 +129,17 @@ export class ApiLearnerTrainingRepository implements LearnerTrainingRepository {
     if (input.speechEndOffsetMs !== undefined) {
       body.append('speechEndOffsetMs', String(input.speechEndOffsetMs))
     }
-    await learnerApiClient.request(
+    const response = await learnerApiClient.request<TrainingRecordingDto>(
       `${trainingPath(studentId, trainingId)}/questions/${questionNumber}/recordings`,
       { method: 'POST', body },
     )
+    return { ...response, trainingId: String(response.trainingId) }
   }
 
-  async complete(
-    studentId: string,
-    trainingId: string,
-    result: unknown,
-    completedAt: string,
-  ): Promise<void> {
+  async complete(studentId: string, trainingId: string): Promise<void> {
     await learnerApiClient.request(
       `${trainingPath(studentId, trainingId)}/complete`,
-      {
-        method: 'POST',
-        body: jsonBody({ result, completedAt }),
-      },
+      { method: 'POST' },
     )
   }
 }

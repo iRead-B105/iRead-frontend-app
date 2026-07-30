@@ -23,6 +23,8 @@ const isDeveloperMode = import.meta.env.DEV
 const debugPanelOpen = ref(isDeveloperMode && route.query.debugPanel === '1')
 const dailyCurriculum = useDailyCurriculum()
 
+void dailyCurriculum.reloadCurrentCurriculum().catch(() => undefined)
+
 watchEffect(() => {
   if (!isDeveloperMode && dailyCurriculum.isTodayComplete.value) {
     void router.replace({ name: 'training-today-complete' })
@@ -38,11 +40,11 @@ const debugLessonsByCategory = computed(() =>
 )
 
 const curriculumSteps = computed<CurriculumPathStep[]>(() =>
-  dailyCurriculum.curriculumItems.map((step, index) => ({
+  dailyCurriculum.curriculumItems.map((step) => ({
     ...step,
-    status: index < dailyCurriculum.currentIndex.value
+    status: step.status === 'COMPLETED'
       ? 'complete'
-      : index === dailyCurriculum.currentIndex.value
+      : step.status === 'CURRENT'
         ? 'current'
         : 'locked',
   })),

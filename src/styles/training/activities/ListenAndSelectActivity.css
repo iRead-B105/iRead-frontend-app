@@ -193,6 +193,13 @@
   border-color: #5fbd69;
 }
 
+.choices :deep(.answer-hint),
+.word-choice.answer-hint {
+  border-color: #f0be3f;
+  box-shadow: 0 0 0 7px rgba(240,190,63,.24),var(--learner-shadow-card);
+  animation: answer-hint-pulse 1.1s ease-in-out infinite;
+}
+
 .word-choice {
   display: flex;
   flex-direction: column;
@@ -234,6 +241,7 @@
 .word-select {
   display: grid;
   place-items: center;
+  gap: 8px;
   width: 100%;
   min-height: 68px;
   flex: 1;
@@ -241,6 +249,23 @@
   border-radius: 18px;
   background: transparent;
   cursor: pointer;
+}
+
+@keyframes answer-hint-pulse {
+  0%,100% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.07);
+  }
+}
+
+.word-choice-image {
+  width: 72px;
+  height: 72px;
+  border-radius: 14px;
+  object-fit: cover;
 }
 
 .word-select:focus-visible {

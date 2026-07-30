@@ -20,6 +20,7 @@ import type {
   LearnerStoryLibrary,
 } from '@/features/learner/model'
 import type { VillageItem } from '@/types/village'
+import { learnerDataSource } from '@/config/learnerDataSource'
 
 type GardenId = 1 | 2 | 3
 
@@ -196,7 +197,7 @@ const progressLabel = (garden: Garden) => (
 )
 
 const grow = (garden: Garden) => {
-  if (loadError.value) return
+  if (loadError.value || learnerDataSource === 'api') return
 
   const currentStage = stages[garden.id]
   if (currentStage >= 5) {
@@ -402,7 +403,9 @@ onBeforeUnmount(() => {
         :disabled="Boolean(loadError)"
         :aria-label="loadError
           ? `${garden.title} 화단. 성장 정보 계약 확인 필요`
-          : progressFor(garden) === 100
+          : learnerDataSource === 'api'
+            ? `${garden.title} 화단 ${progressLabel(garden)}. 진행 ${progressFor(garden)}퍼센트`
+            : progressFor(garden) === 100
             ? `${garden.title} 화단 ${progressLabel(garden)}. 진행 바가 가득 찼어. 눌러서 성장시키기`
             : `${garden.title} 화단 ${progressLabel(garden)}. 진행 ${progressFor(garden)}퍼센트`"
         @pointerenter="showGrowHint(garden)"

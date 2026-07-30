@@ -3,10 +3,12 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { TracePoint, TrainingQuestion } from '@/types/training'
 import { useTrainingSession } from '@/composables/useTrainingSession'
 import readingActiveIcon from '@/assets/icons/reading-active.svg'
+import type { LearnerTraceSubmissionResponse } from '@/features/learner/training'
+import { mockDeviceSubmissionsEnabled } from '@/features/learner/training/mockDeviceSubmissions'
 
 const props = defineProps<{ question: TrainingQuestion }>()
 const emit = defineEmits<{
-  next: []
+  next: [response: LearnerTraceSubmissionResponse]
   guideMessage: [message: string]
 }>()
 
@@ -18,7 +20,14 @@ const cursorVisible = ref(false)
 const stalled = ref(false)
 const speechState = ref<'waiting' | 'listening' | 'retry' | 'success'>('waiting')
 const speechMessage = ref('')
+const recordedStrokes = ref<Array<Array<{
+  x: number
+  y: number
+  elapsedMs: number
+  pressure?: number
+}>>>([])
 let lastAdvanceAt = 0
+let traceStartedAt = 0
 let stallTimer: ReturnType<typeof setInterval> | null = null
 let recognition: SpeechRecognitionLike | null = null
 let fallbackTimer: ReturnType<typeof setTimeout> | null = null
@@ -50,6 +59,16 @@ const currentPoint = computed<TracePoint | null>(() => flatPoints.value[progress
 
 const pointString = (points: TracePoint[]) => points.map((point) => `${point.x},${point.y}`).join(' ')
 
+const strokeIndexAt = (pointIndex: number): number => {
+  let offset = pointIndex
+  for (let index = 0; index < strokes.value.length; index += 1) {
+    const length = strokes.value[index]?.length ?? 0
+    if (offset < length) return index
+    offset -= length
+  }
+  return Math.max(strokes.value.length - 1, 0)
+}
+
 const completedStroke = (strokeIndex: number): TracePoint[] => {
   const before = strokes.value.slice(0, strokeIndex).reduce((sum, stroke) => sum + stroke.length, 0)
   const count = Math.min(Math.max(progress.value - before, 0), strokes.value[strokeIndex]?.length ?? 0)
@@ -76,6 +95,10 @@ const speechMatches = (transcript: string) => {
 
 const startSpeech = () => {
   if (!traceCompleted.value || speechState.value === 'listening' || speechState.value === 'success') return
+  if (mockDeviceSubmissionsEnabled) {
+    finishSpeech(true)
+    return
+  }
   speechState.value = 'listening'
   speechMessage.value = '소리 내어 말해봐!'
   emit('guideMessage', speechMessage.value)
@@ -135,6 +158,15 @@ const advanceFromClientPoint = (clientX: number, clientY: number) => {
 
   const distance = Math.hypot(x - target.x, y - target.y)
   if (distance <= 46) {
+    if (traceStartedAt === 0) traceStartedAt = Date.now()
+    const strokeIndex = strokeIndexAt(progress.value)
+    const points = recordedStrokes.value[strokeIndex] ?? []
+    if (!recordedStrokes.value[strokeIndex]) recordedStrokes.value[strokeIndex] = points
+    points.push({
+      x: Math.max(0, x),
+      y: Math.max(0, y),
+      elapsedMs: Date.now() - traceStartedAt,
+    })
     progress.value += 1
     lastAdvanceAt = Date.now()
     stalled.value = false
@@ -152,6 +184,18 @@ const onGaze = (event: Event) => {
   ) advanceFromClientPoint(detail.clientX, detail.clientY)
 }
 
+const submitTrace = () => {
+  const strokes = recordedStrokes.value
+    .filter((points) => points.length >= 2)
+    .map((points) => ({ points: points.map((point) => ({ ...point })) }))
+  if (strokes.length === 0) return
+  emit('next', {
+    canvasWidth: 640,
+    canvasHeight: 500,
+    strokes,
+  })
+}
+
 const resetQuestion = () => {
   progress.value = 0
   cursorVisible.value = false
@@ -159,7 +203,9 @@ const resetQuestion = () => {
   speechState.value = 'waiting'
   speechMessage.value = ''
   emit('guideMessage', '')
+  recordedStrokes.value = []
   lastAdvanceAt = 0
+  traceStartedAt = 0
   recognition?.stop()
   recognition = null
   if (fallbackTimer) clearTimeout(fallbackTimer)
@@ -234,7 +280,7 @@ onBeforeUnmount(() => {
     </div>
 
     <div class="action-bar">
-      <button v-if="speechState === 'success'" class="next-button" type="button" @click="emit('next')">다음 문제</button>
+      <button v-if="speechState === 'success'" class="next-button" type="button" @click="submitTrace">다음 문제</button>
     </div>
   </section>
 </template>

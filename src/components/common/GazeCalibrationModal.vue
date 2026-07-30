@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import storyScene from '../../assets/story/story-reader-turtle-scene-mock.png'
+import { fetchGazeCalibrationGuide } from '@/services/learnerDataRepository'
 
 type BridgeAnchorTarget = string | Element | { x: number; y: number } | { clientX: number; clientY: number }
 type BridgeControls = {
@@ -37,6 +38,7 @@ const HIT_PADDING = 96
 const stepIndex = ref(0)
 const status = ref<'ready' | 'dwelling' | 'sampling' | 'complete' | 'error'>('ready')
 const errorMessage = ref('')
+const guideMessage = ref('빛나는 점을 바라보면 자동으로 저장돼요.')
 const dwellProgress = ref(0)
 const targetRefs = new Map<string, HTMLElement>()
 const currentTarget = computed(() => targets[Math.min(stepIndex.value, targets.length - 1)]!)
@@ -203,6 +205,13 @@ function retryCalibration() {
 
 onMounted(() => {
   window.addEventListener('iread:gaze', onGaze)
+  void fetchGazeCalibrationGuide()
+    .then((guide) => {
+      if (guide.calibrationGuide.trim()) guideMessage.value = guide.calibrationGuide
+    })
+    .catch(() => {
+      // 로컬 보정은 서버 안내 조회 실패와 관계없이 진행할 수 있다.
+    })
   void prepareCalibration()
 })
 onBeforeUnmount(() => {
@@ -221,7 +230,7 @@ onBeforeUnmount(() => {
       <header class="calibration-header" :class="{ hidden: currentTarget.id === 'top' && status !== 'complete' }">
         <p>{{ progressLabel }}</p>
         <h1 id="gaze-calibration-title">시선 위치 맞추기</h1>
-        <span>빛나는 점을 바라보면 자동으로 저장돼요.</span>
+        <span>{{ guideMessage }}</span>
       </header>
 
       <div class="target-layer" aria-hidden="true">

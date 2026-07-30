@@ -52,7 +52,7 @@ const selectReplacement = (choiceId: string) => {
 const sameSet = (left: string[], right: string[]) =>
   left.length === right.length && left.every((id) => right.includes(id))
 
-const submit = () => {
+const submit = async () => {
   if (!canSubmit.value || isCorrect.value) return
 
   let correct = false
@@ -70,7 +70,7 @@ const submit = () => {
   }
 
   session.selectAnswer(correct ? props.question.answer : submitted)
-  const completed = session.submitAnswer()
+  const completed = await session.submitAnswer()
   if (completed) {
     void audio.speak(props.question.targetResult ?? '', 0.8)
   } else if (session.progressState.attemptCount >= 2 && session.progressState.hintLevel < 2) {

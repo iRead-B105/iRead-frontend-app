@@ -36,6 +36,27 @@ const savingState = reactive<SavingState>({
   errorMessage: null,
   attemptCount: 0,
 })
+const isSubmittingAnswer = ref(false)
+const currentHint = ref<string | null>(null)
+
+interface AnswerEvaluation {
+  readonly attemptNo: number
+  readonly correct: boolean
+  readonly questionCompleted: boolean
+  readonly canRetry: boolean
+  readonly hint?: string | null
+  readonly correctResponse?: unknown
+}
+
+type AnswerEvaluator = (
+  answer: string | string[],
+  question: TrainingQuestion,
+) => Promise<AnswerEvaluation>
+
+type AnswerCompletedHandler = () => Promise<void> | void
+
+let answerEvaluator: AnswerEvaluator | null = null
+let answerCompletedHandler: AnswerCompletedHandler | null = null
 
 // 문제별 목업 저장소: 선택한 정답
 const storedAnswers = reactive<Record<string, string | string[]>>({})
@@ -71,6 +92,28 @@ const isPerfectLesson = computed(() =>
   && progressState.incorrectQuestionIds.length === 0,
 )
 
+const correctAnswerHint = (question: TrainingQuestion): string => {
+  const answerIds = Array.isArray(question.answer)
+    ? question.answer
+    : question.answer.split('|')
+  const choices = [
+    ...(question.choices ?? []),
+    ...(question.replacementChoices ?? []),
+  ]
+  const labels = answerIds
+    .map((answerId) => answerId.split(':').at(-1) ?? answerId)
+    .map((answerId) => choices.find((choice) => choice.id === answerId)?.text)
+    .filter((label): label is string => Boolean(label))
+
+  if (labels.length > 0) {
+    return `정답은 ${labels.join(' → ')}예요. 정답대로 다시 해보세요.`
+  }
+  const result = question.targetResult ?? question.combined
+  return result
+    ? `정답은 ${result}예요. 정답대로 다시 해보세요.`
+    : '정답 표시를 보고 정답대로 다시 해보세요.'
+}
+
 // ---- 액션 ----
 // 새 레슨 시작: 이전 정답/녹음/진행도를 모두 초기화(이전 답 리셋).
 const startLesson = (lesson: TrainingLesson): void => {
@@ -86,6 +129,7 @@ const startLesson = (lesson: TrainingLesson): void => {
   progressState.isCurrentCorrect = null
   progressState.isCompleted = false
   progressState.completedAt = null
+  currentHint.value = null
 
   savingState.status = 'idle'
   savingState.errorMessage = null
@@ -103,11 +147,48 @@ const selectAnswer = (answer: string | string[]): void => {
 }
 
 // 정답 확인(선택형). 맞추면 해당 문제를 완료로 표시하고 정답을 목업 저장소에 보관.
-const submitAnswer = (): boolean => {
+const submitAnswer = async (): Promise<boolean> => {
   const question = currentQuestion.value
-  if (!question || progressState.selectedAnswer === null) return false
+  if (!question || progressState.selectedAnswer === null || isSubmittingAnswer.value) return false
 
   const answer = progressState.selectedAnswer
+  if (answerEvaluator) {
+    isSubmittingAnswer.value = true
+    try {
+      const evaluation = await answerEvaluator(answer, question)
+      progressState.attemptCount = evaluation.attemptNo
+      const shouldRevealCorrectAnswer =
+        !evaluation.correct && evaluation.correctResponse !== null
+        && evaluation.correctResponse !== undefined
+      currentHint.value = evaluation.correct
+        ? null
+        : shouldRevealCorrectAnswer
+          ? correctAnswerHint(question)
+          : (evaluation.hint ?? '정답 카드를 살펴봐요.')
+      if (evaluation.correct) {
+        progressState.isCurrentCorrect = true
+        if (!progressState.completedQuestionIds.includes(question.id)) {
+          progressState.completedQuestionIds.push(question.id)
+        }
+        storedAnswers[question.id] = answer
+      } else {
+        progressState.isCurrentCorrect = false
+        if (!progressState.incorrectQuestionIds.includes(question.id)) {
+          progressState.incorrectQuestionIds.push(question.id)
+        }
+        progressState.hintLevel = shouldRevealCorrectAnswer
+          ? 2
+          : Math.max(progressState.hintLevel, 1)
+      }
+      if (evaluation.questionCompleted) {
+        await answerCompletedHandler?.()
+      }
+      return evaluation.correct
+    } finally {
+      isSubmittingAnswer.value = false
+    }
+  }
+
   const correctAnswer = question.answer
   const isCorrect = Array.isArray(correctAnswer)
     ? Array.isArray(answer) && correctAnswer.every((v, i) => v === answer[i])
@@ -126,10 +207,12 @@ const submitAnswer = (): boolean => {
     if (!progressState.incorrectQuestionIds.includes(question.id)) {
       progressState.incorrectQuestionIds.push(question.id)
     }
-    // 두 번 틀리면 1단계 시각 힌트를 자동으로 활성화
-    if (progressState.attemptCount >= 2 && progressState.hintLevel < 1) {
-      progressState.hintLevel = 1
+    currentHint.value = '힌트를 보고 한 번 더 생각해 봐요.'
+    if (progressState.attemptCount >= 2) {
+      progressState.hintLevel = 2
+      currentHint.value = correctAnswerHint(question)
     }
+    progressState.hintLevel = Math.max(progressState.hintLevel, 1)
   }
 
   return isCorrect
@@ -166,6 +249,7 @@ const nextQuestion = (): boolean => {
   progressState.attemptCount = 0
   progressState.hintLevel = 0
   progressState.isCurrentCorrect = null
+  currentHint.value = null
   return true
 }
 
@@ -211,6 +295,7 @@ const resetSession = (): void => {
   progressState.completedQuestionIds = []
   progressState.incorrectQuestionIds = []
   progressState.isCurrentCorrect = null
+  currentHint.value = null
   progressState.isCompleted = false
   progressState.completedAt = null
 
@@ -220,6 +305,14 @@ const resetSession = (): void => {
 
   Object.keys(storedAnswers).forEach((k) => delete storedAnswers[k])
   Object.keys(storedRecordings).forEach((k) => delete storedRecordings[k])
+}
+
+const setAnswerEvaluator = (evaluator: AnswerEvaluator | null): void => {
+  answerEvaluator = evaluator
+}
+
+const setAnswerCompletedHandler = (handler: AnswerCompletedHandler | null): void => {
+  answerCompletedHandler = handler
 }
 
 export function useTrainingSession() {
@@ -234,6 +327,8 @@ export function useTrainingSession() {
     savingState,
     isSaving,
     isPerfectLesson,
+    isSubmittingAnswer,
+    currentHint,
     storedAnswers,
     storedRecordings,
     // 계산
@@ -243,6 +338,8 @@ export function useTrainingSession() {
     startLesson,
     selectAnswer,
     submitAnswer,
+    setAnswerEvaluator,
+    setAnswerCompletedHandler,
     markRecordingComplete,
     showHint,
     nextQuestion,

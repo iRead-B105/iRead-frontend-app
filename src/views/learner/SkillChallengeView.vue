@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   getSkillChallengeLessons,
@@ -11,22 +12,36 @@ import sentenceCardsImage from '@/assets/challenge/challenge-sentence-cards.png'
 import readingBooksImage from '@/assets/challenge/challenge-reading-books.png'
 import arrowRightIcon from '@/assets/icons/arrow-right.svg'
 import { learnerDataSource } from '@/config/learnerDataSource'
+import {
+  learnerTestRepository,
+  type LearnerSkillChallengePlan,
+} from '@/features/learner/test'
+import { getCachedStudent } from '@/services/learnerDataRepository'
 
 const router = useRouter()
 const challenge = useSkillChallenge()
 const isApiMode = learnerDataSource === 'api'
+const plan = ref<LearnerSkillChallengePlan | null>(null)
+const loading = ref(isApiMode)
+const loadError = ref('')
 
 const startTrack = (track: SkillChallengeTrack) => {
-  const firstLesson = challenge.startChallenge(track.id)
+  const firstLesson = isApiMode
+    ? getSkillChallengeLessons(track.id)[0] ?? null
+    : challenge.startChallenge(track.id)
   if (!firstLesson) return
+  const testId = plan.value?.tracks.find(
+    (serverTrack) => serverTrack.trackCode === track.id,
+  )?.nextTestId
+  if (isApiMode && !testId) return
 
   void router.push({
-    name: 'training-lesson',
+    name: 'skill-challenge-lesson',
     params: {
-      categoryId: firstLesson.categoryId,
-      lessonId: firstLesson.lessonId,
+      trackId: track.id,
+      testId: testId ?? 'mock',
+      ...(isApiMode ? {} : { lessonId: firstLesson.lessonId }),
     },
-    query: { challenge: track.id },
   })
 }
 
@@ -39,6 +54,24 @@ const trackImages: Record<SkillChallengeTrack['id'], string> = {
   'short-text': sentenceCardsImage,
   fluency: readingBooksImage,
 }
+
+const serverTrack = (track: SkillChallengeTrack) =>
+  plan.value?.tracks.find((item) => item.trackCode === track.id)
+
+onMounted(async () => {
+  if (!isApiMode) return
+  try {
+    plan.value = await learnerTestRepository.getChallengePlan(
+      getCachedStudent().studentId,
+    )
+  } catch (error) {
+    loadError.value = error instanceof Error
+      ? error.message
+      : '실력도전 목록을 불러오지 못했습니다.'
+  } finally {
+    loading.value = false
+  }
+})
 </script>
 
 <template>
@@ -46,21 +79,21 @@ const trackImages: Record<SkillChallengeTrack['id'], string> = {
     <section class="challenge-panel">
       <header class="challenge-heading">
         <span class="challenge-kicker">실력 검증</span>
-        <h1>어떤 실력을 확인해볼까?</h1>
-        <p v-if="isApiMode" role="alert">
-          백엔드의 검사·훈련 결과를 이 화면의 세 가지 도전 코스에 연결하는 제품 계약이 아직 없어요.
-          회사에서 코스 매핑이 확정되면 API 어댑터만 이어서 사용할 수 있습니다.
-        </p>
-        <p v-else>하나를 고르면 그 안의 훈련을 차례대로 모두 해봐!</p>
+        <h1>어떤 실력을 확인해볼까요?</h1>
+        <p>하나를 고르면 세 문제로 실력을 확인해요.</p>
       </header>
 
-      <div v-if="!isApiMode" class="challenge-grid">
+      <p v-if="loading" role="status">실력도전을 준비하고 있어요.</p>
+      <p v-else-if="loadError" role="alert">{{ loadError }}</p>
+
+      <div v-else class="challenge-grid">
         <button
           v-for="track in skillChallengeTracks"
           :key="track.id"
           class="challenge-card"
           :class="`challenge-card--${track.color}`"
           type="button"
+          :disabled="isApiMode && !serverTrack(track)?.nextTestId"
           @click="startTrack(track)"
         >
           <img class="challenge-card__illustration" :src="trackImages[track.id]" alt="" aria-hidden="true" />
@@ -69,14 +102,18 @@ const trackImages: Record<SkillChallengeTrack['id'], string> = {
             <small>{{ track.shortLabel }}</small>
           </span>
           <span class="challenge-card__footer">
-            <b>{{ getTrackLessonCount(track) }}개 훈련</b>
+            <b v-if="isApiMode">
+              {{ serverTrack(track)?.completedQuestions ?? 0 }}
+              / {{ serverTrack(track)?.totalQuestions ?? 3 }}문제
+            </b>
+            <b v-else>{{ getTrackLessonCount(track) }}개 훈련</b>
             <img :src="arrowRightIcon" alt="" aria-hidden="true" />
           </span>
         </button>
       </div>
 
-      <p v-if="!isApiMode" class="challenge-note">
-        점수는 화면에 보여주지 않아. 편안하게 끝까지 해보면 돼!
+      <p class="challenge-note">
+        점수는 화면에 보여주지 않아요. 편안하게 끝까지 해보면 돼요!
       </p>
     </section>
   </main>

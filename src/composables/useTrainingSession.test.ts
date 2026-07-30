@@ -1,84 +1,103 @@
-import { afterEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useTrainingSession } from './useTrainingSession'
-import type { TrainingLesson } from '@/types/training'
 
-const lesson: TrainingLesson = {
-  id: 'perfect-five',
-  categoryId: 'phonics',
-  title: '다섯 문제',
-  description: '올정답 완료 상태를 확인한다.',
-  activityType: 'sound-choice',
-  estimatedMinutes: 5,
-  questions: Array.from({ length: 5 }, (_, index) => ({
-    id: `q${index + 1}`,
-    instruction: '골라!',
-    answer: 'correct',
-  })),
-}
-
-const answerAllQuestions = (includeWrongAnswer = false) => {
+describe('useTrainingSession', () => {
   const session = useTrainingSession()
-  session.startLesson(lesson)
 
-  lesson.questions.forEach((_question, index) => {
-    if (includeWrongAnswer && index === 1) {
-      session.selectAnswer('wrong')
-      expect(session.submitAnswer()).toBe(false)
-    }
-    session.selectAnswer('correct')
-    expect(session.submitAnswer()).toBe(true)
-    if (index < lesson.questions.length - 1) {
-      expect(session.nextQuestion()).toBe(true)
-    }
-  })
-
-  return session
-}
-
-describe('useTrainingSession perfect completion', () => {
-  afterEach(() => {
-    useTrainingSession().resetSession()
-  })
-
-  it('marks a five-question lesson perfect when no incorrect answer was submitted', () => {
-    const session = answerAllQuestions()
-
-    expect(session.progressState.completedQuestionIds).toHaveLength(5)
-    expect(session.progressState.incorrectQuestionIds).toEqual([])
-    expect(session.isPerfectLesson.value).toBe(true)
-  })
-
-  it('keeps the regular completion variant after any incorrect answer', () => {
-    const session = answerAllQuestions(true)
-
-    expect(session.progressState.completedQuestionIds).toHaveLength(5)
-    expect(session.progressState.incorrectQuestionIds).toEqual(['q2'])
-    expect(session.isPerfectLesson.value).toBe(false)
-  })
-
-  it('does not use the perfect variant for a lesson with a different question count', () => {
-    const session = useTrainingSession()
-    session.startLesson({ ...lesson, questions: lesson.questions.slice(0, 4) })
-
-    lesson.questions.slice(0, 4).forEach((_question, index) => {
-      session.selectAnswer('correct')
-      session.submitAnswer()
-      if (index < 3) session.nextQuestion()
+  beforeEach(() => {
+    session.setAnswerEvaluator(null)
+    session.setAnswerCompletedHandler(null)
+    session.resetSession()
+    session.startLesson({
+      id: 'lesson-1',
+      categoryId: 'phonics',
+      title: '소리 듣고 고르기',
+      description: '',
+      activityType: 'listen-and-select',
+      estimatedMinutes: 1,
+      questions: [
+        {
+          id: 'question-1',
+          instruction: '정답을 고르세요.',
+          answer: 'choice-0',
+          choices: [
+            { id: 'choice-0', text: 'ㅏ' },
+            { id: 'choice-1', text: 'ㅓ' },
+          ],
+        },
+      ],
     })
-
-    expect(session.isPerfectLesson.value).toBe(false)
   })
 
-  it('shows the first hint after the second incorrect attempt', () => {
-    const session = useTrainingSession()
-    session.startLesson(lesson)
+  it('두 번째 오답 후 정답을 보여주고 정답을 골라야 문항을 완료한다', async () => {
+    session.selectAnswer('choice-1')
+    await expect(session.submitAnswer()).resolves.toBe(false)
+    expect(session.progressState.attemptCount).toBe(1)
+    expect(session.currentHint.value).not.toBeNull()
 
-    session.selectAnswer('wrong')
-    expect(session.submitAnswer()).toBe(false)
-    expect(session.progressState.hintLevel).toBe(0)
+    session.selectAnswer('choice-1')
+    await expect(session.submitAnswer()).resolves.toBe(false)
+    expect(session.progressState.attemptCount).toBe(2)
+    expect(session.progressState.hintLevel).toBe(2)
+    expect(session.currentHint.value).toContain('ㅏ')
+    expect(session.progressState.completedQuestionIds).toEqual([])
 
-    session.selectAnswer('wrong-again')
-    expect(session.submitAnswer()).toBe(false)
-    expect(session.progressState.hintLevel).toBe(1)
+    session.selectAnswer('choice-0')
+    await expect(session.submitAnswer()).resolves.toBe(true)
+    expect(session.progressState.attemptCount).toBe(3)
+    expect(session.storedAnswers['question-1']).toBe('choice-0')
+  })
+
+  it('서버가 정답 응답을 공개해도 정답 제출 전에는 다음 문제를 열지 않는다', async () => {
+    const evaluate = vi.fn()
+      .mockResolvedValueOnce({
+        attemptNo: 2,
+        correct: false,
+        questionCompleted: false,
+        canRetry: true,
+        hint: '정답을 확인해 보세요.',
+        correctResponse: {
+          responseType: 'SINGLE_CHOICE',
+          response: { selectedIndex: 0 },
+        },
+      })
+      .mockResolvedValueOnce({
+        attemptNo: 3,
+        correct: true,
+        questionCompleted: true,
+        canRetry: false,
+        hint: null,
+        correctResponse: null,
+      })
+    session.setAnswerEvaluator(evaluate)
+
+    session.selectAnswer('choice-1')
+    await expect(session.submitAnswer()).resolves.toBe(false)
+    expect(session.progressState.isCurrentCorrect).toBe(false)
+    expect(session.progressState.completedQuestionIds).toEqual([])
+    expect(session.currentHint.value).toContain('ㅏ')
+
+    session.selectAnswer('choice-0')
+    await expect(session.submitAnswer()).resolves.toBe(true)
+    expect(session.progressState.isCurrentCorrect).toBe(true)
+    expect(session.progressState.completedQuestionIds).toEqual(['question-1'])
+  })
+
+  it('서버가 문항 제출을 완료하면 등록된 다음 문항 핸들러를 한 번 호출한다', async () => {
+    const onCompleted = vi.fn()
+    session.setAnswerEvaluator(vi.fn().mockResolvedValue({
+      attemptNo: 1,
+      correct: true,
+      questionCompleted: true,
+      canRetry: false,
+      hint: null,
+      correctResponse: null,
+    }))
+    session.setAnswerCompletedHandler(onCompleted)
+
+    session.selectAnswer('choice-1')
+    await expect(session.submitAnswer()).resolves.toBe(true)
+
+    expect(onCompleted).toHaveBeenCalledOnce()
   })
 })

@@ -13,6 +13,8 @@ const session = useTrainingSession()
 const audio = useAudioPlayer()
 const choices = computed<TrainingChoice[]>(() => props.question.choices ?? [])
 const isCorrect = computed(() => session.progressState.isCurrentCorrect === true)
+const showAnswerHint = (choice: TrainingChoice) =>
+  session.progressState.hintLevel >= 2 && choice.id === props.question.answer
 
 const cardState = (choice: TrainingChoice) => {
   if (isCorrect.value) return choice.id === props.question.answer ? 'correct' : 'disabled'
@@ -26,10 +28,10 @@ const playQuestion = () => {
   if (props.question.audioText) void audio.replay(props.question.audioText, 0.72)
 }
 
-const choose = (choice: TrainingChoice) => {
+const choose = async (choice: TrainingChoice) => {
   if (isCorrect.value) return
   session.selectAnswer(choice.id)
-  const correct = session.submitAnswer()
+  const correct = await session.submitAnswer()
 
   if (correct) {
     void audio.speak('맞았어!', 0.9)
@@ -65,6 +67,7 @@ watch(
           :jamo="choice.letter?.jamo ?? ''"
           :type="choice.letter?.type ?? 'consonant'"
           :state="cardState(choice)"
+          :class="{ 'answer-hint': showAnswerHint(choice) }"
           :selectable="!isCorrect"
           size="large"
           surface="choice"

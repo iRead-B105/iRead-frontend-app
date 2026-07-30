@@ -39,6 +39,7 @@ export function useVoiceRecorder() {
   let mediaStream: MediaStream | null = null
   let mediaRecorder: MediaRecorder | null = null
   const chunks = shallowRef<Blob[]>([])
+  const audioBlob = shallowRef<Blob | null>(null)
   const audioUrl = ref<string | null>(null)
 
   let elapsedTimer: ReturnType<typeof setInterval> | null = null
@@ -102,6 +103,7 @@ export function useVoiceRecorder() {
       }
       mediaRecorder.onstop = () => {
         const blob = new Blob(chunks.value, { type: mediaRecorder?.mimeType || 'audio/webm' })
+        audioBlob.value = blob
         if (audioUrl.value) URL.revokeObjectURL(audioUrl.value)
         audioUrl.value = URL.createObjectURL(blob)
         state.hasRecording = true
@@ -158,6 +160,7 @@ export function useVoiceRecorder() {
       audioUrl.value = null
     }
     chunks.value = []
+    audioBlob.value = null
     state.elapsedMs = 0
     state.hasRecording = false
     waveform.value = buildIdleWaveform()
@@ -183,6 +186,7 @@ export function useVoiceRecorder() {
     state,
     waveform,
     audioUrl,
+    audioBlob,
     start,
     stop,
     reset,
