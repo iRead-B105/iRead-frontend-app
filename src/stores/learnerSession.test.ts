@@ -14,6 +14,37 @@ const student: LearnerStudent = {
   profileImageUrl: null,
 }
 
+function createMemoryStorage(): Storage {
+  const values = new Map<string, string>()
+
+  return {
+    get length() {
+      return values.size
+    },
+    clear() {
+      values.clear()
+    },
+    getItem(key) {
+      return values.get(key) ?? null
+    },
+    key(index) {
+      return [...values.keys()][index] ?? null
+    },
+    removeItem(key) {
+      values.delete(key)
+    },
+    setItem(key, value) {
+      values.set(key, String(value))
+    },
+  }
+}
+
+const testLocalStorage = createMemoryStorage()
+Object.defineProperty(window, 'localStorage', {
+  configurable: true,
+  value: testLocalStorage,
+})
+
 function createRepository(
   overrides: Partial<LearnerAuthRepository> = {},
 ): LearnerAuthRepository {
@@ -44,6 +75,7 @@ describe('learner session store', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     sessionStorage.clear()
+    testLocalStorage.clear()
   })
 
   it('bootstrap token과 learning token의 생명주기를 분리한다', async () => {
@@ -63,7 +95,7 @@ describe('learner session store', () => {
     expect(session.bootstrapToken).toBeNull()
     expect(session.accessToken).toBe('learning-token')
     expect(session.authenticated).toBe(true)
-    expect(localStorage).toHaveLength(0)
+    expect(window.localStorage).toHaveLength(0)
   })
 
   it('access token은 저장하지 않고 선택 아동만 sessionStorage에 보존한다', async () => {
