@@ -12,6 +12,8 @@ const session = useTrainingSession()
 const { progressState } = session
 const choices = computed<TrainingChoice[]>(() => props.question.choices ?? [])
 const isAnswered = computed(() => progressState.isCurrentCorrect === true)
+const showAnswerHint = (choice: TrainingChoice) =>
+  progressState.hintLevel >= 2 && choice.id === props.question.answer
 
 const stateFor = (choice: TrainingChoice): 'default' | 'selected' | 'correct' | 'wrong' | 'disabled' => {
   if (isAnswered.value) return choice.id === props.question.answer ? 'correct' : 'disabled'
@@ -52,6 +54,7 @@ const select = (choice: TrainingChoice) => {
               :jamo="choice.letter.jamo"
               :type="choice.letter.type"
               :state="stateFor(choice)"
+              :class="{ 'answer-hint': showAnswerHint(choice) }"
               :selectable="!isAnswered"
               size="large"
               @select="select(choice)"
@@ -59,7 +62,10 @@ const select = (choice: TrainingChoice) => {
             <button
               v-else
               class="text-choice"
-              :class="`text-choice--${stateFor(choice)}`"
+              :class="[
+                `text-choice--${stateFor(choice)}`,
+                { 'answer-hint': showAnswerHint(choice) },
+              ]"
               type="button"
               :disabled="isAnswered"
               @click="select(choice)"

@@ -14,6 +14,16 @@ function storyPath(studentId: string, storyId: string): string {
 export class ApiLearnerStoryRepository implements LearnerStoryRepository {
   readonly source = 'api' as const
 
+  async markLineRead(
+    studentId: string,
+    storyId: string,
+    lineId: string,
+  ): Promise<void> {
+    await learnerApiClient.request(
+      `${storyPath(studentId, storyId)}/lines/${encodeURIComponent(lineId)}`,
+    )
+  }
+
   async chooseDirection(
     studentId: string,
     storyId: string,
@@ -60,5 +70,10 @@ export class ApiLearnerStoryRepository implements LearnerStoryRepository {
       `${storyPath(studentId, storyId)}/tts`,
       { method: 'POST', body: jsonBody({ lineId: Number(lineId) }) },
     )
+  }
+
+  async downloadAudio(audioUrl: string): Promise<Blob> {
+    const result = await learnerApiClient.download(audioUrl)
+    return result.blob
   }
 }

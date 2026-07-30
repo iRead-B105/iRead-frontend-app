@@ -2,7 +2,6 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRouter, type RouteLocationRaw } from 'vue-router'
 import storyLandBackground from '../../assets/backgrounds/story-section-background.png'
-import aliceContinueScene from '../../assets/story/alice-continue.png'
 import otherBooksIcon from '../../assets/story/ui/other-books-icon.png'
 import newBookIcon from '../../assets/story/ui/new-book-icon.png'
 import continueStoryIcon from '../../assets/story/ui/continue-story-icon.png'
@@ -152,7 +151,7 @@ function sessionTitle(book: StorySession) {
           @click="openCurrentBook"
         >
           <template v-if="currentBook">
-            <img class="continue-scene" :src="aliceContinueScene" :alt="`${sessionTitle(currentBook)} 이어 읽기 장면`" />
+            <img class="continue-scene" :src="currentBook.coverImage" :alt="`${sessionTitle(currentBook)} 이어 읽기 표지`" />
             <span class="continue-kicker">이어서 읽기</span>
             <span class="continue-progress">{{ currentBook.progress }}%</span>
             <span class="continue-overlay">

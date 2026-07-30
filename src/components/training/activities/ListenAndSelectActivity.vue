@@ -14,6 +14,8 @@ const { progressState } = session
 const choices = computed<TrainingChoice[]>(() => props.question.choices ?? [])
 const hasWordChoices = computed(() => choices.value.some((choice) => !choice.letter && choice.text))
 const isAnswered = computed(() => progressState.isCurrentCorrect === true)
+const showAnswerHint = (choice: TrainingChoice) =>
+  progressState.hintLevel >= 2 && choice.id === props.question.answer
 const targetAudioText = computed(() =>
   props.question.audioText ?? props.question.targetText ?? '',
 )
@@ -67,7 +69,10 @@ const handleSelect = (choice: TrainingChoice) => {
             <div
               v-if="!choice.letter && choice.text"
               class="word-choice"
-              :class="`word-choice--${cardState(choice)}`"
+              :class="[
+                `word-choice--${cardState(choice)}`,
+                { 'answer-hint': showAnswerHint(choice) },
+              ]"
             >
               <SoundButton
                 v-if="question.choiceAudioEnabled !== false"
@@ -98,6 +103,7 @@ const handleSelect = (choice: TrainingChoice) => {
               :jamo="choice.letter?.jamo ?? ''"
               :type="choice.letter?.type ?? 'consonant'"
               :state="cardState(choice)"
+              :class="{ 'answer-hint': showAnswerHint(choice) }"
               :selectable="!isAnswered"
               size="large"
               @select="handleSelect(choice)"

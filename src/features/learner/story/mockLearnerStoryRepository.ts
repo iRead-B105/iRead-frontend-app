@@ -3,6 +3,8 @@ import type { LearnerStoryRepository } from './repository'
 export class MockLearnerStoryRepository implements LearnerStoryRepository {
   readonly source = 'mock' as const
 
+  async markLineRead() {}
+
   async chooseDirection(
     _studentId: string,
     _storyId: string,
@@ -24,5 +26,9 @@ export class MockLearnerStoryRepository implements LearnerStoryRepository {
 
   async synthesizeLine() {
     return { audioUrl: '', durationMs: 0, playbackLimit: null }
+  }
+
+  async downloadAudio() {
+    return new Blob()
   }
 }

@@ -28,6 +28,15 @@ describe('API learner story repository', () => {
     expect(result.nextLineId).toBe('12')
   })
 
+  it('읽은 대사를 backend에 반영한다', async () => {
+    const request = vi.spyOn(learnerApiClient, 'request').mockResolvedValue(undefined)
+    const repository = new ApiLearnerStoryRepository()
+
+    await repository.markLineRead('101', '31', '9')
+
+    expect(request).toHaveBeenCalledWith('/api/app/story/101/31/lines/9')
+  })
+
   it('TTS 요청에는 backend가 요구하는 숫자 lineId만 보낸다', async () => {
     const request = vi.spyOn(learnerApiClient, 'request').mockResolvedValue({
       audioUrl: '/api/app/story/101/audio/line.mp3',
@@ -42,5 +51,19 @@ describe('API learner story repository', () => {
       '/api/app/story/101/31/tts',
       { method: 'POST', body: JSON.stringify({ lineId: 9 }) },
     )
+  })
+
+  it('인증이 적용되는 API client로 TTS 음원을 내려받는다', async () => {
+    const audio = new Blob(['audio'], { type: 'audio/mpeg' })
+    const download = vi.spyOn(learnerApiClient, 'download').mockResolvedValue({
+      blob: audio,
+      contentType: 'audio/mpeg',
+    })
+    const repository = new ApiLearnerStoryRepository()
+
+    await expect(
+      repository.downloadAudio('/api/app/story/101/audio/line.mp3'),
+    ).resolves.toBe(audio)
+    expect(download).toHaveBeenCalledWith('/api/app/story/101/audio/line.mp3')
   })
 })

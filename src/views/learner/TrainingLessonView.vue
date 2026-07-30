@@ -40,6 +40,7 @@ import { getCachedStudent } from '@/services/learnerDataRepository'
 import { useLearnerErrorModalStore } from '@/stores/learnerErrorModal'
 import { learnerGazeRepository } from '@/features/learner/gaze'
 import { learnerTestRepository } from '@/features/learner/test'
+import { presentTrainingHint } from '@/features/learner/training/hintPresentation'
 
 const route = useRoute()
 const router = useRouter()
@@ -174,6 +175,11 @@ const displayQuestion = computed(() => {
     subInstruction: undefined,
   }
 })
+const displayedHint = computed(() => presentTrainingHint(
+  lesson.value?.activityType,
+  session.currentHint.value,
+  session.progressState.hintLevel,
+))
 const deviceFallbackEnabled = import.meta.env.DEV || mockDeviceSubmissionsEnabled
 
 const onGazeSample = (event: Event) => {
@@ -642,8 +648,8 @@ const isSavingFailed = computed(() => session.savingState.status === 'failed')
       <h1 v-if="displayQuestion" class="learner-instruction lesson-instruction">
         {{ displayQuestion.instruction }}
       </h1>
-      <p v-if="session.currentHint.value" class="learner-instruction" role="status">
-        {{ session.currentHint.value }}
+      <p v-if="displayedHint" class="learner-instruction" role="status">
+        {{ displayedHint }}
       </p>
       <div class="question-scroll">
         <component
