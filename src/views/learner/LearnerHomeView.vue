@@ -8,7 +8,6 @@ import seaBackground from '../../assets/map/main-map-background-flat-waves-v2.pn
 
 const router = useRouter()
 const selected = ref<string | null>(null)
-const showGazeCheckLink = import.meta.env.DEV
 const labels: Record<MainMapMenuItem['id'], string> = {
   growth: '나의 성장',
   game: '이야기 나라',
@@ -41,13 +40,6 @@ const handleSelect = (id: MainMapMenuItem['id']) => {
 <template>
   <main class="learner-home" :style="{ backgroundImage: `url(${seaBackground})` }">
     <IslandMap @select="handleSelect" />
-    <RouterLink
-      v-if="showGazeCheckLink"
-      class="gaze-check-link"
-      :to="{ name: 'gaze-check' }"
-    >
-      Gaze Check
-    </RouterLink>
     <Transition name="toast">
       <p v-if="selected" class="toast">{{ selected }} 메뉴로 이동할게요!</p>
     </Transition>

@@ -5,6 +5,8 @@ import {
   createRealGazeSubmission,
   createMockVoiceFile,
   mockDeviceSubmissionsEnabled,
+  mockGazeSubmissionsEnabled,
+  mockVoiceSubmissionsEnabled,
 } from './mockDeviceSubmissions'
 
 const mappedQuestion = (
@@ -29,6 +31,8 @@ const mappedQuestion = (
 describe('mock device submissions', () => {
   it('장치 목데이터 제출을 기본으로 활성화한다', () => {
     expect(mockDeviceSubmissionsEnabled).toBe(true)
+    expect(mockVoiceSubmissionsEnabled).toBe(true)
+    expect(mockGazeSubmissionsEnabled).toBe(true)
   })
 
   it('백엔드 업로드 정책에 맞는 비어 있지 않은 WAV 파일을 만든다', async () => {

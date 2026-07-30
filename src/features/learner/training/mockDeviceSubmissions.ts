@@ -14,6 +14,14 @@ export const mockDeviceSubmissionsEnabled = parseBooleanEnv(
   import.meta.env.VITE_MOCK_DEVICE_SUBMISSIONS,
   true,
 )
+export const mockVoiceSubmissionsEnabled = parseBooleanEnv(
+  import.meta.env.VITE_MOCK_VOICE_SUBMISSIONS,
+  mockDeviceSubmissionsEnabled,
+)
+export const mockGazeSubmissionsEnabled = parseBooleanEnv(
+  import.meta.env.VITE_MOCK_GAZE_SUBMISSIONS,
+  mockDeviceSubmissionsEnabled,
+)
 
 const MOCK_SAMPLE_RATE = 8_000
 const MOCK_AUDIO_DURATION_MS = 250

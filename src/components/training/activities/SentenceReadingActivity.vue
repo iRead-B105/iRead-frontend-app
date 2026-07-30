@@ -3,7 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import type { ReadingSentence, TrainingQuestion } from '@/types/training'
 import { useAudioPlayer } from '@/composables/useAudioPlayer'
 import { useTrainingSession } from '@/composables/useTrainingSession'
-import { mockDeviceSubmissionsEnabled } from '@/features/learner/training/mockDeviceSubmissions'
+import { mockVoiceSubmissionsEnabled } from '@/features/learner/training/mockDeviceSubmissions'
 
 const props = defineProps<{ question: TrainingQuestion }>()
 defineEmits<{ next: [] }>()
@@ -221,7 +221,7 @@ const startReading = () => {
   started.value = true
   messageState.value = 'listening'
   lastProgressAt = Date.now()
-  if (mockDeviceSubmissionsEnabled) {
+  if (mockVoiceSubmissionsEnabled) {
     completedCount.value = chunks.value.length
     finishSentence()
     return

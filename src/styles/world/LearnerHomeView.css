@@ -31,25 +31,6 @@
   box-shadow: var(--learner-shadow-card);
 }
 
-.gaze-check-link {
-  position: absolute;
-  right: 24px;
-  bottom: 24px;
-  z-index: 35;
-  min-width: 132px;
-  padding: 13px 18px;
-  border: 3px solid #ffffff;
-  border-radius: 8px;
-  background: #f59e0b;
-  color: #1f2937;
-  box-shadow: 0 8px 0 rgb(146 64 14 / 42%);
-  font-family: var(--learner-font-display);
-  font-size: 18px;
-  font-weight: 900;
-  text-align: center;
-  text-decoration: none;
-}
-
 .toast-enter-active,.toast-leave-active {
   transition: opacity var(--learner-duration-normal) var(--learner-easing-standard);
 }

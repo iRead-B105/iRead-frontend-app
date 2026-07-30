@@ -32,7 +32,8 @@ import {
   createMockGazeSubmission,
   createMockVoiceFile,
   mapTrainingQuestion,
-  mockDeviceSubmissionsEnabled,
+  mockGazeSubmissionsEnabled,
+  mockVoiceSubmissionsEnabled,
   type LearnerTraceSubmissionResponse,
   type LearnerTrainingIntro,
   type MappedTrainingQuestion,
@@ -97,12 +98,11 @@ const gazeSessionId = ref<string | null>(null)
 const gazeSessionCompleted = ref(false)
 const gazeSamples: DeviceGazeSample[] = []
 const gazeDebugVisible = computed(() =>
-  import.meta.env.DEV
-  || route.query.gazeDebug === '1'
+  route.query.gazeDebug === '1'
   || import.meta.env.VITE_GAZE_DEBUG_PANEL === 'true',
 )
 const gazeTransferDebug = ref({
-  source: mockDeviceSubmissionsEnabled ? 'mock' : 'real',
+  source: mockGazeSubmissionsEnabled ? 'mock' : 'real',
   start: 'idle',
   end: 'idle',
   sessionId: '',
@@ -191,14 +191,15 @@ const displayedHint = computed(() => presentTrainingHint(
   session.currentHint.value,
   session.progressState.hintLevel,
 ))
-const deviceFallbackEnabled = import.meta.env.DEV || mockDeviceSubmissionsEnabled
+const voiceDeviceFallbackEnabled = import.meta.env.DEV || mockVoiceSubmissionsEnabled
+const gazeDeviceFallbackEnabled = import.meta.env.DEV || mockGazeSubmissionsEnabled
 
 const updateGazeTransferDebug = (patch: Partial<typeof gazeTransferDebug.value>) => {
   gazeTransferDebug.value = {
     ...gazeTransferDebug.value,
     ...patch,
     sampleCount: gazeSamples.length,
-    source: mockDeviceSubmissionsEnabled ? 'mock' : 'real',
+    source: mockGazeSubmissionsEnabled ? 'mock' : 'real',
   }
   window.localStorage.setItem(
     'iread-gaze-transfer-debug',
@@ -318,11 +319,11 @@ onMounted(async () => {
 
 const startPlaying = async () => {
   if (integrationError.value || startingTraining.value) return
-  if (!deviceFallbackEnabled && gazeRequired.value && !eyeTrackerConnected.value) {
+  if (!gazeDeviceFallbackEnabled && gazeRequired.value && !eyeTrackerConnected.value) {
     deviceBlocker.value = 'eye-tracker'
     return
   }
-  if (!deviceFallbackEnabled && microphoneRequired.value && !microphoneAvailable.value) {
+  if (!voiceDeviceFallbackEnabled && microphoneRequired.value && !microphoneAvailable.value) {
     deviceBlocker.value = 'microphone'
     return
   }
@@ -350,7 +351,7 @@ const startPlaying = async () => {
           contentType: challengeTrackId.value ? 'TEST' : 'TRAINING',
           ...(challengeTrackId.value ? { testId: itemId } : { trainingId: itemId }),
           calibrationStatus:
-            mockDeviceSubmissionsEnabled
+            mockGazeSubmissionsEnabled
               ? 'SKIPPED'
               : eyeTrackerConnected.value
                 ? 'SUCCESS'
@@ -405,16 +406,14 @@ onBeforeUnmount(() => {
 watch(
   [eyeTrackerConnected, microphoneAvailable],
   ([eyeConnected, micAvailable]) => {
-    if (deviceFallbackEnabled) {
-      deviceBlocker.value = null
-      return
-    }
+    if (deviceBlocker.value === 'eye-tracker' && gazeDeviceFallbackEnabled) deviceBlocker.value = null
+    if (deviceBlocker.value === 'microphone' && voiceDeviceFallbackEnabled) deviceBlocker.value = null
     if (deviceBlocker.value === 'eye-tracker' && eyeConnected) deviceBlocker.value = null
     if (deviceBlocker.value === 'microphone' && micAvailable) deviceBlocker.value = null
 
     if (phase.value !== 'playing') return
-    if (gazeRequired.value && !eyeConnected) deviceBlocker.value = 'eye-tracker'
-    else if (microphoneRequired.value && !micAvailable) deviceBlocker.value = 'microphone'
+    if (!gazeDeviceFallbackEnabled && gazeRequired.value && !eyeConnected) deviceBlocker.value = 'eye-tracker'
+    else if (!voiceDeviceFallbackEnabled && microphoneRequired.value && !micAvailable) deviceBlocker.value = 'microphone'
   },
 )
 
@@ -456,7 +455,7 @@ const goNext = async (response?: LearnerTraceSubmissionResponse) => {
     if (
       mapped?.requiredInputs.includes('VOICE')
       && !recordedQuestionNumbers.has(mapped.questionNumber)
-      && !mockDeviceSubmissionsEnabled
+      && !mockVoiceSubmissionsEnabled
     ) {
       pendingNextResponse.value = response
       voiceFeedback.value = ''
@@ -474,7 +473,7 @@ const goNext = async (response?: LearnerTraceSubmissionResponse) => {
         throw new Error('제출할 서버 훈련 문항을 확인할 수 없습니다.')
       }
       if (
-        mockDeviceSubmissionsEnabled
+        mockVoiceSubmissionsEnabled
         && mapped.requiredInputs.includes('VOICE')
         && !recordedQuestionNumbers.has(mapped.questionNumber)
       ) {
@@ -575,7 +574,7 @@ const saveAndFinish = async () => {
       const itemId = learningItemId.value
       if (!/^\d+$/.test(itemId)) throw new Error('서버 학습 ID가 올바르지 않습니다.')
       if (gazeSessionId.value && !gazeSessionCompleted.value) {
-        const gazeData = mockDeviceSubmissionsEnabled
+        const gazeData = mockGazeSubmissionsEnabled
           ? createMockGazeSubmission(serverQuestions.value)
           : createRealGazeSubmission(serverQuestions.value, gazeSamples)
         updateGazeTransferDebug({ end: 'sending', lastError: '' })

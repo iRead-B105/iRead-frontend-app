@@ -100,7 +100,6 @@ export const learnerRoutes: RouteRecordRaw = {
   meta: { requiresLearnerAuth: true },
   children: [
     { path: '', name: 'learner-home', component: () => import('@/views/learner/LearnerHomeView.vue') },
-    { path: 'gaze-check', name: 'gaze-check', component: () => import('@/views/learner/GazeConnectionCheckView.vue') },
     { path: 'stories', name: 'story-selection', component: () => import('@/views/learner/StorySelectionView.vue') },
     { path: 'stories/:storyId', name: 'story-reading', component: () => import('@/views/learner/StoryReaderView.vue') },
     { path: 'training', name: 'training-home', component: () => import('@/views/learner/TrainingHomeView.vue') },
