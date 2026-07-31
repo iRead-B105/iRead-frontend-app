@@ -228,13 +228,67 @@ const recentHitMatchesSample = (
   return Math.hypot(hit.clientX - sample.x, hit.clientY - sample.y) <= 48
 }
 
+const gazeMetricTokensFrom = (value: string | null | undefined): string[] =>
+  value?.match(/[가-힣ㄱ-ㅎㅏ-ㅣA-Za-z0-9]+/g) ?? []
+
+const normalizeGazeToken = (value: string) =>
+  value.normalize('NFC').toLowerCase().replace(/[^\p{L}\p{N}ㄱ-ㅎㅏ-ㅣ가-힣]/gu, '')
+
+const uiTokensForQuestion = (mapped: MappedTrainingQuestion): string[] => {
+  if (mapped.question.readingSentences?.length) {
+    return mapped.question.readingSentences.flatMap((sentence) => sentence.chunks)
+  }
+  if (mapped.question.readingWords?.length) {
+    return mapped.question.readingWords.map((word) => word.text)
+  }
+  return gazeMetricTokensFrom(
+    mapped.expectedText
+    ?? mapped.question.targetText
+    ?? mapped.question.targetResult,
+  )
+}
+
+const metricTokensForQuestion = (mapped: MappedTrainingQuestion): string[] => {
+  const expectedTokens = gazeMetricTokensFrom(mapped.expectedText)
+  if (expectedTokens.length > 0) return expectedTokens
+  return uiTokensForQuestion(mapped)
+}
+
+const resolveMetricTokenIndex = (mapped: MappedTrainingQuestion, hit: GazeWordHit) => {
+  const metricTokens = metricTokensForQuestion(mapped)
+  const uiTokens = uiTokensForQuestion(mapped)
+  const normalizedHit = normalizeGazeToken(hit.text)
+  const uiOccurrence = uiTokens
+    .slice(0, hit.tokenIndex + 1)
+    .filter((token) => normalizeGazeToken(token) === normalizedHit)
+    .length
+  if (uiOccurrence > 0) {
+    let metricOccurrence = 0
+    const matchedIndex = metricTokens.findIndex((token) => {
+      if (normalizeGazeToken(token) !== normalizedHit) return false
+      metricOccurrence += 1
+      return metricOccurrence === uiOccurrence
+    })
+    if (matchedIndex >= 0) return matchedIndex
+  }
+  if (normalizeGazeToken(metricTokens[hit.tokenIndex] ?? '') === normalizedHit) {
+    return hit.tokenIndex
+  }
+  const fallbackIndex = metricTokens.findIndex((token) => normalizeGazeToken(token) === normalizedHit)
+  return fallbackIndex >= 0 ? fallbackIndex : hit.tokenIndex
+}
+
 const applyWordHitToSample = (sample: DeviceGazeSample, hit: GazeWordHit): DeviceGazeSample => {
   const mapped = serverQuestions.value[session.progressState.currentQuestionIndex]
+  const tokenIndex = mapped ? resolveMetricTokenIndex(mapped, hit) : hit.tokenIndex
+  const text = mapped
+    ? metricTokensForQuestion(mapped)[tokenIndex] ?? hit.text
+    : hit.text
   return {
     ...sample,
     targetIndex: mapped?.recordingTargetIndex ?? 0,
-    tokenIndex: hit.tokenIndex,
-    text: hit.text,
+    tokenIndex,
+    text,
   }
 }
 

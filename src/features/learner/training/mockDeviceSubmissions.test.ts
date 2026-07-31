@@ -101,4 +101,25 @@ describe('mock device submissions', () => {
     expect(gazeData.words[1]).toMatchObject({ text: 'beta', visitCount: 1, regressionCount: 0 })
     expect(gazeData.words[0]?.dwellMs).not.toBe(gazeData.words[1]?.dwellMs)
   })
+
+  it('uses full expected text tokens for sentence reading gaze metrics', () => {
+    const gazeData = createRealGazeSubmission([
+      mappedQuestion({
+        expectedText: 'alpha beta gamma',
+        question: {
+          ...mappedQuestion().question,
+          targetText: 'alpha beta gamma',
+          readingSentences: [{ id: 'sentence-0', chunks: ['gamma'] }],
+        },
+      }),
+    ], [
+      { x: 320, y: 240, capturedAtMs: 1_000, questionNumber: 1, tokenIndex: 2, text: 'gamma' },
+      { x: 322, y: 242, capturedAtMs: 1_080, questionNumber: 1, tokenIndex: 2, text: 'gamma' },
+    ])
+
+    expect(gazeData.words.map((word) => word.text)).toEqual(['alpha', 'beta', 'gamma'])
+    expect(gazeData.words[0]).toMatchObject({ tokenIndex: 0, visitCount: 0 })
+    expect(gazeData.words[1]).toMatchObject({ tokenIndex: 1, visitCount: 0 })
+    expect(gazeData.words[2]).toMatchObject({ tokenIndex: 2, text: 'gamma', visitCount: 1 })
+  })
 })

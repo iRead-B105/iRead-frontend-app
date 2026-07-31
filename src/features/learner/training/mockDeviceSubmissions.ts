@@ -97,6 +97,9 @@ const MAX_SAMPLE_GAP_MS = 250
 const MIN_FIXATION_MS = 100
 
 function wordTokensForQuestion(question: MappedTrainingQuestion): string[] {
+  const expectedTokens = wordsFrom(question.expectedText ?? '')
+  if (expectedTokens.length > 0) return expectedTokens
+
   if (question.question.readingSentences?.length) {
     return question.question.readingSentences.flatMap((sentence) => sentence.chunks)
   }
