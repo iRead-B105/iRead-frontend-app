@@ -7,7 +7,7 @@ describe('API learner gaze repository', () => {
     vi.restoreAllMocks()
   })
 
-  it('문자열 UI 식별자를 Spring 숫자 식별자로 변환해 session을 시작한다', async () => {
+  it('starts a gaze session with numeric ids for the backend', async () => {
     const request = vi.spyOn(learnerApiClient, 'request').mockResolvedValue({
       gazeSessionId: 81,
       collectionStatus: 'RUNNING',
@@ -36,31 +36,41 @@ describe('API learner gaze repository', () => {
     expect(result.gazeSessionId).toBe('81')
   })
 
-  it('분석 결과의 studentId만 숫자로 바꾸고 측정값은 보존한다', async () => {
+  it('ends a gaze session with collected data', async () => {
     const request = vi.spyOn(learnerApiClient, 'request').mockResolvedValue({
-      gazeAnalysisId: 91,
+      gazeSessionId: 81,
+      collectionStatus: 'COMPLETED',
+      calibrationStatus: 'SUCCESS',
+      startedAt: '2026-07-29T10:00:00',
+      endedAt: '2026-07-29T10:05:00',
     })
     const repository = new ApiLearnerGazeRepository()
+    const data = {
+      schemaVersion: 1,
+      samples: [{ x: 120, y: 240, capturedAtMs: 1, questionNumber: 1 }],
+      words: [{
+        questionNo: 1,
+        targetIndex: 0,
+        tokenIndex: 0,
+        text: 'ga',
+        dwellMs: 120,
+        visitCount: 1,
+        regressionCount: 0,
+        firstSeenMs: 0,
+        lastSeenMs: 120,
+      }],
+    }
 
-    const result = await repository.saveAnalysis('81', {
-      studentId: '101',
-      totalVisitedDuration: 65000,
-      totalVisitedCount: 23,
-      reverseReadCount: 4,
+    const result = await repository.end('81', '101', 'COMPLETED', data)
+
+    expect(request).toHaveBeenCalledWith('/api/app/gaze/sessions/81/end', {
+      method: 'PATCH',
+      body: JSON.stringify({
+        studentId: 101,
+        endStatus: 'COMPLETED',
+        data,
+      }),
     })
-
-    expect(request).toHaveBeenCalledWith(
-      '/api/app/gaze/sessions/81/analysis-results',
-      {
-        method: 'POST',
-        body: JSON.stringify({
-          studentId: 101,
-          totalVisitedDuration: 65000,
-          totalVisitedCount: 23,
-          reverseReadCount: 4,
-        }),
-      },
-    )
-    expect(result).toBe('91')
+    expect(result.collectionStatus).toBe('COMPLETED')
   })
 })

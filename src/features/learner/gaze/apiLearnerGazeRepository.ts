@@ -1,7 +1,6 @@
 import { jsonBody } from '@/lib/api'
 import { learnerApiClient } from '../learnerApiClient'
 import type {
-  LearnerGazeAnalysisInput,
   LearnerGazeRepository,
   LearnerGazeSession,
   LearnerGazeStartInput,
@@ -63,19 +62,5 @@ export class ApiLearnerGazeRepository implements LearnerGazeRepository {
         body: jsonBody({ studentId: Number(studentId) }),
       },
     )
-  }
-
-  async saveAnalysis(
-    gazeSessionId: string,
-    input: LearnerGazeAnalysisInput,
-  ): Promise<string> {
-    const response = await learnerApiClient.request<{ gazeAnalysisId: number }>(
-      `/api/app/gaze/sessions/${encodeURIComponent(gazeSessionId)}/analysis-results`,
-      {
-        method: 'POST',
-        body: jsonBody({ ...input, studentId: Number(input.studentId) }),
-      },
-    )
-    return String(response.gazeAnalysisId)
   }
 }

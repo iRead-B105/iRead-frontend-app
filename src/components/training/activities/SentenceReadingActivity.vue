@@ -3,7 +3,10 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import type { ReadingSentence, TrainingQuestion } from '@/types/training'
 import { useAudioPlayer } from '@/composables/useAudioPlayer'
 import { useTrainingSession } from '@/composables/useTrainingSession'
-import { mockDeviceSubmissionsEnabled } from '@/features/learner/training/mockDeviceSubmissions'
+import {
+  mockGazeSubmissionsEnabled,
+  mockVoiceSubmissionsEnabled,
+} from '@/features/learner/training/mockDeviceSubmissions'
 
 const props = defineProps<{ question: TrainingQuestion }>()
 defineEmits<{ next: [] }>()
@@ -58,6 +61,11 @@ const entries = computed(() => sentences.value.flatMap((sentence, sentenceIndex)
   sentence.chunks.map((text, localIndex) => ({ text, sentenceIndex, localIndex })),
 ))
 const chunks = computed(() => entries.value.map((entry) => entry.text))
+const completeByRealGaze = computed(() =>
+  mockVoiceSubmissionsEnabled
+  && !mockGazeSubmissionsEnabled
+  && props.question.requiredInputs?.includes('GAZE'),
+)
 const sentenceRanges = computed(() => {
   let cursor = 0
   return sentences.value.map((sentence) => {
@@ -221,11 +229,12 @@ const startReading = () => {
   started.value = true
   messageState.value = 'listening'
   lastProgressAt = Date.now()
-  if (mockDeviceSubmissionsEnabled) {
+  if (mockVoiceSubmissionsEnabled && !completeByRealGaze.value) {
     completedCount.value = chunks.value.length
     finishSentence()
     return
   }
+  if (completeByRealGaze.value) return
   startRecognition()
 }
 
@@ -247,10 +256,27 @@ const isSentenceComplete = (sentenceIndex: number) => {
   return Boolean(range && completedCount.value >= range.end)
 }
 
-const updateGaze = (clientX: number, clientY: number) => {
+const emitGazeWordHit = (clientX: number, clientY: number, tokenIndex: number) => {
+  const text = chunks.value[tokenIndex]
+  if (typeof text !== 'string') return
+  window.dispatchEvent(new CustomEvent('iread:gaze-word-hit', {
+    detail: {
+      clientX,
+      clientY,
+      tokenIndex,
+      text,
+    },
+  }))
+}
+
+const updateGaze = (clientX: number, clientY: number, emitWordHit = false) => {
   gazePoint.value = { x: clientX, y: clientY }
   gazeVisible.value = true
-  gazeIndex.value = chunkIndexAt(clientX, clientY)
+  const nextGazeIndex = chunkIndexAt(clientX, clientY)
+  gazeIndex.value = nextGazeIndex
+  if (emitWordHit && nextGazeIndex !== null) {
+    emitGazeWordHit(clientX, clientY, nextGazeIndex)
+  }
 }
 const onPointerMove = (event: PointerEvent) => updateGaze(event.clientX, event.clientY)
 const onPointerLeave = () => {
@@ -265,7 +291,7 @@ const onGaze = (event: Event) => {
     detail?.headPoseStable !== false
     && typeof detail?.clientX === 'number'
     && typeof detail?.clientY === 'number'
-  ) updateGaze(detail.clientX, detail.clientY)
+  ) updateGaze(detail.clientX, detail.clientY, true)
 }
 const onExternalSpeech = (event: Event) => {
   const detail = (event as CustomEvent<{ transcript?: string }>).detail
@@ -299,6 +325,17 @@ onMounted(() => {
   window.addEventListener('iread:speech', onExternalSpeech)
   stateTimer = setInterval(() => {
     if (!started.value || allComplete.value || readingHelp || betweenSentences.value) return
+    if (completeByRealGaze.value) {
+      if (gazeIndex.value === activeIndex.value) {
+        if (!dwellStartedAt) dwellStartedAt = Date.now()
+        dwellProgress.value = Math.min(1, (Date.now() - dwellStartedAt) / 900)
+        if (dwellProgress.value >= 1) acceptChunks(1)
+      } else {
+        dwellStartedAt = 0
+        dwellProgress.value = 0
+      }
+      return
+    }
     if (assistIndex.value === null && Date.now() - lastProgressAt >= 8000) activateAssist()
     if (assistIndex.value !== null && gazeIndex.value === assistIndex.value) {
       if (!dwellStartedAt) dwellStartedAt = Date.now()

@@ -69,6 +69,11 @@ export const useLearnerSessionStore = defineStore('learner-session', {
       state.status === 'authenticated' && state.accessToken !== null && state.student !== null,
   },
   actions: {
+    replaceStudentProfile(student: LearnerStudent) {
+      if (this.student?.studentId !== student.studentId) return
+      this.student = { ...student }
+      cacheStudent(this.student)
+    },
     reset(options: { preserveStudentCache?: boolean } = {}) {
       this.status = 'anonymous'
       this.bootstrapToken = null

@@ -19,15 +19,6 @@ export interface LearnerGazeSession {
   readonly endedAt: string | null
 }
 
-export interface LearnerGazeAnalysisInput {
-  readonly studentId: string
-  readonly totalVisitedDuration: number
-  readonly totalVisitedCount: number
-  readonly reverseReadCount: number
-  readonly avgVisitedDuration?: number
-  readonly sentenceMetrics?: unknown
-}
-
 export interface LearnerGazeRepository {
   readonly source: 'mock' | 'api'
   readonly start: (input: LearnerGazeStartInput) => Promise<LearnerGazeSession>
@@ -38,8 +29,4 @@ export interface LearnerGazeRepository {
     data?: unknown,
   ) => Promise<LearnerGazeSession>
   readonly fail: (gazeSessionId: string, studentId: string) => Promise<void>
-  readonly saveAnalysis: (
-    gazeSessionId: string,
-    input: LearnerGazeAnalysisInput,
-  ) => Promise<string>
 }

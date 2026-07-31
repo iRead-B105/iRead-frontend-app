@@ -3,6 +3,7 @@ import type { LearnerRequestOptions } from '../model'
 export interface LearnerTrainingIntro {
   readonly trainingId: string
   readonly trainingTemplateId: string
+  readonly trainingType?: string
   readonly dailyCurriculumId: string
   readonly sequenceNo: number
   readonly status: string

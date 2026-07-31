@@ -28,7 +28,4 @@ export class MockLearnerGazeRepository implements LearnerGazeRepository {
   }
 
   async fail(): Promise<void> {}
-  async saveAnalysis(): Promise<string> {
-    return 'mock-gaze-analysis'
-  }
 }
