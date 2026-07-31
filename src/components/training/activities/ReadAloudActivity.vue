@@ -39,6 +39,7 @@ watch(
       session.markRecordingComplete({
         isMock: recorder.state.isMock,
         audioUrl: recorder.audioUrl.value,
+        blob: recorder.audioBlob.value,
       })
     }
   },
