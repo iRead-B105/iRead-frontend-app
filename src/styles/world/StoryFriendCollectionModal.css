@@ -10,10 +10,10 @@
 }
 
 .collection-modal {
-  width: min(1020px, calc(100vw - (var(--learner-page-padding) * 2)));
-  max-height: calc(100dvh - (var(--learner-page-padding) * 2));
+  width: min(1020px, calc(100cqw - (var(--learner-page-padding) * 2)));
+  max-height: calc(100cqh - (var(--learner-page-padding) * 2));
   overflow: auto;
-  padding: clamp(24px, 3vw, 42px);
+  padding: clamp(24px, 3cqw, 42px);
   border: var(--learner-modal-border);
   border-radius: var(--learner-radius-panel);
   background: var(--learner-modal-background);
@@ -38,7 +38,7 @@
 .collection-heading h2 {
   margin: 3px 0 0;
   color: var(--learner-color-text);
-  font-size: clamp(32px, 3.2vw, 50px);
+  font-size: clamp(32px, 3.2cqw, 50px);
   line-height: 1.08;
 }
 
@@ -86,7 +86,7 @@
 }
 
 .collection-picture {
-  height: clamp(125px, 13vw, 178px);
+  height: clamp(125px, 13cqw, 178px);
   display: grid;
   place-items: center;
   margin-bottom: var(--learner-space-3);
@@ -107,7 +107,7 @@
   display: block;
   overflow: hidden;
   color: var(--learner-color-text);
-  font-size: clamp(20px, 1.7vw, 27px);
+  font-size: clamp(20px, 1.7cqw, 27px);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -116,7 +116,7 @@
 .collection-empty p {
   margin: 5px 0 0;
   color: var(--learner-color-text-soft);
-  font-size: clamp(16px, 1.2vw, 19px);
+  font-size: clamp(16px, 1.2cqw, 19px);
   font-weight: var(--learner-font-weight-bold);
 }
 
@@ -130,7 +130,7 @@
   color: var(--learner-color-text-inverse);
   box-shadow: var(--learner-shadow-control);
   font-family: var(--learner-font-display);
-  font-size: clamp(17px, 1.25vw, 20px);
+  font-size: clamp(17px, 1.25cqw, 20px);
   font-weight: var(--learner-font-weight-heavy);
   cursor: pointer;
   transition:
@@ -166,5 +166,5 @@
 
 .collection-empty strong {
   color: var(--learner-color-text);
-  font-size: clamp(27px, 2.5vw, 40px);
+  font-size: clamp(27px, 2.5cqw, 40px);
 }

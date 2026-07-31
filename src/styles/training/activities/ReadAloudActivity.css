@@ -363,7 +363,7 @@
   min-height: 60px;
 }
 
-@media (max-width: 760px) {
+@container learner-canvas (max-width: 760px) {
   .activity {
     overflow-y: auto;
   }
@@ -374,7 +374,7 @@
   }
 }
 
-@media (max-height: 800px) and (min-width: 761px) {
+@container learner-canvas (max-height: 800px) and (min-width: 761px) {
   .activity {
     gap: 10px;
     padding: 14px 20px;

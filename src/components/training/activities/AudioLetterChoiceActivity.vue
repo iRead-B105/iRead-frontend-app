@@ -79,7 +79,7 @@ watch(
     <div class="action-row">
       <p v-if="session.progressState.isCurrentCorrect === false" role="status">한 번 더 들어봐!</p>
       <span v-else></span>
-      <button v-if="isCorrect" class="next-button" type="button" @click="$emit('next')">
+      <button v-if="isCorrect" class="next-button shared-next-source" type="button" @click="$emit('next')">
         다음 문제
       </button>
     </div>

@@ -32,7 +32,7 @@
   margin: 0;
   color: #193b79;
   font-family: var(--learner-font-display);
-  font-size: clamp(26px,2.2vw,35px);
+  font-size: clamp(26px,2.2cqw,35px);
   font-weight: 900;
 }
 
@@ -141,7 +141,7 @@
 
 .sentence-card strong {
   font-family: var(--learner-font-display);
-  font-size: clamp(18px,1.7vw,25px);
+  font-size: clamp(18px,1.7cqw,25px);
   font-weight: 900;
   text-align: center;
   line-height: 1.35;
@@ -228,7 +228,7 @@
   z-index: 100;
   display: grid;
   place-items: center;
-  width: min(310px,80vw);
+  width: min(310px,80cqw);
   min-height: 82px;
   padding: 12px 20px;
   border: 4px solid #6f91e9;
@@ -267,7 +267,7 @@
   }
 }
 
-@media (max-height:800px) {
+@container learner-canvas (max-height:800px) {
   .activity {
     gap: 9px;
     padding: 10px 22px 9px;
@@ -311,7 +311,7 @@
   }
 }
 
-@media (max-width:760px) {
+@container learner-canvas (max-width:760px) {
   .activity {
     overflow-y: auto;
   }

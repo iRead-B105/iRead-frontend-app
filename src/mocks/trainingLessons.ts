@@ -695,7 +695,138 @@ export const lessonMap: Record<string, TrainingLesson> = {
   'short-story': shortStoryLesson,
 }
 
+interface DevPreviewDefinition {
+  id: string
+  title: string
+  sourceLessonIds: string[]
+}
+
+const devPreviewDefinitions: DevPreviewDefinition[] = [
+  {
+    id: 'gaze-trace',
+    title: '따라 보기 UI',
+    sourceLessonIds: ['trace-consonant', 'trace-vowel', 'trace-syllable'],
+  },
+  {
+    id: 'audio-letter-choice',
+    title: '소리 듣고 글자 고르기 UI',
+    sourceLessonIds: ['letter-sound-choice', 'word-first-sound-choice'],
+  },
+  {
+    id: 'listen-and-select',
+    title: '듣고 카드 고르기 UI',
+    sourceLessonIds: ['same-sound', 'first-sound', 'last-sound', 'batchim-sound'],
+  },
+  {
+    id: 'sound-choice',
+    title: '비슷한 소리 고르기 UI',
+    sourceLessonIds: ['consonant-sound', 'vowel-sound', 'similar-sound'],
+  },
+  {
+    id: 'sound-blend',
+    title: '소리 합치기 UI',
+    sourceLessonIds: ['sound-combine'],
+  },
+  {
+    id: 'letter-build',
+    title: '글자 만들기 UI',
+    sourceLessonIds: ['build-basic-letter', 'build-batchim-letter', 'build-double-batchim-letter'],
+  },
+  {
+    id: 'card-combine',
+    title: '자음·모음 합치기 UI',
+    sourceLessonIds: ['combine-cv'],
+  },
+  {
+    id: 'sound-manipulation',
+    title: '소리 빼기·바꾸기 UI',
+    sourceLessonIds: ['remove-batchim', 'remove-syllable', 'replace-syllable'],
+  },
+  {
+    id: 'sound-omit',
+    title: '소리 나누기 UI',
+    sourceLessonIds: ['sound-split'],
+  },
+  {
+    id: 'hangul-battle',
+    title: '글자 배틀 UI',
+    sourceLessonIds: ['battle-rabbit', 'battle-turtle', 'battle-ant'],
+  },
+  {
+    id: 'word-reading-grid',
+    title: '낱말 읽기 UI',
+    sourceLessonIds: ['read-real-words', 'read-nonwords'],
+  },
+  {
+    id: 'sentence-reading',
+    title: '문장·짧은 글 읽기 UI',
+    sourceLessonIds: ['read-sentences', 'read-short-passage'],
+  },
+  {
+    id: 'fill-blank',
+    title: '빈칸 채우기 UI',
+    sourceLessonIds: ['fill-blank'],
+  },
+  {
+    id: 'sentence-choice',
+    title: '그림·문장 연결 UI',
+    sourceLessonIds: ['match-picture'],
+  },
+  {
+    id: 'sentence-order',
+    title: '문장 조립 UI',
+    sourceLessonIds: ['sentence-order'],
+  },
+  {
+    id: 'read-aloud',
+    title: '소리 내어 읽기 UI',
+    sourceLessonIds: [
+      'hard-word',
+      'repeat-sentence',
+      'word-chain',
+      'follow-sentence',
+      'phrase-reading',
+      're-read',
+      'short-story',
+    ],
+  },
+]
+
+export const devPreviewLessons: TrainingLesson[] = devPreviewDefinitions.map((definition) => {
+  const sourceLessons = definition.sourceLessonIds.map((lessonId) => {
+    const lesson = lessonMap[lessonId]
+    if (!lesson) throw new Error(`DEV 미리보기 원본 훈련을 찾을 수 없습니다: ${lessonId}`)
+    return lesson
+  })
+  const firstLesson = sourceLessons[0]
+  if (!firstLesson) throw new Error(`DEV 미리보기 훈련 구성이 비어 있습니다: ${definition.id}`)
+  if (sourceLessons.some((lesson) => lesson.activityType !== firstLesson.activityType)) {
+    throw new Error(`DEV 미리보기 화면 유형이 서로 다릅니다: ${definition.id}`)
+  }
+
+  return {
+    id: `dev-preview-${definition.id}`,
+    categoryId: firstLesson.categoryId,
+    title: definition.title,
+    description: '같은 화면을 사용하는 훈련의 대표 문제를 하나씩 확인합니다.',
+    activityType: firstLesson.activityType,
+    estimatedMinutes: 1,
+    questions: sourceLessons.map((lesson) => {
+      const question = lesson.questions[0]
+      if (!question) throw new Error(`DEV 미리보기 원본 문항이 없습니다: ${lesson.id}`)
+      return {
+        ...question,
+        id: `dev-${definition.id}-${lesson.id}`,
+      }
+    }),
+  }
+})
+
+const devPreviewLessonMap: Record<string, TrainingLesson> = Object.fromEntries(
+  devPreviewLessons.map((lesson) => [lesson.id, lesson]),
+)
+
 export const getLessonById = (id: string): TrainingLesson | null => {
-  const lesson = lessonMap[id]
+  const lesson = lessonMap[id] ?? devPreviewLessonMap[id]
   return lesson ? personalizeRuntimeValue(lesson) : null
 }

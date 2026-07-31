@@ -82,7 +82,7 @@ const onDrop = (index: number) => {
     </header>
 
     <div class="activity-main">
-      <div class="sound-panel">
+      <div v-if="question.audioPromptEnabled !== false" class="sound-panel">
         <strong v-if="isSplit" class="target-word">{{ question.targetText }}</strong>
         <div v-else class="sound-pieces" aria-hidden="true">
           <template v-for="(_, index) in question.soundParts" :key="index">
@@ -157,7 +157,7 @@ const onDrop = (index: number) => {
       >
         확인
       </button>
-      <button v-else class="action action--next" type="button" @click="$emit('next')">
+      <button v-else class="action action--next shared-next-source" type="button" @click="$emit('next')">
         다음 문제
       </button>
     </div>

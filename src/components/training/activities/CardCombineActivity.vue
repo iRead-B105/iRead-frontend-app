@@ -175,7 +175,7 @@ const handleConfirm = () => session.submitAnswer()
       >
         확인
       </button>
-      <button v-else class="action action--primary" type="button" @click="$emit('next')">
+      <button v-else class="action action--primary shared-next-source" type="button" @click="$emit('next')">
         다음 문제
       </button>
     </div>

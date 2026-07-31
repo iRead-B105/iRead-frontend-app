@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// 훈련 레슨 화면: 인트로 → 문제 풀이 → 결과 저장
+// 훈련 레슨 화면: 문제 풀이 → 결과 저장
 // 세션 상태는 useTrainingSession(싱글톤)에서 공유합니다.
 // 액티비티는 'next' 이벤트만 보내며, 다음 레슨으로의 이동/자동 진행은 이곳에서 처리합니다.
 // (향후 자동 커리큘럼 연결 시 이 지점의 goNext/finish 흐름을 서버 세션 기반으로 교체)
@@ -20,9 +20,9 @@ import {
   isSkillChallengeTrackId,
   useSkillChallenge,
 } from '@/composables/useSkillChallenge'
-import TrainingIntro from '@/components/training/TrainingIntro.vue'
 import { trainingActivityComponents } from '@/components/training/activityRegistry'
-import PageBackButton from '@/components/common/PageBackButton.vue'
+import LearningBackButton from '@/components/training/LearningBackButton.vue'
+import LearningNextButton from '@/components/training/LearningNextButton.vue'
 import RiveGuideCharacter from '@/components/RiveGuideCharacter.vue'
 import leaveTrainingRabbit from '@/assets/training/ui/leave-training-rabbit.png'
 import lessonProgressTitleBoard from '@/assets/training/ui/lesson-progress-title-board-compact.webp'
@@ -151,8 +151,10 @@ const microphoneRequired = computed(() =>
 )
 
 const currentQuestion = computed(() => session.currentQuestion.value)
+const questionScroll = ref<HTMLElement | null>(null)
+const sharedNextEnabled = computed(() => session.progressState.isCurrentCorrect === true)
 const conciseInstructions: Partial<Record<TrainingActivityType, string>> = {
-  'gaze-trace': '글자를 따라가 봐!',
+  'gaze-trace': '글자를 따라 읽어요!',
   'audio-letter-choice': '첫소리를 찾아봐!',
   'listen-and-select': '같은 소리를 찾아봐!',
   'sound-choice': '소리를 찾아봐!',
@@ -168,11 +170,18 @@ const conciseInstructions: Partial<Record<TrainingActivityType, string>> = {
   'sentence-order': '문장을 만들어봐!',
   'read-aloud': '소리 내어 읽어봐!',
 }
+const mockListeningPromptLessonIds = new Set([
+  'repeat-sentence',
+  'follow-sentence',
+])
 const displayQuestion = computed(() => {
   const question = currentQuestion.value
   if (!question || !lesson.value) return question
   return {
     ...question,
+    audioPromptEnabled:
+      question.audioPromptEnabled
+      ?? mockListeningPromptLessonIds.has(lesson.value.id),
     instruction: conciseInstructions[lesson.value.activityType] ?? '해봐!',
     subInstruction: undefined,
   }
@@ -290,7 +299,11 @@ onMounted(async () => {
       }
     }
   }
-  phase.value = debugMode.value ? 'playing' : 'intro'
+  if (debugMode.value) {
+    phase.value = 'playing'
+  } else if (!integrationError.value) {
+    await startPlaying()
+  }
 })
 
 const startPlaying = async () => {
@@ -397,6 +410,18 @@ const exitToHome = () => {
     return
   }
   void router.push({ name: challengeTrackId.value ? 'skill-challenge' : 'training-home' })
+}
+
+const activateSharedNext = () => {
+  if (!sharedNextEnabled.value) return
+  const source = questionScroll.value?.querySelector<HTMLButtonElement>(
+    'button.shared-next-source',
+  )
+  if (source && !source.disabled) {
+    source.click()
+    return
+  }
+  void goNext()
 }
 
 const submitMockVoice = async (
@@ -629,7 +654,7 @@ const guideMessage = computed(() => {
   }
   if (activityGuideMessage.value) return activityGuideMessage.value
   if (session.progressState.hintLevel > 0) return '힌트를 보고\n천천히 해봐!'
-  if (lesson.value?.activityType === 'gaze-trace') return '반짝이는 점을 눈으로 따라가 봐!'
+  if (lesson.value?.activityType === 'gaze-trace') return '파란 선을 눈으로 따라가 봐!'
   return '할 수 있어!\n같이 해보자!'
 })
 const guideMood = computed(() =>
@@ -640,25 +665,14 @@ const guideMood = computed(() =>
 
 <template>
   <div class="lesson-view">
-    <div v-if="!integrationError && phase === 'intro' && lesson" class="lesson-topbar lesson-topbar--intro">
-      <PageBackButton label="훈련 선택으로 돌아가기" @back="exitToHome" />
-    </div>
-
-    <!-- 인트로 -->
-    <TrainingIntro
-      v-if="!integrationError && phase === 'intro' && lesson"
-      :lesson="lesson"
-      @start="startPlaying"
-    />
-
     <!-- 문제 풀이 -->
     <div
-      v-else-if="phase === 'playing' && lesson"
+      v-if="phase === 'playing' && lesson"
       class="playing"
       :class="{ 'playing--first-sound': lesson.id === 'word-first-sound-choice' }"
     >
       <div class="lesson-topbar lesson-topbar--inside">
-        <PageBackButton label="학습을 그만하고 훈련 선택으로 돌아가기" @back="exitToHome" />
+        <LearningBackButton @back="exitToHome" />
         <section
           v-if="displayQuestion"
           class="lesson-progress-board"
@@ -687,18 +701,18 @@ const guideMood = computed(() =>
                   ></span>
                 </span>
               </div>
-              <h1
-                v-if="lesson.activityType !== 'gaze-trace'"
-                class="learner-instruction lesson-instruction"
-              >
+              <h1 class="learner-instruction lesson-instruction">
                 {{ displayQuestion.instruction }}
               </h1>
             </div>
           </div>
         </section>
-        <span class="lesson-topbar-spacer" aria-hidden="true"></span>
+        <LearningNextButton
+          :enabled="sharedNextEnabled"
+          @activate="activateSharedNext"
+        />
       </div>
-      <div class="question-scroll">
+      <div ref="questionScroll" class="question-scroll">
         <component
           :is="activityComponent"
           v-if="displayQuestion && activityComponent"

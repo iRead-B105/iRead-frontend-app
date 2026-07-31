@@ -1,30 +1,25 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import type { TrainingChoice, TrainingQuestion } from '@/types/training'
-import { useAudioPlayer } from '@/composables/useAudioPlayer'
 import { useTrainingSession } from '@/composables/useTrainingSession'
 import ResourceRequired from '@/components/training/ResourceRequired.vue'
 import dragHandleIcon from '@/assets/icons/drag-handle.svg'
-import readingActiveIcon from '@/assets/icons/reading-active.svg'
 
 const props = defineProps<{ question: TrainingQuestion }>()
 defineEmits<{ next: [] }>()
 
 const session = useTrainingSession()
-const { replay, stop: stopAudio } = useAudioPlayer()
 const targetSlot = ref<HTMLElement | null>(null)
 const choices = computed<TrainingChoice[]>(() => props.question.choices ?? [])
 const placedChoice = ref<TrainingChoice | null>(null)
 const attempts = ref(0)
 const wrongChoiceId = ref<string | null>(null)
 const statusMessage = ref('')
-const readingCorrect = ref(false)
 const isComplete = ref(false)
 const draggingChoiceId = ref<string | null>(null)
 const dragPoint = ref({ x: 0, y: 0 })
 const overTarget = ref(false)
 let wrongTimer: ReturnType<typeof setTimeout> | null = null
-let disposed = false
 
 const showHint = computed(() => attempts.value >= 2 && !placedChoice.value)
 
@@ -33,27 +28,19 @@ const pointIsOverTarget = (clientX: number, clientY: number) => {
   return Boolean(rect && clientX >= rect.left && clientX <= rect.right && clientY >= rect.top && clientY <= rect.bottom)
 }
 
-const finishCorrectChoice = async (choice: TrainingChoice) => {
+const finishCorrectChoice = (choice: TrainingChoice) => {
   placedChoice.value = choice
   statusMessage.value = '잘 찾았어!'
-  readingCorrect.value = true
-  await Promise.race([
-    replay(choice.text ?? props.question.targetText ?? '', 0.78),
-    new Promise<void>((resolve) => setTimeout(resolve, 4800)),
-  ])
-  stopAudio()
-  if (disposed) return
-  readingCorrect.value = false
   isComplete.value = true
   session.markRecordingComplete({ isMock: false, audioUrl: null })
 }
 
 const evaluateChoice = (choiceId: string) => {
-  if (placedChoice.value || readingCorrect.value) return
+  if (placedChoice.value) return
   const choice = choices.value.find((item) => item.id === choiceId)
   if (!choice) return
   if (choice.id === props.question.answer) {
-    void finishCorrectChoice(choice)
+    finishCorrectChoice(choice)
     return
   }
   attempts.value += 1
@@ -64,7 +51,7 @@ const evaluateChoice = (choiceId: string) => {
 }
 
 const startPointerDrag = (event: PointerEvent, choice: TrainingChoice) => {
-  if (placedChoice.value || readingCorrect.value || event.button !== 0) return
+  if (placedChoice.value || event.button !== 0) return
   event.preventDefault()
   draggingChoiceId.value = choice.id
   dragPoint.value = { x: event.clientX, y: event.clientY }
@@ -94,12 +81,10 @@ onMounted(() => {
   window.addEventListener('pointercancel', cancelPointerDrag)
 })
 onBeforeUnmount(() => {
-  disposed = true
   window.removeEventListener('pointermove', onPointerMove)
   window.removeEventListener('pointerup', finishPointerDrag)
   window.removeEventListener('pointercancel', cancelPointerDrag)
   if (wrongTimer) clearTimeout(wrongTimer)
-  stopAudio()
 })
 </script>
 
@@ -158,8 +143,7 @@ onBeforeUnmount(() => {
     </Teleport>
 
     <footer class="action-bar">
-      <p v-if="readingCorrect" class="reading-state" role="status"><img :src="readingActiveIcon" alt="" aria-hidden="true" /> 문장을 읽고 있어</p>
-      <button v-else-if="isComplete" class="next-button" type="button" @click="$emit('next')">다음</button>
+      <button v-if="isComplete" class="next-button shared-next-source" type="button" @click="$emit('next')">다음</button>
     </footer>
   </section>
 </template>

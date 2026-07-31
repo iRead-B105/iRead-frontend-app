@@ -60,6 +60,7 @@ interface GazeDeviceStatusDto {
 
 interface CurrentTrainingListDto {
   readonly curriculumId: number
+  readonly studyDate?: string | null
   readonly curriculumStatus: 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED'
   readonly trainings: readonly {
     readonly trainingId: number
@@ -108,7 +109,7 @@ export class ApiLearnerContentRepository implements LearnerContentRepository {
 
     return {
       curriculumId: String(response.curriculumId),
-      studyDate: null,
+      studyDate: response.studyDate ?? null,
       status: response.curriculumStatus === 'COMPLETED' || allCompleted ? 'COMPLETED' : 'READY',
       currentOrder: current?.sequenceNo ?? orderedTrainings.length + 1,
       trainings: orderedTrainings.flatMap((training) => {

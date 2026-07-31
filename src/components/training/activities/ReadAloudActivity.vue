@@ -120,7 +120,13 @@ const micButtonLabel = computed(() => {
           <span v-for="(chunk, i) in chunks" :key="i" class="chunk">{{ chunk }}</span>
           <span v-if="chunks.length === 0" class="chunk">{{ sentence }}</span>
         </div>
-        <SoundButton :text="sentence" label="모범 문장" size="medium" variant="primary" />
+        <SoundButton
+          v-if="question.audioPromptEnabled === true"
+          :text="sentence"
+          label="모범 문장"
+          size="medium"
+          variant="primary"
+        />
       </div>
 
       <!-- 녹음 영역 -->
@@ -166,7 +172,7 @@ const micButtonLabel = computed(() => {
 
     <div class="action-bar">
       <button
-        class="action action--primary"
+        class="action action--primary shared-next-source"
         type="button"
         :disabled="!isAnswered"
         @click="$emit('next')"

@@ -6,7 +6,7 @@
   --label-color: #4b78e6;
   position: absolute;
   z-index: 12;
-  width: clamp(190px, 18vw, 290px);
+  width: clamp(190px, 18cqw, 290px);
   aspect-ratio: 300 / 96;
   transform: translate(-50%, -50%);
   pointer-events: none;
@@ -29,6 +29,7 @@
   font-size: 58px;
   font-weight: 900;
   letter-spacing: -0.085em;
+  white-space: nowrap;
 }
 
 .region-label.is-active .region-label-text {

@@ -54,6 +54,40 @@ const fixtures: readonly TrainingTypeFixture[] = [
   { templateId: 34, questionType: 'SHORT_STORY_READING', responseType: 'AUDIO', activityType: 'read-aloud', content: { title: '사과 이야기', sentences: [{ speaker: 'NARRATOR', text: '아기는 사과를 먹는다.' }, { speaker: 'CHARACTER', text: '정말 맛있어!' }] }, answer: { expectedText: '아기는 사과를 먹는다. 정말 맛있어!' } },
 ]
 
+const listeningPromptTypes = new Set([
+  'CONSONANT_SOUND_CHOICE',
+  'VOWEL_SOUND_CHOICE',
+  'CONSONANT_VOWEL_CLASSIFICATION',
+  'SYLLABLE_INITIAL_CHOICE',
+  'WORD_INITIAL_CHOICE',
+  'SAME_INITIAL_WORD_CHOICE',
+  'FINAL_CONSONANT_CHOICE',
+  'WORD_FINAL_SOUND_CHOICE',
+  'FINAL_CONSONANT_COMPARISON',
+  'SIMILAR_SOUND_CHOICE',
+  'PHONEME_BLEND',
+  'SYLLABLE_BLEND',
+  'BASIC_SYLLABLE_BUILD',
+  'FINAL_SYLLABLE_BUILD',
+  'DOUBLE_FINAL_BUILD',
+  'FINAL_CONSONANT_DELETE',
+  'SYLLABLE_DELETE',
+  'SYLLABLE_REPLACE',
+  'SENTENCE_REPEAT',
+])
+
+const audioPromptPolicyTypes = new Set([
+  ...listeningPromptTypes,
+  'DIFFICULT_WORD_PREVIEW',
+  'SENTENCE_ASSEMBLY',
+  'FILL_IN_THE_BLANK',
+  'IMAGE_SENTENCE_MATCH',
+  'WORD_CHAIN_READING',
+  'PHRASE_READING',
+  'REPEATED_SENTENCE_READING',
+  'SHORT_STORY_READING',
+])
+
 describe('all backend training types', () => {
   it('34개 템플릿을 빠짐없이 포함한다', () => {
     expect(fixtures.map((fixture) => fixture.templateId)).toEqual(
@@ -87,6 +121,27 @@ describe('all backend training types', () => {
       if (!['AUDIO', 'TRACE'].includes(mapped.responseType)) {
         expect(buildTrainingResponse(mapped, mapped.question.answer)).toBeTruthy()
       }
+    },
+  )
+
+  it.each(fixtures.filter((fixture) => audioPromptPolicyTypes.has(fixture.questionType)))(
+    '$questionType의 듣기 버튼 노출 정책을 명시한다',
+    (fixture) => {
+      const mapped = mapTrainingQuestion({
+        trainingId: String(190100 + fixture.templateId),
+        questionNumber: 1,
+        totalQuestions: 1,
+        question: {
+          questionType: fixture.questionType,
+          responseType: fixture.responseType,
+          content: fixture.content,
+          answer: fixture.answer,
+          requiredInputs: [],
+        },
+      })
+
+      expect(mapped.question.audioPromptEnabled)
+        .toBe(listeningPromptTypes.has(fixture.questionType))
     },
   )
 })

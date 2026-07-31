@@ -113,7 +113,7 @@ onMounted(async () => {
 })
 
 const handleRetry = () => {
-  // 다시 하기 → 레슨 화면(인트로)으로 이동. startLesson 은 레슨 진입 시 재실행됨
+  // 다시 하기 → 첫 문제로 바로 이동. startLesson 은 레슨 진입 시 재실행됨
   void router.push(
     challengeTrackId.value
       ? {

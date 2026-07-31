@@ -44,7 +44,7 @@
 
 .perfect-stars {
   position: absolute;
-  inset: clamp(18px, 2vw, 28px) clamp(24px, 3vw, 44px) auto;
+  inset: clamp(18px, 2cqw, 28px) clamp(24px, 3cqw, 44px) auto;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -52,8 +52,8 @@
 }
 
 .perfect-stars img {
-  width: clamp(42px, 4.5vw, 66px);
-  height: clamp(42px, 4.5vw, 66px);
+  width: clamp(42px, 4.5cqw, 66px);
+  height: clamp(42px, 4.5cqw, 66px);
   object-fit: contain;
   filter: drop-shadow(0 5px 4px rgb(175 111 0 / 22%));
   animation: perfectStarBounce 0.7s var(--learner-easing-bounce) both;
@@ -193,7 +193,7 @@
   box-shadow: var(--learner-shadow-focus);
 }
 
-@media (max-width: 560px) {
+@container learner-canvas (max-width: 560px) {
   .complete-actions {
     flex-direction: column;
   }

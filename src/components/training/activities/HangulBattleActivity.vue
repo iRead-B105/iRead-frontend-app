@@ -1,10 +1,8 @@
 <script setup lang="ts">
 import { computed, nextTick, onUnmounted, reactive, ref } from 'vue'
 import type { HangulBattleRound, HangulBattleTile, TrainingQuestion } from '@/types/training'
-import { useAudioPlayer } from '@/composables/useAudioPlayer'
 import { useTrainingSession } from '@/composables/useTrainingSession'
 import { getCachedStudent } from '@/services/learnerDataRepository'
-import SoundButton from '../SoundButton.vue'
 import progressStar from '@/assets/training/ui/progress-star.png'
 
 import rabbitSmile from '@/assets/battle/rabbit-smile.png'
@@ -21,10 +19,9 @@ const props = defineProps<{ question: TrainingQuestion }>()
 const emit = defineEmits<{ next: [] }>()
 
 const session = useTrainingSession()
-const audio = useAudioPlayer()
 const studentName = getCachedStudent().name
 
-type GamePhase = 'ready' | 'speaking' | 'racing' | 'round-result' | 'match-result'
+type GamePhase = 'ready' | 'racing' | 'round-result' | 'match-result'
 type RoundWinner = 'player' | 'opponent'
 
 const phase = ref<GamePhase>('ready')
@@ -106,10 +103,8 @@ const startOpponent = () => {
   }, 120)
 }
 
-const startRace = async () => {
+const startRace = () => {
   if (!currentRound.value || phase.value !== 'ready') return
-  phase.value = 'speaking'
-  await audio.replay(currentRound.value.word, 0.82)
   clearBoard()
   phase.value = 'racing'
   startOpponent()
@@ -128,7 +123,6 @@ const finishRound = (winner: RoundWinner) => {
   if (winner === 'player') playerWins.value += 1
   else opponentWins.value += 1
   phase.value = 'round-result'
-  if (currentRound.value) void audio.replay(currentRound.value.word, 0.82)
 }
 
 const checkBoard = () => {
@@ -237,7 +231,6 @@ onUnmounted(() => {
 
       <main v-if="currentRound" class="game-board">
         <div class="word-row">
-          <SoundButton :text="currentRound.word" label="대결 낱말" size="medium" variant="primary" />
           <strong class="target-word">{{ currentRound.word }}</strong>
         </div>
 
@@ -287,12 +280,10 @@ onUnmounted(() => {
           </div>
         </div>
 
-        <div v-if="phase === 'ready' || phase === 'speaking'" class="board-overlay ready-overlay">
+        <div v-if="phase === 'ready'" class="board-overlay ready-overlay">
           <span>VS</span>
           <strong>{{ currentRound.word }}</strong>
-          <button type="button" :disabled="phase === 'speaking'" @click="startRace">
-            {{ phase === 'speaking' ? '낱말 듣는 중…' : '대결 시작!' }}
-          </button>
+          <button type="button" @click="startRace">대결 시작!</button>
         </div>
 
         <div v-else-if="phase === 'round-result'" class="board-overlay result-overlay" role="status">
@@ -307,7 +298,7 @@ onUnmounted(() => {
           </div>
           <strong>{{ roundWinner === 'player' ? `${studentName} 승리!` : `${opponentName} 승리!` }}</strong>
           <p>{{ currentRound.word }}</p>
-          <button type="button" @click="advanceRound">{{ isFinalRound ? '최종 결과' : '다음 낱말' }}</button>
+          <button class="shared-next-source" type="button" @click="advanceRound">{{ isFinalRound ? '최종 결과' : '다음 낱말' }}</button>
         </div>
 
         <div v-else-if="phase === 'match-result'" class="board-overlay match-overlay" role="status">

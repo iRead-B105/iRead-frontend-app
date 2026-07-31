@@ -7,7 +7,7 @@
   z-index: 18;
   right: -1.2%;
   bottom: -7%;
-  width: clamp(220px,18.2vw,350px);
+  width: clamp(220px,18.2cqw,350px);
   aspect-ratio: .508;
   opacity: 0;
   transition: opacity var(--learner-duration-slow);
@@ -65,13 +65,13 @@
   z-index: 3;
   right: 100%;
   bottom: 43%;
-  width: clamp(190px,15vw,270px);
-  padding: clamp(14px,1.5vw,20px);
+  width: clamp(190px,15cqw,270px);
+  padding: clamp(14px,1.5cqw,20px);
   border-radius: var(--learner-radius-large);
   background: var(--learner-color-surface);
   color: var(--learner-color-text);
   font-family: var(--learner-font-display);
-  font-size: clamp(17px,1.35vw,25px);
+  font-size: clamp(17px,1.35cqw,25px);
   font-weight: var(--learner-font-weight-heavy);
   line-height: 1.35;
   text-align: center;
@@ -80,7 +80,7 @@
   pointer-events: none;
 }
 
-@media (max-width:900px) {
+@container learner-canvas (max-width:900px) {
   .guide {
     right: -4%;
     width: 280px;

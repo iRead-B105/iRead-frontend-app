@@ -244,7 +244,7 @@ onBeforeUnmount(() => {
         <img :src="readingActiveIcon" alt="" aria-hidden="true" />
         {{ speechState === 'listening' ? '듣고 있어' : '문장 읽기' }}
       </button>
-      <button v-else-if="isComplete" class="next-button" type="button" @click="$emit('next')">다음</button>
+      <button v-else-if="isComplete" class="next-button shared-next-source" type="button" @click="$emit('next')">다음</button>
     </footer>
   </section>
 </template>

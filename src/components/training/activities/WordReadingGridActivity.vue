@@ -315,7 +315,7 @@ onBeforeUnmount(() => {
         <img :src="readingActiveIcon" alt="" aria-hidden="true" /> 읽기 시작
       </button>
       <button v-else-if="messageState === 'denied'" class="start-button" type="button" @click="startReading">다시 시작</button>
-      <button v-else-if="allComplete" class="next-button" type="button" @click="$emit('next')">다음</button>
+      <button v-else-if="allComplete" class="next-button shared-next-source" type="button" @click="$emit('next')">다음</button>
     </footer>
   </section>
 </template>

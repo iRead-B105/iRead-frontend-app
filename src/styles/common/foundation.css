@@ -13,11 +13,11 @@
 .learner-layout {
   width: 100%;
   min-width: 320px;
-  min-height: 100vh;
+  min-height: 100cqh;
 }
 
 .learner-layout {
-  min-height: 100vh;
+  min-height: 100cqh;
   background: #8bd8fa;
   color: var(--learner-color-text);
   font-family: var(--learner-font-display);

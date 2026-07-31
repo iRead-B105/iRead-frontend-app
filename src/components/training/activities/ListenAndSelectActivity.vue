@@ -48,13 +48,17 @@ const handleSelect = (choice: TrainingChoice) => {
         <div class="target-visual">
           <img v-if="question.targetImage" class="target-image" :src="question.targetImage" :alt="question.targetText || '낱말 그림'" />
           <ResourceRequired v-else-if="question.targetImageLabel" :label="question.targetImageLabel" size="medium" />
-          <div v-else class="target-sound-visual" aria-hidden="true">
+          <div
+            v-else-if="question.audioPromptEnabled !== false"
+            class="target-sound-visual"
+            aria-hidden="true"
+          >
             <img :src="soundIcon" alt="" />
           </div>
         </div>
         <strong v-if="question.targetText" class="target-word">{{ question.targetText }}</strong>
         <SoundButton
-          v-if="targetAudioText"
+          v-if="question.audioPromptEnabled !== false && targetAudioText"
           :text="targetAudioText"
           size="medium"
           variant="primary"
@@ -73,7 +77,7 @@ const handleSelect = (choice: TrainingChoice) => {
               ]"
             >
               <SoundButton
-                v-if="question.choiceAudioEnabled !== false"
+                v-if="question.choiceAudioEnabled === true"
                 :text="choice.text"
                 size="medium"
                 variant="ghost"
@@ -122,7 +126,7 @@ const handleSelect = (choice: TrainingChoice) => {
       >
         선택하기
       </button>
-      <button v-else class="action action--next" type="button" @click="$emit('next')">
+      <button v-else class="action action--next shared-next-source" type="button" @click="$emit('next')">
         다음 문제
       </button>
     </div>

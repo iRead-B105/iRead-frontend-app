@@ -205,7 +205,7 @@ watch(
       <button v-if="!isCorrect" class="action action--check" type="button" :disabled="!allFilled" @click="submit">
         완성하기
       </button>
-      <button v-else class="action action--next" type="button" @click="$emit('next')">
+      <button v-else class="action action--next shared-next-source" type="button" @click="$emit('next')">
         다음 문제
       </button>
     </div>

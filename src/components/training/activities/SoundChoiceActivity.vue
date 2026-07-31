@@ -74,7 +74,7 @@ const select = (choice: TrainingChoice) => {
 
     <div class="action-bar">
       <button v-if="!isAnswered" class="action action--primary" type="button" :disabled="!session.canSubmit.value" @click="session.submitAnswer()">확인</button>
-      <button v-else class="action action--next" type="button" @click="$emit('next')">다음 문제</button>
+      <button v-else class="action action--next shared-next-source" type="button" @click="$emit('next')">다음 문제</button>
     </div>
   </section>
 </template>

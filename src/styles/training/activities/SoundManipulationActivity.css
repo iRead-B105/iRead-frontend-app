@@ -23,7 +23,7 @@
   text-align: center;
   color: #233d79;
   font-family: var(--learner-font-display);
-  font-size: clamp(29px,2.4vw,38px);
+  font-size: clamp(29px,2.4cqw,38px);
   font-weight: 900;
 }
 
@@ -282,7 +282,7 @@
   }
 }
 
-@media (max-width:900px) {
+@container learner-canvas (max-width:900px) {
   .task-row {
     grid-template-columns: 180px minmax(0,1fr);
   }
@@ -308,7 +308,7 @@
   }
 }
 
-@media (max-width:700px) {
+@container learner-canvas (max-width:700px) {
   .activity {
     overflow-y: auto;
   }
@@ -340,7 +340,7 @@
   }
 }
 
-@media (max-height:800px) {
+@container learner-canvas (max-height:800px) {
   .activity {
     gap: 10px;
     padding: 13px 18px;

@@ -6,7 +6,7 @@
 import { computed, ref, watchEffect } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getAllCategories, getCategoryById } from '@/mocks/trainingLookup'
-import { lessonMap } from '@/mocks/trainingLessons'
+import { devPreviewLessons } from '@/mocks/trainingLessons'
 import TrainingCategoryCard from '@/components/training/TrainingCategoryCard.vue'
 import TrainingCurriculumPath, {
   type CurriculumPathStep,
@@ -31,13 +31,11 @@ watchEffect(() => {
   }
 })
 
-const debugLessonsByCategory = computed(() =>
-  categories.map((category) => ({
-    id: category.id,
-    title: category.title,
-    lessons: Object.values(lessonMap).filter((lesson) => lesson.categoryId === category.id),
-  })).filter((category) => category.lessons.length > 0),
-)
+const debugLessonGroups = [{
+  id: 'activity-previews',
+  title: '화면별 미리보기',
+  lessons: devPreviewLessons,
+}]
 
 const curriculumSteps = computed<CurriculumPathStep[]>(() =>
   dailyCurriculum.curriculumItems.map((step) => ({
@@ -76,7 +74,7 @@ const handleLockedSelect = () => undefined
 
 const handleLessonSelect = (lessonId: string) => {
   if (!activeCategoryId.value) return
-  // 준비된 레슨 선택 → 레슨 화면(인트로)으로 이동
+  // 준비된 레슨 선택 → 첫 문제로 바로 이동
   void router.push({
     name: 'training-lesson',
     params: { categoryId: activeCategoryId.value, lessonId },
@@ -179,20 +177,20 @@ const openDebugLesson = (categoryId: string, lessonId: string) => {
 
         <div class="debug-launcher-groups">
           <section
-            v-for="category in debugLessonsByCategory"
-            :key="category.id"
+            v-for="group in debugLessonGroups"
+            :key="group.id"
             class="debug-launcher-group"
           >
-            <h3>{{ category.title }}</h3>
+            <h3>{{ group.title }}</h3>
             <div class="debug-lesson-grid">
               <button
-                v-for="lesson in category.lessons"
+                v-for="lesson in group.lessons"
                 :key="lesson.id"
                 type="button"
-                @click="openDebugLesson(category.id, lesson.id)"
+                @click="openDebugLesson(lesson.categoryId, lesson.id)"
               >
                 <strong>{{ lesson.title }}</strong>
-                <span>{{ lesson.activityType }} · {{ lesson.questions.length }}문항</span>
+                <span>{{ lesson.activityType }} · {{ lesson.questions.length }}개 변형</span>
               </button>
             </div>
           </section>

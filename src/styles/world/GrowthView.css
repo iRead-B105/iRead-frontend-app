@@ -20,9 +20,9 @@
 .growth-page :deep(.guide .bubble) {
   right: 10%;
   bottom: 72%;
-  width: clamp(165px, 13vw, 205px);
+  width: clamp(165px, 13cqw, 205px);
   padding: 12px 15px;
-  font-size: clamp(15px, 1.15vw, 18px);
+  font-size: clamp(15px, 1.15cqw, 18px);
 }
 
 .growth-page :deep(.guide .bubble::after) {
@@ -60,9 +60,9 @@
 .growth-summary-panel {
   position: absolute;
   z-index: 7;
-  top: calc(var(--learner-header-height) + clamp(18px, 2vh, 26px));
-  left: clamp(24px, 3vw, 52px);
-  width: clamp(270px, 21vw, 340px);
+  top: calc(var(--learner-header-height) + clamp(18px, 2cqh, 26px));
+  left: clamp(24px, 3cqw, 52px);
+  width: clamp(270px, 21cqw, 340px);
   aspect-ratio: 600 / 440;
   padding: 0;
   border: 0;
@@ -87,7 +87,7 @@
   justify-content: center;
   gap: 7px;
   margin: 0;
-  font-size: clamp(20px, 1.65vw, 27px);
+  font-size: clamp(20px, 1.65cqw, 27px);
   font-weight: var(--learner-font-weight-heavy);
   line-height: 1;
   -webkit-text-stroke: .7px currentcolor;
@@ -96,7 +96,7 @@
 
 .growth-study-day strong {
   color: #ef5f7d;
-  font-size: clamp(42px, 3.8vw, 58px);
+  font-size: clamp(42px, 3.8cqw, 58px);
   line-height: .9;
 }
 
@@ -112,7 +112,7 @@
   padding: 0;
   background: transparent;
   color: #fff;
-  font-size: clamp(19px, 1.5vw, 24px);
+  font-size: clamp(19px, 1.5cqw, 24px);
   font-weight: var(--learner-font-weight-heavy);
   line-height: 1;
   text-align: center;
@@ -141,7 +141,7 @@
   gap: 12px;
   padding: 0 5px;
   border-bottom: 0;
-  font-size: clamp(17px, 1.35vw, 22px);
+  font-size: clamp(17px, 1.35cqw, 22px);
   font-weight: var(--learner-font-weight-heavy);
   -webkit-text-stroke: .65px currentcolor;
 }
@@ -181,8 +181,8 @@
 .growth-friends-button {
   position: absolute;
   z-index: 6;
-  top: calc(var(--learner-header-height) + clamp(244px, 29vh, 315px));
-  left: clamp(24px, 4vw, 64px);
+  top: calc(var(--learner-header-height) + clamp(244px, 29cqh, 315px));
+  left: clamp(24px, 4cqw, 64px);
   min-height: var(--learner-control-height-medium);
   padding: 0 var(--learner-space-6);
   border: 2px solid rgb(255 255 255 / 92%);
@@ -191,7 +191,7 @@
   color: var(--learner-color-text);
   box-shadow: var(--learner-shadow-control);
   font-family: var(--learner-font-display);
-  font-size: clamp(18px, 1.5vw, 24px);
+  font-size: clamp(18px, 1.5cqw, 24px);
   font-weight: var(--learner-font-weight-heavy);
   cursor: pointer;
   transition:
@@ -218,8 +218,8 @@
 
 .garden-friend {
   position: absolute;
-  width: clamp(112px, 10vw, 164px);
-  height: clamp(132px, 14vh, 188px);
+  width: clamp(112px, 10cqw, 164px);
+  height: clamp(132px, 14cqh, 188px);
   display: grid;
   place-items: end center;
   padding: 0;
@@ -280,7 +280,7 @@
   z-index: 2;
   bottom: 88%;
   left: 50%;
-  width: clamp(190px, 18vw, 270px);
+  width: clamp(190px, 18cqw, 270px);
   padding: 12px 16px;
   border: 3px solid rgb(255 255 255 / 90%);
   border-radius: var(--learner-radius-card);
@@ -288,7 +288,7 @@
   color: var(--learner-color-text);
   box-shadow: var(--learner-shadow-card);
   font-family: var(--learner-font-display);
-  font-size: clamp(16px, 1.25vw, 20px);
+  font-size: clamp(16px, 1.25cqw, 20px);
   font-weight: var(--learner-font-weight-heavy);
   line-height: 1.35;
   transform: translateX(-50%);
@@ -378,7 +378,7 @@
   z-index: 2;
   top: 74%;
   left: 50%;
-  width: clamp(190px, 16vw, 260px);
+  width: clamp(190px, 16cqw, 260px);
   aspect-ratio: 640 / 210;
   padding: 0;
   border: 0;
@@ -388,7 +388,7 @@
   filter: drop-shadow(0 4px 3px rgb(45 70 95 / 13%));
   color: var(--learner-color-text);
   font-family: var(--learner-font-display);
-  font-size: clamp(21px, 1.7vw, 28px);
+  font-size: clamp(21px, 1.7cqw, 28px);
   font-weight: var(--learner-font-weight-heavy);
   line-height: 1;
   text-align: center;
@@ -501,7 +501,7 @@
   }
 }
 
-@media (max-height: 780px) {
+@container learner-canvas (max-height: 780px) {
   .growth-summary-panel {
     top: calc(var(--learner-header-height) + 4px);
     width: 260px;

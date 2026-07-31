@@ -337,7 +337,7 @@
   }
 }
 
-@media (max-width:900px) {
+@container learner-canvas (max-width:900px) {
   .battle-body {
     grid-template-columns: 160px minmax(0,1fr);
   }
@@ -361,7 +361,7 @@
   }
 }
 
-@media (max-width:700px) {
+@container learner-canvas (max-width:700px) {
   .battle {
     overflow-y: auto;
   }
@@ -389,7 +389,7 @@
   }
 }
 
-@media (max-height:800px) {
+@container learner-canvas (max-height:800px) {
   .battle {
     gap: 8px;
     padding: 10px 16px;

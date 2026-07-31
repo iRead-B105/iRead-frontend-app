@@ -7,13 +7,13 @@
   position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: clamp(120px, 18vh, 180px) minmax(0, 1fr);
+  grid-template-rows: clamp(120px, 18cqh, 180px) minmax(0, 1fr);
   width: min(95%, var(--learner-selection-frame-width));
   height: min(95%, var(--learner-selection-frame-height));
   min-height: 0;
   max-width: var(--learner-safe-width);
   margin: 0 auto;
-  padding: clamp(20px, 2vw, 30px) clamp(22px, 3.6vw, 56px) 36px;
+  padding: clamp(20px, 2cqw, 30px) clamp(22px, 3.6cqw, 56px) 36px;
   overflow: hidden;
   border: var(--learner-frame-border);
   border-radius: var(--learner-frame-radius);
@@ -23,6 +23,8 @@
   background-size: cover;
   background-repeat: no-repeat;
   box-shadow: var(--learner-frame-shadow);
+  transform: scale(var(--learner-main-selection-scale));
+  transform-origin: center;
 }
 
 /* 상단 한 줄 배치: 달력 + 글자 연습 제목 + 현재 진행 수치 */
@@ -43,7 +45,7 @@
   position: relative;
   display: block;
   width: min(86%, 1050px);
-  height: clamp(120px, 16vh, 170px);
+  height: clamp(120px, 16cqh, 170px);
   min-width: 640px;
   min-height: 120px;
   margin: 0 auto;
@@ -90,7 +92,7 @@
   margin: 0;
   color: #6f3814;
   font-family: var(--learner-font-display);
-  font-size: clamp(18px, 1.65vw, 27px);
+  font-size: clamp(18px, 1.65cqw, 27px);
   font-weight: 900;
   line-height: 1;
   text-shadow: 0 2px 0 rgb(255 255 255 / 82%);
@@ -117,7 +119,7 @@
   position: relative;
   z-index: 1;
   flex: 0 1 auto;
-  font-size: clamp(32px, 3.2vw, 52px);
+  font-size: clamp(32px, 3.2cqw, 52px);
   font-weight: 900;
   line-height: 1;
   letter-spacing: -.08em;
@@ -154,7 +156,7 @@
   grid-template-columns: 1fr;
   justify-items: center;
   align-items: center;
-  gap: clamp(5px, .7vw, 9px) clamp(8px, 1vw, 14px);
+  gap: clamp(5px, .7cqw, 9px) clamp(8px, 1cqw, 14px);
   min-height: 0;
   box-sizing: border-box;
   padding: 9px 18px 8px;
@@ -163,13 +165,13 @@
   box-shadow: none;
   color: var(--learner-color-text);
   font-family: var(--learner-font-display);
-  font-size: clamp(15px, 1.35vw, 21px);
+  font-size: clamp(15px, 1.35cqw, 21px);
   font-weight: var(--learner-font-weight-heavy);
 }
 
 .progress-card strong {
   color: #2869dc;
-  font-size: clamp(24px, 2.2vw, 34px);
+  font-size: clamp(24px, 2.2cqw, 34px);
   font-weight: var(--learner-font-weight-heavy);
   line-height: 1;
   white-space: nowrap;
@@ -225,8 +227,8 @@
   position: absolute;
   z-index: 25;
   top: 50%;
-  width: clamp(64px, 5.7vw, 82px);
-  height: clamp(70px, 6.2vw, 89px);
+  width: clamp(64px, 5.7cqw, 82px);
+  height: clamp(70px, 6.2cqw, 89px);
   display: grid;
   padding: 0;
   border: 0;
@@ -314,7 +316,7 @@
 .lesson-node {
   position: absolute;
   z-index: 2;
-  width: clamp(205px, 18vw, 230px);
+  width: clamp(205px, 18cqw, 230px);
   height: 180px;
   padding: 0;
   border: 0;
@@ -369,7 +371,7 @@
     0 5px 10px rgb(61 69 91 / 18%);
   color: #fff;
   font-family: var(--learner-font-display);
-  font-size: clamp(17px, 1.45vw, 22px);
+  font-size: clamp(17px, 1.45cqw, 22px);
   font-weight: 900;
   line-height: 1.15;
   text-shadow: 0 2px 0 rgb(0 0 0 / 14%);
@@ -423,7 +425,7 @@
   z-index: 5;
   bottom: 100px;
   left: 50%;
-  width: clamp(72px, 6.4vw, 88px);
+  width: clamp(72px, 6.4cqw, 88px);
   height: auto;
   object-fit: contain;
   pointer-events: none;
@@ -431,7 +433,7 @@
   filter: drop-shadow(0 7px 4px rgb(86 63 27 / 18%));
 }
 
-@media (max-width: 760px) {
+@container learner-canvas (max-width: 760px) {
   .curriculum-heading-board {
     grid-template-columns: 22% 48% 24%;
     width: 96%;
@@ -445,11 +447,11 @@
 
   .progress-card {
     padding-inline: 9%;
-    font-size: clamp(9px, 1.35vw, 14px);
+    font-size: clamp(9px, 1.35cqw, 14px);
   }
 
   .progress-card strong {
-    font-size: clamp(15px, 2.2vw, 22px);
+    font-size: clamp(15px, 2.2cqw, 22px);
   }
 
   .progress-track {
@@ -478,7 +480,7 @@
   }
 }
 
-@media (max-height: 800px) and (min-width: 761px) {
+@container learner-canvas (max-height: 800px) and (min-width: 761px) {
   .curriculum-path {
     padding: 16px 28px 26px;
   }
@@ -490,11 +492,11 @@
   }
 
   .curriculum-heading h1 {
-    font-size: clamp(32px, 3.4vw, 46px);
+    font-size: clamp(32px, 3.4cqw, 46px);
   }
 
   .date-calendar strong {
-    font-size: clamp(21px, 2vw, 28px);
+    font-size: clamp(21px, 2cqw, 28px);
   }
 
   .progress-card {
