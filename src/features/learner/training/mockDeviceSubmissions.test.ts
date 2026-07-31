@@ -56,7 +56,7 @@ describe('mock device submissions', () => {
       }),
     ])
 
-    expect(gazeData.samples).toHaveLength(1)
+    expect(gazeData.samples).toHaveLength(4)
     expect(gazeData.samples[0]).toMatchObject({ questionNumber: 1 })
     expect(gazeData.words).toEqual([
       expect.objectContaining({
@@ -76,18 +76,29 @@ describe('mock device submissions', () => {
     ])
   })
 
-  it('real gaze samples create backend-compatible word metrics', () => {
-    const gazeData = createRealGazeSubmission([mappedQuestion()], [
-      { x: 320, y: 240, capturedAtMs: 1_000, questionNumber: 1 },
-      { x: 340, y: 260, capturedAtMs: 1_100, questionNumber: 1 },
+  it('real gaze samples create token-specific backend-compatible word metrics', () => {
+    const gazeData = createRealGazeSubmission([
+      mappedQuestion({
+        expectedText: 'alpha beta',
+        question: {
+          ...mappedQuestion().question,
+          targetText: 'alpha beta',
+          readingSentences: [{ id: 'sentence-0', chunks: ['alpha', 'beta'] }],
+        },
+      }),
+    ], [
+      { x: 320, y: 240, capturedAtMs: 1_000, questionNumber: 1, tokenIndex: 0, text: 'alpha' },
+      { x: 322, y: 242, capturedAtMs: 1_080, questionNumber: 1, tokenIndex: 0, text: 'alpha' },
+      { x: 420, y: 240, capturedAtMs: 1_300, questionNumber: 1, tokenIndex: 1, text: 'beta' },
+      { x: 422, y: 242, capturedAtMs: 1_380, questionNumber: 1, tokenIndex: 1, text: 'beta' },
+      { x: 320, y: 240, capturedAtMs: 1_700, questionNumber: 1, tokenIndex: 0, text: 'alpha' },
+      { x: 322, y: 242, capturedAtMs: 1_780, questionNumber: 1, tokenIndex: 0, text: 'alpha' },
     ])
 
-    expect(gazeData.samples).toHaveLength(2)
+    expect(gazeData.samples).toHaveLength(6)
     expect(gazeData.words).toHaveLength(2)
-    expect(gazeData.words[0]).toMatchObject({
-      questionNo: 1,
-      targetIndex: 0,
-      visitCount: 2,
-    })
+    expect(gazeData.words[0]).toMatchObject({ text: 'alpha', visitCount: 2, regressionCount: 1 })
+    expect(gazeData.words[1]).toMatchObject({ text: 'beta', visitCount: 1, regressionCount: 0 })
+    expect(gazeData.words[0]?.dwellMs).not.toBe(gazeData.words[1]?.dwellMs)
   })
 })

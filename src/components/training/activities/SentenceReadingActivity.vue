@@ -256,10 +256,27 @@ const isSentenceComplete = (sentenceIndex: number) => {
   return Boolean(range && completedCount.value >= range.end)
 }
 
-const updateGaze = (clientX: number, clientY: number) => {
+const emitGazeWordHit = (clientX: number, clientY: number, tokenIndex: number) => {
+  const text = chunks.value[tokenIndex]
+  if (typeof text !== 'string') return
+  window.dispatchEvent(new CustomEvent('iread:gaze-word-hit', {
+    detail: {
+      clientX,
+      clientY,
+      tokenIndex,
+      text,
+    },
+  }))
+}
+
+const updateGaze = (clientX: number, clientY: number, emitWordHit = false) => {
   gazePoint.value = { x: clientX, y: clientY }
   gazeVisible.value = true
-  gazeIndex.value = chunkIndexAt(clientX, clientY)
+  const nextGazeIndex = chunkIndexAt(clientX, clientY)
+  gazeIndex.value = nextGazeIndex
+  if (emitWordHit && nextGazeIndex !== null) {
+    emitGazeWordHit(clientX, clientY, nextGazeIndex)
+  }
 }
 const onPointerMove = (event: PointerEvent) => updateGaze(event.clientX, event.clientY)
 const onPointerLeave = () => {
@@ -274,7 +291,7 @@ const onGaze = (event: Event) => {
     detail?.headPoseStable !== false
     && typeof detail?.clientX === 'number'
     && typeof detail?.clientY === 'number'
-  ) updateGaze(detail.clientX, detail.clientY)
+  ) updateGaze(detail.clientX, detail.clientY, true)
 }
 const onExternalSpeech = (event: Event) => {
   const detail = (event as CustomEvent<{ transcript?: string }>).detail

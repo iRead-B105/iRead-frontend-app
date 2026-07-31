@@ -87,6 +87,43 @@ export interface DeviceGazeSample {
   readonly y: number
   readonly capturedAtMs: number
   readonly questionNumber: number
+  readonly targetIndex?: number
+  readonly tokenIndex?: number
+  readonly text?: string
+}
+
+const DEFAULT_SAMPLE_INTERVAL_MS = 80
+const MAX_SAMPLE_GAP_MS = 250
+const MIN_FIXATION_MS = 100
+
+function wordTokensForQuestion(question: MappedTrainingQuestion): string[] {
+  if (question.question.readingSentences?.length) {
+    return question.question.readingSentences.flatMap((sentence) => sentence.chunks)
+  }
+  if (question.question.readingWords?.length) {
+    return question.question.readingWords.map((word) => word.text)
+  }
+  const sourceText =
+    question.expectedText
+    ?? question.question.targetText
+    ?? question.question.targetResult
+    ?? ''
+  return wordsFrom(sourceText)
+}
+
+type WordAccumulator = {
+  dwellMs: number
+  visitCount: number
+  regressionCount: number
+  firstSeenMs: number | null
+  lastSeenMs: number | null
+}
+
+type ActiveSegment = {
+  tokenIndex: number
+  startMs: number
+  endMs: number
+  dwellMs: number
 }
 
 function createWordMetrics(
@@ -96,29 +133,101 @@ function createWordMetrics(
   return questions
     .filter((question) => question.requiredInputs.includes('GAZE'))
     .flatMap((question) => {
-      const sourceText =
-        question.expectedText
-        ?? question.question.targetText
-        ?? question.question.targetResult
-        ?? ''
       const questionSamples = samples.filter((sample) =>
         sample.questionNumber === question.questionNumber,
+      ).sort((first, second) => first.capturedAtMs - second.capturedAtMs)
+      const tokens = wordTokensForQuestion(question)
+      const questionStartMs = questionSamples[0]?.capturedAtMs ?? 0
+      const accumulators = tokens.map<WordAccumulator>(() => ({
+        dwellMs: 0,
+        visitCount: 0,
+        regressionCount: 0,
+        firstSeenMs: null,
+        lastSeenMs: null,
+      }))
+      const hitSamples = questionSamples.filter((sample) =>
+        Number.isInteger(sample.tokenIndex)
+        && Number(sample.tokenIndex) >= 0
+        && Number(sample.tokenIndex) < tokens.length,
       )
-      const firstSeenMs = 0
-      const lastSeenMs = questionSamples.length > 0
-        ? Math.max(240, questionSamples.length * 80)
-        : 0
-      return wordsFrom(sourceText).map((text, tokenIndex) => ({
+
+      let activeSegment: ActiveSegment | null = null
+      let previousAcceptedTokenIndex: number | null = null
+      const finishSegment = () => {
+        if (!activeSegment || activeSegment.dwellMs < MIN_FIXATION_MS) return
+        const accumulator = accumulators[activeSegment.tokenIndex]
+        if (!accumulator) return
+        accumulator.dwellMs += Math.round(activeSegment.dwellMs)
+        accumulator.visitCount += 1
+        const firstSeenMs = Math.max(0, Math.round(activeSegment.startMs - questionStartMs))
+        const lastSeenMs = Math.max(firstSeenMs, Math.round(activeSegment.endMs - questionStartMs))
+        accumulator.firstSeenMs = accumulator.firstSeenMs === null
+          ? firstSeenMs
+          : Math.min(accumulator.firstSeenMs, firstSeenMs)
+        accumulator.lastSeenMs = accumulator.lastSeenMs === null
+          ? lastSeenMs
+          : Math.max(accumulator.lastSeenMs, lastSeenMs)
+        if (
+          previousAcceptedTokenIndex !== null
+          && activeSegment.tokenIndex < previousAcceptedTokenIndex
+        ) {
+          accumulator.regressionCount += 1
+        }
+        previousAcceptedTokenIndex = activeSegment.tokenIndex
+      }
+
+      hitSamples.forEach((sample, index) => {
+        const tokenIndex = Number(sample.tokenIndex)
+        const nextSample = hitSamples[index + 1]
+        const previousSample = hitSamples[index - 1]
+        const nextGap = nextSample
+          ? nextSample.capturedAtMs - sample.capturedAtMs
+          : previousSample
+            ? sample.capturedAtMs - previousSample.capturedAtMs
+            : DEFAULT_SAMPLE_INTERVAL_MS
+        const sampleDwellMs = Math.max(
+          0,
+          Math.min(
+            Number.isFinite(nextGap) && nextGap > 0 ? nextGap : DEFAULT_SAMPLE_INTERVAL_MS,
+            MAX_SAMPLE_GAP_MS,
+          ),
+        )
+        const shouldContinueSegment =
+          activeSegment
+          && activeSegment.tokenIndex === tokenIndex
+          && sample.capturedAtMs - activeSegment.endMs <= MAX_SAMPLE_GAP_MS
+
+        if (!shouldContinueSegment) {
+          finishSegment()
+          activeSegment = {
+            tokenIndex,
+            startMs: sample.capturedAtMs,
+            endMs: sample.capturedAtMs + sampleDwellMs,
+            dwellMs: sampleDwellMs,
+          }
+          return
+        }
+
+        if (!activeSegment) return
+        activeSegment.endMs = sample.capturedAtMs + sampleDwellMs
+        activeSegment.dwellMs += sampleDwellMs
+      })
+      finishSegment()
+
+      return tokens.map((text, tokenIndex) => {
+        const accumulator = accumulators[tokenIndex]
+        return {
         questionNo: question.questionNumber,
         targetIndex: question.recordingTargetIndex ?? 0,
         tokenIndex,
         text,
-        dwellMs: lastSeenMs,
-        visitCount: questionSamples.length > 0 ? Math.max(1, questionSamples.length) : 0,
-        regressionCount: 0,
-        firstSeenMs,
-        lastSeenMs,
-      }))
+        dwellMs: accumulator?.dwellMs ?? 0,
+        visitCount: accumulator?.visitCount ?? 0,
+        regressionCount: accumulator?.regressionCount ?? 0,
+        firstSeenMs: accumulator?.firstSeenMs ?? 0,
+        lastSeenMs: accumulator?.lastSeenMs ?? 0,
+      }
+      })
     })
 }
 
@@ -129,12 +238,28 @@ export function createMockGazeSubmission(
     question.requiredInputs.includes('GAZE'),
   )
   const baseTime = Date.now()
-  const samples = gazeQuestions.map((question, index) => ({
-    x: 320 + (index % 3) * 80,
-    y: 240 + (index % 2) * 60,
-    capturedAtMs: baseTime + index * 500,
-    questionNumber: question.questionNumber,
-  }))
+  const samples = gazeQuestions.flatMap((question, questionIndex) =>
+    wordTokensForQuestion(question).flatMap((text, tokenIndex) => [
+      {
+        x: 320 + (tokenIndex % 3) * 80,
+        y: 240 + (questionIndex % 2) * 60,
+        capturedAtMs: baseTime + questionIndex * 2_000 + tokenIndex * 300,
+        questionNumber: question.questionNumber,
+        targetIndex: question.recordingTargetIndex ?? 0,
+        tokenIndex,
+        text,
+      },
+      {
+        x: 320 + (tokenIndex % 3) * 80,
+        y: 240 + (questionIndex % 2) * 60,
+        capturedAtMs: baseTime + questionIndex * 2_000 + tokenIndex * 300 + 80,
+        questionNumber: question.questionNumber,
+        targetIndex: question.recordingTargetIndex ?? 0,
+        tokenIndex,
+        text,
+      },
+    ]),
+  )
 
   return {
     schemaVersion: 1,
