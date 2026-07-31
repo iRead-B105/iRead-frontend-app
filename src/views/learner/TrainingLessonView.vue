@@ -97,6 +97,15 @@ const recordedQuestionNumbers = new Set<number>()
 const gazeSessionId = ref<string | null>(null)
 const gazeSessionCompleted = ref(false)
 const gazeSamples: DeviceGazeSample[] = []
+type GazeWordHit = {
+  readonly clientX: number
+  readonly clientY: number
+  readonly capturedAtMs: number
+  readonly questionNumber: number
+  readonly tokenIndex: number
+  readonly text: string
+}
+let lastGazeWordHit: GazeWordHit | null = null
 const gazeDebugVisible = computed(() =>
   route.query.gazeDebug === '1'
   || import.meta.env.VITE_GAZE_DEBUG_PANEL === 'true',
@@ -210,23 +219,82 @@ const updateGazeTransferDebug = (patch: Partial<typeof gazeTransferDebug.value>)
   )
 }
 
+const recentHitMatchesSample = (
+  hit: GazeWordHit | null,
+  sample: Pick<DeviceGazeSample, 'x' | 'y' | 'capturedAtMs' | 'questionNumber'>,
+) => {
+  if (!hit || hit.questionNumber !== sample.questionNumber) return false
+  if (Math.abs(hit.capturedAtMs - sample.capturedAtMs) > 160) return false
+  return Math.hypot(hit.clientX - sample.x, hit.clientY - sample.y) <= 48
+}
+
+const applyWordHitToSample = (sample: DeviceGazeSample, hit: GazeWordHit): DeviceGazeSample => {
+  const mapped = serverQuestions.value[session.progressState.currentQuestionIndex]
+  return {
+    ...sample,
+    targetIndex: mapped?.recordingTargetIndex ?? 0,
+    tokenIndex: hit.tokenIndex,
+    text: hit.text,
+  }
+}
+
+const attachWordHitToRecentSample = (hit: GazeWordHit) => {
+  for (let index = gazeSamples.length - 1; index >= Math.max(0, gazeSamples.length - 8); index -= 1) {
+    const sample = gazeSamples[index]
+    if (!sample || sample.tokenIndex !== undefined || !recentHitMatchesSample(hit, sample)) continue
+    gazeSamples[index] = applyWordHitToSample(sample, hit)
+    return true
+  }
+  return false
+}
+
 const onGazeSample = (event: Event) => {
   if (phase.value !== 'playing' || !gazeSessionId.value) return
   const detail = (event as CustomEvent<Record<string, unknown>>).detail
   const x = Number(detail?.x ?? detail?.clientX)
   const y = Number(detail?.y ?? detail?.clientY)
   if (!Number.isFinite(x) || !Number.isFinite(y)) return
-  gazeSamples.push({
+  const sample: DeviceGazeSample = {
     x,
     y,
     capturedAtMs: Date.now(),
     questionNumber: session.currentQuestionNumber.value,
-  })
+  }
+  const matchingHit = recentHitMatchesSample(lastGazeWordHit, sample)
+    ? lastGazeWordHit
+    : null
+  gazeSamples.push(matchingHit ? applyWordHitToSample(sample, matchingHit) : sample)
   updateGazeTransferDebug({ lastSampleAt: new Date().toLocaleTimeString() })
+}
+
+const onGazeWordHit = (event: Event) => {
+  if (phase.value !== 'playing' || !gazeSessionId.value) return
+  const detail = (event as CustomEvent<Record<string, unknown>>).detail
+  const clientX = Number(detail?.clientX)
+  const clientY = Number(detail?.clientY)
+  const tokenIndex = Number(detail?.tokenIndex)
+  const text = typeof detail?.text === 'string' ? detail.text : ''
+  if (
+    !Number.isFinite(clientX)
+    || !Number.isFinite(clientY)
+    || !Number.isInteger(tokenIndex)
+    || tokenIndex < 0
+    || text.trim() === ''
+  ) return
+  lastGazeWordHit = {
+    clientX,
+    clientY,
+    capturedAtMs: Date.now(),
+    questionNumber: session.currentQuestionNumber.value,
+    tokenIndex,
+    text,
+  }
+  attachWordHitToRecentSample(lastGazeWordHit)
 }
 
 onMounted(async () => {
   window.addEventListener('iread:gaze', onGazeSample)
+  window.addEventListener('iread:gaze-word-hit', onGazeWordHit)
   if (challengeTrackId.value) {
     skillChallenge.ensureChallenge(challengeTrackId.value, lessonId.value)
   }
@@ -394,6 +462,7 @@ const finishLeaveConfirmation = (allow: boolean) => {
 
 onBeforeUnmount(() => {
   window.removeEventListener('iread:gaze', onGazeSample)
+  window.removeEventListener('iread:gaze-word-hit', onGazeWordHit)
   if (gazeSessionId.value && !gazeSessionCompleted.value) {
     void learnerGazeRepository.fail(
       gazeSessionId.value,
