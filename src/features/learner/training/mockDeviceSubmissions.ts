@@ -121,6 +121,7 @@ type WordAccumulator = {
   dwellMs: number
   visitCount: number
   readCount: number
+  skipped: boolean
   regressionCount: number
   firstSeenMs: number | null
   lastSeenMs: number | null
@@ -149,6 +150,7 @@ function createWordMetrics(
         dwellMs: 0,
         visitCount: 0,
         readCount: 0,
+        skipped: false,
         regressionCount: 0,
         firstSeenMs: null,
         lastSeenMs: null,
@@ -161,10 +163,21 @@ function createWordMetrics(
 
       let activeSegment: ActiveSegment | null = null
       let previousReadTokenIndex: number | null = null
+      const markSkippedWordsBefore = (tokenIndex: number) => {
+        const startIndex = previousReadTokenIndex === null ? 0 : previousReadTokenIndex + 1
+        if (tokenIndex <= startIndex) return
+        for (let skippedIndex = startIndex; skippedIndex < tokenIndex; skippedIndex += 1) {
+          const skippedAccumulator = accumulators[skippedIndex]
+          if (skippedAccumulator && skippedAccumulator.readCount === 0) {
+            skippedAccumulator.skipped = true
+          }
+        }
+      }
       const finishSegment = () => {
         if (!activeSegment || activeSegment.dwellMs < READ_DWELL_MS) return
         const accumulator = accumulators[activeSegment.tokenIndex]
         if (!accumulator) return
+        markSkippedWordsBefore(activeSegment.tokenIndex)
         accumulator.readCount += 1
         const firstSeenMs = Math.max(0, Math.round(activeSegment.startMs - questionStartMs))
         const lastSeenMs = Math.max(firstSeenMs, Math.round(activeSegment.endMs - questionStartMs))
@@ -235,7 +248,7 @@ function createWordMetrics(
         dwellMs: accumulator?.dwellMs ?? 0,
         visitCount: accumulator?.visitCount ?? 0,
         readCount: accumulator?.readCount ?? 0,
-        skipped: (accumulator?.readCount ?? 0) === 0,
+        skipped: (accumulator?.skipped ?? false) || (accumulator?.readCount ?? 0) === 0,
         regressionCount: accumulator?.regressionCount ?? 0,
         firstSeenMs: accumulator?.firstSeenMs ?? 0,
         lastSeenMs: accumulator?.lastSeenMs ?? 0,

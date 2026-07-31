@@ -153,4 +153,40 @@ describe('mock device submissions', () => {
       skipped: false,
     })
   })
+
+  it('marks a word as skipped when the reader passes it and returns later', () => {
+    const gazeData = createRealGazeSubmission([
+      mappedQuestion({
+        expectedText: 'alpha beta gamma',
+        question: {
+          ...mappedQuestion().question,
+          targetText: 'alpha beta gamma',
+          readingSentences: [{ id: 'sentence-0', chunks: ['alpha', 'beta', 'gamma'] }],
+        },
+      }),
+    ], [
+      ...samplesForToken(0, 'alpha', 1_000, 12),
+      ...samplesForToken(2, 'gamma', 4_000, 12),
+      ...samplesForToken(1, 'beta', 7_000, 12),
+    ])
+
+    expect(gazeData.words[0]).toMatchObject({
+      tokenIndex: 0,
+      readCount: 1,
+      skipped: false,
+      regressionCount: 0,
+    })
+    expect(gazeData.words[1]).toMatchObject({
+      tokenIndex: 1,
+      readCount: 1,
+      skipped: true,
+      regressionCount: 1,
+    })
+    expect(gazeData.words[2]).toMatchObject({
+      tokenIndex: 2,
+      readCount: 1,
+      skipped: false,
+      regressionCount: 0,
+    })
+  })
 })
