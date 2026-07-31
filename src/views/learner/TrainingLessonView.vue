@@ -27,14 +27,17 @@ import leaveTrainingRabbit from '@/assets/training/ui/leave-training-rabbit.png'
 import { learnerDataSource } from '@/config/learnerDataSource'
 import {
   learnerTrainingRepository,
+  createRealGazeSubmission,
   buildTrainingResponse,
   createMockGazeSubmission,
   createMockVoiceFile,
   mapTrainingQuestion,
-  mockDeviceSubmissionsEnabled,
+  mockGazeSubmissionsEnabled,
+  mockVoiceSubmissionsEnabled,
   type LearnerTraceSubmissionResponse,
   type LearnerTrainingIntro,
   type MappedTrainingQuestion,
+  type DeviceGazeSample,
 } from '@/features/learner/training'
 import { getCachedStudent } from '@/services/learnerDataRepository'
 import { useLearnerErrorModalStore } from '@/stores/learnerErrorModal'
@@ -93,12 +96,20 @@ const pendingNextResponse = ref<LearnerTraceSubmissionResponse | undefined>()
 const recordedQuestionNumbers = new Set<number>()
 const gazeSessionId = ref<string | null>(null)
 const gazeSessionCompleted = ref(false)
-const gazeSamples: Array<{
-  x: number
-  y: number
-  capturedAtMs: number
-  questionNumber: number
-}> = []
+const gazeSamples: DeviceGazeSample[] = []
+const gazeDebugVisible = computed(() =>
+  route.query.gazeDebug === '1'
+  || import.meta.env.VITE_GAZE_DEBUG_PANEL === 'true',
+)
+const gazeTransferDebug = ref({
+  source: mockGazeSubmissionsEnabled ? 'mock' : 'real',
+  start: 'idle',
+  end: 'idle',
+  sessionId: '',
+  sampleCount: 0,
+  lastSampleAt: '',
+  lastError: '',
+})
 // 구현된 액티비티 컴포넌트만 매핑. 준비 중 유형은 여기 없으며(도달 불가),
 // 향후 추가 시 이 맵에만 등록하면 됩니다.
 const activityComponent = computed<Component | null>(() =>
@@ -167,6 +178,9 @@ const displayQuestion = computed(() => {
   if (!question || !lesson.value) return question
   return {
     ...question,
+    requiredInputs: learnerDataSource === 'api'
+      ? serverQuestions.value[session.progressState.currentQuestionIndex]?.requiredInputs
+      : undefined,
     instruction: lesson.value.activityType === 'gaze-trace'
       ? conciseInstructions['gaze-trace']
       : question.instruction.length <= 14
@@ -180,7 +194,21 @@ const displayedHint = computed(() => presentTrainingHint(
   session.currentHint.value,
   session.progressState.hintLevel,
 ))
-const deviceFallbackEnabled = import.meta.env.DEV || mockDeviceSubmissionsEnabled
+const voiceDeviceFallbackEnabled = mockVoiceSubmissionsEnabled
+const gazeDeviceFallbackEnabled = mockGazeSubmissionsEnabled
+
+const updateGazeTransferDebug = (patch: Partial<typeof gazeTransferDebug.value>) => {
+  gazeTransferDebug.value = {
+    ...gazeTransferDebug.value,
+    ...patch,
+    sampleCount: gazeSamples.length,
+    source: mockGazeSubmissionsEnabled ? 'mock' : 'real',
+  }
+  window.localStorage.setItem(
+    'iread-gaze-transfer-debug',
+    JSON.stringify(gazeTransferDebug.value),
+  )
+}
 
 const onGazeSample = (event: Event) => {
   if (phase.value !== 'playing' || !gazeSessionId.value) return
@@ -194,6 +222,7 @@ const onGazeSample = (event: Event) => {
     capturedAtMs: Date.now(),
     questionNumber: session.currentQuestionNumber.value,
   })
+  updateGazeTransferDebug({ lastSampleAt: new Date().toLocaleTimeString() })
 }
 
 onMounted(async () => {
@@ -293,11 +322,11 @@ onMounted(async () => {
 
 const startPlaying = async () => {
   if (integrationError.value || startingTraining.value) return
-  if (!deviceFallbackEnabled && gazeRequired.value && !eyeTrackerConnected.value) {
+  if (!gazeDeviceFallbackEnabled && gazeRequired.value && !eyeTrackerConnected.value) {
     deviceBlocker.value = 'eye-tracker'
     return
   }
-  if (!deviceFallbackEnabled && microphoneRequired.value && !microphoneAvailable.value) {
+  if (!voiceDeviceFallbackEnabled && microphoneRequired.value && !microphoneAvailable.value) {
     deviceBlocker.value = 'microphone'
     return
   }
@@ -319,18 +348,23 @@ const startPlaying = async () => {
         serverQuestions.value.some((question) => question.requiredInputs.includes('GAZE'))
         && !gazeSessionId.value
       ) {
+        updateGazeTransferDebug({ start: 'sending', lastError: '' })
         const gazeSession = await learnerGazeRepository.start({
           studentId: getCachedStudent().studentId,
           contentType: challengeTrackId.value ? 'TEST' : 'TRAINING',
           ...(challengeTrackId.value ? { testId: itemId } : { trainingId: itemId }),
           calibrationStatus:
-            mockDeviceSubmissionsEnabled
+            mockGazeSubmissionsEnabled
               ? 'SKIPPED'
               : eyeTrackerConnected.value
                 ? 'SUCCESS'
                 : 'SKIPPED',
         })
         gazeSessionId.value = gazeSession.gazeSessionId
+        updateGazeTransferDebug({
+          start: 'sent',
+          sessionId: gazeSession.gazeSessionId,
+        })
       }
     }
     phase.value = 'playing'
@@ -375,16 +409,14 @@ onBeforeUnmount(() => {
 watch(
   [eyeTrackerConnected, microphoneAvailable],
   ([eyeConnected, micAvailable]) => {
-    if (deviceFallbackEnabled) {
-      deviceBlocker.value = null
-      return
-    }
+    if (deviceBlocker.value === 'eye-tracker' && gazeDeviceFallbackEnabled) deviceBlocker.value = null
+    if (deviceBlocker.value === 'microphone' && voiceDeviceFallbackEnabled) deviceBlocker.value = null
     if (deviceBlocker.value === 'eye-tracker' && eyeConnected) deviceBlocker.value = null
     if (deviceBlocker.value === 'microphone' && micAvailable) deviceBlocker.value = null
 
     if (phase.value !== 'playing') return
-    if (gazeRequired.value && !eyeConnected) deviceBlocker.value = 'eye-tracker'
-    else if (microphoneRequired.value && !micAvailable) deviceBlocker.value = 'microphone'
+    if (!gazeDeviceFallbackEnabled && gazeRequired.value && !eyeConnected) deviceBlocker.value = 'eye-tracker'
+    else if (!voiceDeviceFallbackEnabled && microphoneRequired.value && !micAvailable) deviceBlocker.value = 'microphone'
   },
 )
 
@@ -426,7 +458,7 @@ const goNext = async (response?: LearnerTraceSubmissionResponse) => {
     if (
       mapped?.requiredInputs.includes('VOICE')
       && !recordedQuestionNumbers.has(mapped.questionNumber)
-      && !mockDeviceSubmissionsEnabled
+      && !mockVoiceSubmissionsEnabled
     ) {
       pendingNextResponse.value = response
       voiceFeedback.value = ''
@@ -444,7 +476,7 @@ const goNext = async (response?: LearnerTraceSubmissionResponse) => {
         throw new Error('제출할 서버 훈련 문항을 확인할 수 없습니다.')
       }
       if (
-        mockDeviceSubmissionsEnabled
+        mockVoiceSubmissionsEnabled
         && mapped.requiredInputs.includes('VOICE')
         && !recordedQuestionNumbers.has(mapped.questionNumber)
       ) {
@@ -545,9 +577,10 @@ const saveAndFinish = async () => {
       const itemId = learningItemId.value
       if (!/^\d+$/.test(itemId)) throw new Error('서버 학습 ID가 올바르지 않습니다.')
       if (gazeSessionId.value && !gazeSessionCompleted.value) {
-        const gazeData = mockDeviceSubmissionsEnabled
+        const gazeData = mockGazeSubmissionsEnabled
           ? createMockGazeSubmission(serverQuestions.value)
-          : { schemaVersion: 1, samples: gazeSamples }
+          : createRealGazeSubmission(serverQuestions.value, gazeSamples)
+        updateGazeTransferDebug({ end: 'sending', lastError: '' })
         await learnerGazeRepository.end(
           gazeSessionId.value,
           getCachedStudent().studentId,
@@ -555,6 +588,7 @@ const saveAndFinish = async () => {
           gazeData,
         )
         gazeSessionCompleted.value = true
+        updateGazeTransferDebug({ end: 'sent' })
       }
       if (!challengeTrackId.value) {
         await dailyCurriculum.loadCurrentCurriculum()
@@ -570,6 +604,9 @@ const saveAndFinish = async () => {
       session.savingState.status = 'success'
       ok = true
     } catch (error) {
+      updateGazeTransferDebug({
+        lastError: error instanceof Error ? error.message : 'gaze 전송 확인 중 오류가 발생했습니다.',
+      })
       session.savingState.status = 'failed'
       session.savingState.errorMessage =
         error instanceof Error ? error.message : '학습을 마무리하지 못했습니다.'
@@ -783,6 +820,37 @@ const isSavingFailed = computed(() => session.savingState.status === 'failed')
         </section>
       </div>
     </Transition>
+
+    <aside v-if="gazeDebugVisible" class="gaze-debug-panel" aria-live="polite">
+      <strong>Gaze transfer</strong>
+      <dl>
+        <div>
+          <dt>source</dt>
+          <dd>{{ gazeTransferDebug.source }}</dd>
+        </div>
+        <div>
+          <dt>start</dt>
+          <dd>{{ gazeTransferDebug.start }}</dd>
+        </div>
+        <div>
+          <dt>end</dt>
+          <dd>{{ gazeTransferDebug.end }}</dd>
+        </div>
+        <div>
+          <dt>session</dt>
+          <dd>{{ gazeTransferDebug.sessionId || '-' }}</dd>
+        </div>
+        <div>
+          <dt>samples</dt>
+          <dd>{{ gazeTransferDebug.sampleCount }}</dd>
+        </div>
+        <div>
+          <dt>last</dt>
+          <dd>{{ gazeTransferDebug.lastSampleAt || '-' }}</dd>
+        </div>
+      </dl>
+      <p v-if="gazeTransferDebug.lastError">{{ gazeTransferDebug.lastError }}</p>
+    </aside>
 
     <!-- 폴백: 알 수 없는 레슨 -->
     <div v-if="!lesson" class="fallback">

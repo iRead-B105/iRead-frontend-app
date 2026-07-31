@@ -7,7 +7,7 @@ import { useDeviceStatus } from '../../composables/useDeviceStatus'
 import { useGazeCalibration } from '../../composables/useGazeCalibration'
 import { useGazeCursorVisibility } from '../../composables/useGazeCursorVisibility'
 import { useTobiiGazeBridge } from '../../composables/useTobiiGazeBridge'
-import { mockDeviceSubmissionsEnabled } from '@/features/learner/training'
+import { mockGazeSubmissionsEnabled } from '@/features/learner/training'
 import { useLearnerSessionStore } from '@/stores/learnerSession'
 
 defineProps<{ userName: string }>()
@@ -35,7 +35,7 @@ const {
   status: eyeTrackerStatus,
   disconnect: disconnectEyeTracker,
   reconnect: reconnectEyeTracker,
-} = useTobiiGazeBridge({ autoConnect: !mockDeviceSubmissionsEnabled })
+} = useTobiiGazeBridge({ autoConnect: !mockGazeSubmissionsEnabled })
 const startCalibration = () => {
   showEyeMenu.value = false
   openGazeCalibration()

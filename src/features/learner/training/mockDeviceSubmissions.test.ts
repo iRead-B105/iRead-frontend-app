@@ -2,8 +2,11 @@ import { describe, expect, it } from 'vitest'
 import type { MappedTrainingQuestion } from './trainingQuestionMapper'
 import {
   createMockGazeSubmission,
+  createRealGazeSubmission,
   createMockVoiceFile,
   mockDeviceSubmissionsEnabled,
+  mockGazeSubmissionsEnabled,
+  mockVoiceSubmissionsEnabled,
 } from './mockDeviceSubmissions'
 
 const mappedQuestion = (
@@ -28,6 +31,8 @@ const mappedQuestion = (
 describe('mock device submissions', () => {
   it('장치 목데이터 제출을 기본으로 활성화한다', () => {
     expect(mockDeviceSubmissionsEnabled).toBe(true)
+    expect(mockVoiceSubmissionsEnabled).toBe(true)
+    expect(mockGazeSubmissionsEnabled).toBe(true)
   })
 
   it('백엔드 업로드 정책에 맞는 비어 있지 않은 WAV 파일을 만든다', async () => {
@@ -69,5 +74,20 @@ describe('mock device submissions', () => {
         visitCount: 1,
       }),
     ])
+  })
+
+  it('real gaze samples create backend-compatible word metrics', () => {
+    const gazeData = createRealGazeSubmission([mappedQuestion()], [
+      { x: 320, y: 240, capturedAtMs: 1_000, questionNumber: 1 },
+      { x: 340, y: 260, capturedAtMs: 1_100, questionNumber: 1 },
+    ])
+
+    expect(gazeData.samples).toHaveLength(2)
+    expect(gazeData.words).toHaveLength(2)
+    expect(gazeData.words[0]).toMatchObject({
+      questionNo: 1,
+      targetIndex: 0,
+      visitCount: 2,
+    })
   })
 })
