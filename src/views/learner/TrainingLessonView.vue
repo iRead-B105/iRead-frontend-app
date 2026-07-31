@@ -13,6 +13,7 @@ import type { TrainingActivityType, TrainingLesson } from '@/types/training'
 import { getLessonById } from '@/mocks/trainingLessons'
 import { useDailyCurriculum } from '@/composables/useDailyCurriculum'
 import { useTrainingSession } from '@/composables/useTrainingSession'
+import { openApiStream } from '@/lib/api'
 import { useDeviceStatus } from '@/composables/useDeviceStatus'
 import { useVoiceRecorder } from '@/composables/useVoiceRecorder'
 import {
@@ -709,6 +710,32 @@ const submitRecordedVoice = async (
   }
 }
 
+// 시험용: 기준 문장을 TTS로 받아 녹음 대신 세션에 담는다.
+// 브라우저 마이크 문제와 서버 채점 문제를 구분하려는 용도이며 제출 경로는 녹음과 같다.
+const loadTtsSample = async () => {
+  const mapped = serverQuestions.value[session.progressState.currentQuestionIndex]
+  const itemId = learningItemId.value
+  if (!mapped || !/^\d+$/.test(itemId)) return
+  try {
+    const response = await openApiStream(
+      `/api/app/training/${getCachedStudent().studentId}/${itemId}`
+      + `/questions/${mapped.questionNumber}/tts-sample`,
+      { method: 'POST' },
+    )
+    const blob = await response.blob()
+    session.markRecordingComplete({
+      isMock: false,
+      audioUrl: URL.createObjectURL(blob),
+      blob,
+    })
+  } catch (error) {
+    errorModal.show(
+      error instanceof Error ? error : new Error('시험용 음성을 받지 못했습니다.'),
+      '시험용 음성 오류',
+    )
+  }
+}
+
 // 결과 저장 중에는 기술 용어 없이 마무리 로딩만 보여줍니다.
 const saveAndFinish = async () => {
   phase.value = 'saving'
@@ -839,6 +866,7 @@ const isSavingFailed = computed(() => session.savingState.status === 'failed')
           :key="displayQuestion.id"
           :question="displayQuestion"
           @next="goNext"
+          @tts-sample="loadTtsSample"
         />
       </div>
     </div>

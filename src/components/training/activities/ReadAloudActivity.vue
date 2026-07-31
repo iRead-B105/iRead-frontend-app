@@ -14,7 +14,11 @@ import { mockVoiceSubmissionsEnabled } from '@/features/learner/training/mockDev
 import SoundButton from '../SoundButton.vue'
 
 const props = defineProps<{ question: TrainingQuestion }>()
-defineEmits<{ next: [] }>()
+const emit = defineEmits<{ next: []; ttsSample: [] }>()
+
+// 시험용: 마이크 없이 기준 문장을 TTS 음성으로 제출해 서버 채점 경로만 확인한다.
+// 개발 서버에서만 보이며 학습 흐름에는 관여하지 않는다.
+const ttsSampleEnabled = import.meta.env.DEV
 
 const session = useTrainingSession()
 const { progressState } = session
@@ -158,6 +162,15 @@ const micButtonLabel = computed(() => {
         </p>
 
         <p v-if="status === 'denied'" class="denied-note">권한을 허용하면 녹음할 수 있어요.</p>
+
+        <button
+          v-if="ttsSampleEnabled"
+          class="tts-sample-button"
+          type="button"
+          @click="emit('ttsSample')"
+        >
+          TTS 음성으로 제출 (시험용)
+        </button>
 
         <!-- 녹음 후 액션 -->
         <div v-if="hasRecording && !isRecording" class="record-actions">
