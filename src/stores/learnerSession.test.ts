@@ -98,6 +98,26 @@ describe('learner session store', () => {
     expect(window.localStorage).toHaveLength(0)
   })
 
+  it('교사가 수정한 아동 프로필을 현재 세션과 캐시에 반영한다', async () => {
+    const repository = createRepository()
+    const session = useLearnerSessionStore()
+    await session.loginTeacher(
+      { email: 'teacher@example.com', password: 'password123' },
+      repository,
+    )
+    await session.loginStudent(student.studentId, repository)
+
+    session.replaceStudentProfile({
+      ...student,
+      name: '새 이름',
+      age: 8,
+    })
+
+    expect(session.student?.name).toBe('새 이름')
+    expect(session.student?.age).toBe(8)
+    expect(sessionStorage.getItem('iread-learner-student-v1')).toContain('새 이름')
+  })
+
   it('access token은 저장하지 않고 선택 아동만 sessionStorage에 보존한다', async () => {
     const repository = createRepository()
     const session = useLearnerSessionStore()

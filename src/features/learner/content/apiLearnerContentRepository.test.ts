@@ -88,7 +88,8 @@ describe('API learner content repository', () => {
         trainings: [
           {
             trainingId: 102,
-            trainingTemplateId: 25,
+            trainingTemplateId: 2500,
+            trainingType: 'SENTENCE_READING',
             sequenceNo: 2,
             unitName: '글 해독',
             trainingName: '문장 읽기',
@@ -97,6 +98,7 @@ describe('API learner content repository', () => {
           {
             trainingId: 101,
             trainingTemplateId: 22,
+            trainingType: 'WORD_READING',
             sequenceNo: 1,
             unitName: '글 해독',
             trainingName: '낱말 읽기',
@@ -145,6 +147,27 @@ describe('API learner content repository', () => {
     ])
     expect(growth.map((area) => area.learningCount)).toEqual([3, 8, 1])
     expect(growth.map((area) => area.stage)).toEqual([2, 3, 1])
+  })
+
+  it('화면 매핑이 없는 훈련 템플릿을 조용히 누락하지 않는다', async () => {
+    vi.spyOn(learnerApiClient, 'request').mockResolvedValue({
+      curriculumId: 71,
+      curriculumStatus: 'NOT_STARTED',
+      trainings: [{
+        trainingId: 999,
+        trainingTemplateId: 22,
+        trainingType: 'UNSUPPORTED_NEW_TYPE',
+        sequenceNo: 1,
+        unitName: '미정',
+        trainingName: '신규 훈련',
+        status: 'NOT_STARTED',
+      }],
+    })
+    const repository = new ApiLearnerContentRepository()
+
+    await expect(repository.getCurrentCurriculum('101')).rejects.toThrow(
+      'trainingType=UNSUPPORTED_NEW_TYPE, trainingTemplateId=22의 화면 매핑이 없습니다.',
+    )
   })
 
   it('시선 보정 안내를 학생 식별자와 함께 조회한다', async () => {

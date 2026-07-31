@@ -144,6 +144,16 @@ export class ApiClient {
     return createDownloadResult(response)
   }
 
+  async openStream(
+    endpoint: string,
+    init: RequestInit = {},
+    options: ApiRequestOptions = {},
+  ): Promise<Response> {
+    const headers = new Headers(init.headers)
+    if (!headers.has('Accept')) headers.set('Accept', 'text/event-stream')
+    return this.fetchSuccessfulResponse(endpoint, { ...init, headers }, options, false)
+  }
+
   private async fetchSuccessfulResponse(
     endpoint: string,
     init: RequestInit,

@@ -36,3 +36,11 @@ export function apiRequest<T>(
 export function downloadFile(endpoint: string, init: RequestInit = {}): Promise<DownloadResult> {
   return apiClient.download(endpoint, init)
 }
+
+export function openApiStream(
+  endpoint: string,
+  init: RequestInit = {},
+  options: ApiRequestOptions = {},
+): Promise<Response> {
+  return apiClient.openStream(endpoint, init, options)
+}
