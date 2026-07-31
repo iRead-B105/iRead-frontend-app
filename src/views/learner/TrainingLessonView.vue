@@ -13,7 +13,7 @@ import type { TrainingActivityType, TrainingLesson } from '@/types/training'
 import { getLessonById } from '@/mocks/trainingLessons'
 import { useDailyCurriculum } from '@/composables/useDailyCurriculum'
 import { useTrainingSession } from '@/composables/useTrainingSession'
-import { openApiStream } from '@/lib/api'
+import { downloadFile } from '@/lib/api'
 import { useDeviceStatus } from '@/composables/useDeviceStatus'
 import { useVoiceRecorder } from '@/composables/useVoiceRecorder'
 import {
@@ -717,12 +717,11 @@ const loadTtsSample = async () => {
   const itemId = learningItemId.value
   if (!mapped || !/^\d+$/.test(itemId)) return
   try {
-    const response = await openApiStream(
+    const { blob } = await downloadFile(
       `/api/app/training/${getCachedStudent().studentId}/${itemId}`
       + `/questions/${mapped.questionNumber}/tts-sample`,
-      { method: 'POST' },
+      { method: 'POST', headers: { Accept: 'audio/mpeg' } },
     )
-    const blob = await response.blob()
     session.markRecordingComplete({
       isMock: false,
       audioUrl: URL.createObjectURL(blob),
