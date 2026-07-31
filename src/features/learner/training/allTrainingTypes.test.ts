@@ -52,12 +52,15 @@ const fixtures: readonly TrainingTypeFixture[] = [
   { templateId: 32, questionType: 'PHRASE_READING', responseType: 'AUDIO', activityType: 'read-aloud', content: { sentence: '아기는 사과를 먹는다.', phrases: ['아기는', '사과를 먹는다.'] }, answer: { expectedText: '아기는 사과를 먹는다.' } },
   { templateId: 33, questionType: 'REPEATED_SENTENCE_READING', responseType: 'AUDIO', activityType: 'read-aloud', content: { sentence: '아기는 사과를 먹는다.', repeatCount: 2 }, answer: { expectedText: '아기는 사과를 먹는다.' } },
   { templateId: 34, questionType: 'SHORT_STORY_READING', responseType: 'AUDIO', activityType: 'read-aloud', content: { title: '사과 이야기', sentences: [{ speaker: 'NARRATOR', text: '아기는 사과를 먹는다.' }, { speaker: 'CHARACTER', text: '정말 맛있어!' }] }, answer: { expectedText: '아기는 사과를 먹는다. 정말 맛있어!' } },
+  { templateId: 35, questionType: 'HANGUL_BATTLE_BASIC', responseType: 'BATTLE_ROUNDS', activityType: 'hangul-battle', content: { opponent: 'RABBIT', rounds: [{ word: '나비', tiles: ['ㄴ', 'ㅏ', 'ㅂ', 'ㅣ', 'ㄷ', 'ㅁ', 'ㅓ', 'ㅗ'], opponentDurationMs: 22000 }] }, answer: { answerOrders: [['ㄴ', 'ㅏ', 'ㅂ', 'ㅣ']] } },
+  { templateId: 36, questionType: 'HANGUL_BATTLE_FINAL', responseType: 'BATTLE_ROUNDS', activityType: 'hangul-battle', content: { opponent: 'TURTLE', rounds: [{ word: '감자', tiles: ['ㄱ', 'ㅏ', 'ㅁ', 'ㅈ', 'ㅏ', 'ㄴ', 'ㅓ', 'ㅗ'], opponentDurationMs: 21000 }] }, answer: { answerOrders: [['ㄱ', 'ㅏ', 'ㅁ', 'ㅈ', 'ㅏ']] } },
+  { templateId: 37, questionType: 'HANGUL_BATTLE_DOUBLE_FINAL', responseType: 'BATTLE_ROUNDS', activityType: 'hangul-battle', content: { opponent: 'ANT', rounds: [{ word: '닭', tiles: ['ㄷ', 'ㅏ', 'ㄺ', 'ㄱ', 'ㄴ', 'ㅁ', 'ㅓ', 'ㅗ'], opponentDurationMs: 20000 }] }, answer: { answerOrders: [['ㄷ', 'ㅏ', 'ㄺ']] } },
 ]
 
 describe('all backend training types', () => {
-  it('34개 템플릿을 빠짐없이 포함한다', () => {
+  it('37개 템플릿을 빠짐없이 포함한다', () => {
     expect(fixtures.map((fixture) => fixture.templateId)).toEqual(
-      Array.from({ length: 34 }, (_, index) => index + 1),
+      Array.from({ length: 37 }, (_, index) => index + 1),
     )
     expect(fixtures.every((fixture) => (
       getTrainingTemplateMapping(fixture.templateId) !== null

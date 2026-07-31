@@ -37,6 +37,9 @@ const draggedTileId = ref<string | null>(null)
 const activeSlot = ref<number | null>(null)
 const suppressSlotClick = ref<number | null>(null)
 const boardWrong = ref(false)
+// 라운드마다 학습자가 놓은 자모 순서. 매치가 끝나면 그대로 채점에 올린다.
+const roundOrders = ref<string[][]>([])
+const submitting = ref(false)
 let opponentTimer: ReturnType<typeof setInterval> | null = null
 let wrongTimer: ReturnType<typeof setTimeout> | null = null
 
@@ -123,6 +126,12 @@ const boardIsCorrect = () => {
 const finishRound = (winner: RoundWinner) => {
   if (phase.value !== 'racing') return
   clearTimers()
+  const target = currentRound.value
+  if (target) {
+    roundOrders.value[roundIndex.value] = target.answer
+      .map((_, index) => textFor(placements[index]))
+      .filter((jamo) => jamo !== '')
+  }
   roundWinner.value = winner
   if (winner === 'player') playerWins.value += 1
   else opponentWins.value += 1
@@ -187,17 +196,34 @@ const clearSlot = (slotIndex: number) => {
   boardWrong.value = false
 }
 
-const advanceRound = () => {
-  if (phase.value !== 'round-result') return
+const advanceRound = async () => {
+  if (phase.value !== 'round-result' || submitting.value) return
   if (isFinalRound.value) {
     phase.value = 'match-result'
-    session.markRecordingComplete({ isMock: true, audioUrl: null })
+    await submitRounds()
     return
   }
   roundIndex.value += 1
   roundWinner.value = null
   clearBoard()
   phase.value = 'ready'
+}
+
+// 라운드를 모두 마치면 놓은 순서를 서버 채점으로 올린다.
+// 서버 연동이 없는 목업 흐름에서는 기존처럼 완료 처리만 한다.
+const submitRounds = async () => {
+  const orders = rounds.value.map((_, index) => roundOrders.value[index] ?? [])
+  if (!session.hasAnswerEvaluator()) {
+    session.markRecordingComplete({ isMock: true, audioUrl: null })
+    return
+  }
+  submitting.value = true
+  try {
+    session.selectAnswer(orders.map((round) => round.join('|')))
+    await session.submitAnswer()
+  } finally {
+    submitting.value = false
+  }
 }
 
 const finishMatch = () => emit('next')

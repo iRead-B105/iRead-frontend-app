@@ -40,6 +40,9 @@ const templateMappings: Readonly<Record<number, LearnerTrainingTemplateMapping>>
   32: { categoryId: 'fluency', lessonId: 'phrase-reading' },
   33: { categoryId: 'fluency', lessonId: 're-read' },
   34: { categoryId: 'fluency', lessonId: 'short-story' },
+  35: { categoryId: 'phonics', lessonId: 'battle-rabbit' },
+  36: { categoryId: 'phonics', lessonId: 'battle-turtle' },
+  37: { categoryId: 'phonics', lessonId: 'battle-ant' },
 }
 
 export const getTrainingTemplateMapping = (
@@ -50,5 +53,7 @@ export const getGrowthAreaId = (trainingTemplateId: number): 1 | 2 | 3 | null =>
   if (trainingTemplateId >= 1 && trainingTemplateId <= 21) return 1
   if (trainingTemplateId >= 22 && trainingTemplateId <= 29) return 2
   if (trainingTemplateId >= 30 && trainingTemplateId <= 34) return 3
+  // 한글 대결은 자모 조립이라 글자·소리 영역으로 묶는다.
+  if (trainingTemplateId >= 35 && trainingTemplateId <= 37) return 1
   return null
 }

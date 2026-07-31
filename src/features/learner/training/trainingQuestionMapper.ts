@@ -538,6 +538,13 @@ export function buildTrainingResponse(
   mapped: MappedTrainingQuestion,
   selectedAnswer: string | string[],
 ): Readonly<Record<string, unknown>> {
+  // 한글 대결은 라운드마다 자모 순서가 따로 있어 평탄화하기 전에 처리한다.
+  if (mapped.responseType === 'BATTLE_ROUNDS') {
+    const rounds = Array.isArray(selectedAnswer) ? selectedAnswer : [selectedAnswer]
+    return {
+      roundOrders: rounds.map((round) => round.split('|').filter((jamo) => jamo !== '')),
+    }
+  }
   const value = Array.isArray(selectedAnswer) ? selectedAnswer.join('|') : selectedAnswer
   switch (mapped.responseType) {
     case 'SINGLE_CHOICE': {

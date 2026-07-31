@@ -223,6 +223,10 @@ const markRecordingComplete = (payload: {
   storedAnswers[question.id] = question.answer
 }
 
+// 서버 채점이 연결됐는지 확인한다. 목업 흐름은 정답 문자열 비교로 떨어지므로
+// 서버에만 있는 응답 형식은 평가자가 있을 때만 제출한다.
+const hasAnswerEvaluator = (): boolean => answerEvaluator !== null
+
 const showHint = (): void => {
   progressState.hintLevel = Math.min(progressState.hintLevel + 1, 2)
 }
@@ -326,6 +330,7 @@ export function useTrainingSession() {
     setAnswerEvaluator,
     setAnswerCompletedHandler,
     markRecordingComplete,
+    hasAnswerEvaluator,
     showHint,
     nextQuestion,
     saveResult,
