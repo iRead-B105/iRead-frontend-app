@@ -61,7 +61,7 @@ let answerCompletedHandler: AnswerCompletedHandler | null = null
 const storedAnswers = reactive<Record<string, string | string[]>>({})
 // 문제별 목업 저장소: 녹음 결과(실제 분석 아님)
 const storedRecordings = reactive<
-  Record<string, { isMock: boolean; audioUrl: string | null }>
+  Record<string, { isMock: boolean; audioUrl: string | null; blob: Blob | null }>
 >({})
 
 // ---- 계산된 값 ----
@@ -209,6 +209,7 @@ const submitAnswer = async (): Promise<boolean> => {
 const markRecordingComplete = (payload: {
   isMock: boolean
   audioUrl: string | null
+  blob?: Blob | null
 }): void => {
   const question = currentQuestion.value
   if (!question) return
@@ -219,6 +220,7 @@ const markRecordingComplete = (payload: {
   storedRecordings[question.id] = {
     isMock: payload.isMock,
     audioUrl: payload.audioUrl,
+    blob: payload.blob ?? null,
   }
   storedAnswers[question.id] = question.answer
 }

@@ -584,6 +584,12 @@ const goNext = async (response?: LearnerTraceSubmissionResponse) => {
       && !mockVoiceSubmissionsEnabled
     ) {
       pendingNextResponse.value = response
+      // 액티비티에서 이미 읽은 음성이 있으면 같은 문장을 다시 읽히지 않는다.
+      const captured = session.storedRecordings[mapped.question.id]?.blob ?? null
+      if (captured) {
+        await submitRecordedVoice(mapped, captured)
+        return
+      }
       voiceFeedback.value = ''
       voiceRecorder.reset()
       voiceGateOpen.value = true
@@ -643,9 +649,23 @@ const toggleVoiceRecording = () => {
 const submitVoiceRecording = async () => {
   const mapped = serverQuestions.value[session.progressState.currentQuestionIndex]
   const blob = voiceRecorder.audioBlob.value
-  const itemId = learningItemId.value
-  if (!mapped || !blob || !mapped.expectedText || !/^\d+$/.test(itemId)) {
+  if (!mapped || !blob) {
     voiceFeedback.value = '녹음 정보를 확인할 수 없습니다.'
+    return
+  }
+  await submitRecordedVoice(mapped, blob)
+}
+
+// 액티비티에서 담아 둔 녹음과 게이트에서 다시 받은 녹음을 같은 경로로 올린다.
+const submitRecordedVoice = async (
+  mapped: MappedTrainingQuestion,
+  blob: Blob,
+) => {
+  const itemId = learningItemId.value
+  if (!mapped.expectedText || !/^\d+$/.test(itemId)) {
+    voiceFeedback.value = '녹음 정보를 확인할 수 없습니다.'
+    voiceRecorder.reset()
+    voiceGateOpen.value = true
     return
   }
   voiceSubmitting.value = true
@@ -674,6 +694,7 @@ const submitVoiceRecording = async () => {
         }`
     if (result.canRetry) {
       voiceRecorder.reset()
+      voiceGateOpen.value = true
       return
     }
     recordedQuestionNumbers.add(mapped.questionNumber)
