@@ -76,6 +76,8 @@ export interface MockGazeSubmission {
     readonly text: string
     readonly dwellMs: number
     readonly visitCount: number
+    readonly readCount: number
+    readonly skipped: boolean
     readonly regressionCount: number
     readonly firstSeenMs: number
     readonly lastSeenMs: number
@@ -94,7 +96,8 @@ export interface DeviceGazeSample {
 
 const DEFAULT_SAMPLE_INTERVAL_MS = 80
 const MAX_SAMPLE_GAP_MS = 250
-const MIN_FIXATION_MS = 100
+const READ_DWELL_MS = 1_000
+const FIXATION_DWELL_MS = 2_000
 
 function wordTokensForQuestion(question: MappedTrainingQuestion): string[] {
   const expectedTokens = wordsFrom(question.expectedText ?? '')
@@ -117,6 +120,7 @@ function wordTokensForQuestion(question: MappedTrainingQuestion): string[] {
 type WordAccumulator = {
   dwellMs: number
   visitCount: number
+  readCount: number
   regressionCount: number
   firstSeenMs: number | null
   lastSeenMs: number | null
@@ -144,6 +148,7 @@ function createWordMetrics(
       const accumulators = tokens.map<WordAccumulator>(() => ({
         dwellMs: 0,
         visitCount: 0,
+        readCount: 0,
         regressionCount: 0,
         firstSeenMs: null,
         lastSeenMs: null,
@@ -155,13 +160,12 @@ function createWordMetrics(
       )
 
       let activeSegment: ActiveSegment | null = null
-      let previousAcceptedTokenIndex: number | null = null
+      let previousReadTokenIndex: number | null = null
       const finishSegment = () => {
-        if (!activeSegment || activeSegment.dwellMs < MIN_FIXATION_MS) return
+        if (!activeSegment || activeSegment.dwellMs < READ_DWELL_MS) return
         const accumulator = accumulators[activeSegment.tokenIndex]
         if (!accumulator) return
-        accumulator.dwellMs += Math.round(activeSegment.dwellMs)
-        accumulator.visitCount += 1
+        accumulator.readCount += 1
         const firstSeenMs = Math.max(0, Math.round(activeSegment.startMs - questionStartMs))
         const lastSeenMs = Math.max(firstSeenMs, Math.round(activeSegment.endMs - questionStartMs))
         accumulator.firstSeenMs = accumulator.firstSeenMs === null
@@ -171,12 +175,16 @@ function createWordMetrics(
           ? lastSeenMs
           : Math.max(accumulator.lastSeenMs, lastSeenMs)
         if (
-          previousAcceptedTokenIndex !== null
-          && activeSegment.tokenIndex < previousAcceptedTokenIndex
+          previousReadTokenIndex !== null
+          && activeSegment.tokenIndex < previousReadTokenIndex
         ) {
           accumulator.regressionCount += 1
         }
-        previousAcceptedTokenIndex = activeSegment.tokenIndex
+        previousReadTokenIndex = activeSegment.tokenIndex
+        if (activeSegment.dwellMs >= FIXATION_DWELL_MS) {
+          accumulator.dwellMs += Math.round(activeSegment.dwellMs)
+          accumulator.visitCount += 1
+        }
       }
 
       hitSamples.forEach((sample, index) => {
@@ -226,6 +234,8 @@ function createWordMetrics(
         text,
         dwellMs: accumulator?.dwellMs ?? 0,
         visitCount: accumulator?.visitCount ?? 0,
+        readCount: accumulator?.readCount ?? 0,
+        skipped: (accumulator?.readCount ?? 0) === 0,
         regressionCount: accumulator?.regressionCount ?? 0,
         firstSeenMs: accumulator?.firstSeenMs ?? 0,
         lastSeenMs: accumulator?.lastSeenMs ?? 0,
@@ -242,26 +252,17 @@ export function createMockGazeSubmission(
   )
   const baseTime = Date.now()
   const samples = gazeQuestions.flatMap((question, questionIndex) =>
-    wordTokensForQuestion(question).flatMap((text, tokenIndex) => [
-      {
+    wordTokensForQuestion(question).flatMap((text, tokenIndex) =>
+      [0, 200, 400, 600, 800, 1_000, 1_200, 1_400, 1_600, 1_800, 2_000, 2_200].map((offsetMs) => ({
         x: 320 + (tokenIndex % 3) * 80,
         y: 240 + (questionIndex % 2) * 60,
-        capturedAtMs: baseTime + questionIndex * 2_000 + tokenIndex * 300,
+        capturedAtMs: baseTime + questionIndex * 10_000 + tokenIndex * 3_000 + offsetMs,
         questionNumber: question.questionNumber,
         targetIndex: question.recordingTargetIndex ?? 0,
         tokenIndex,
         text,
-      },
-      {
-        x: 320 + (tokenIndex % 3) * 80,
-        y: 240 + (questionIndex % 2) * 60,
-        capturedAtMs: baseTime + questionIndex * 2_000 + tokenIndex * 300 + 80,
-        questionNumber: question.questionNumber,
-        targetIndex: question.recordingTargetIndex ?? 0,
-        tokenIndex,
-        text,
-      },
-    ]),
+      })),
+    ),
   )
 
   return {

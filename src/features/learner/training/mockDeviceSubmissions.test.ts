@@ -28,6 +28,20 @@ const mappedQuestion = (
   ...overrides,
 })
 
+const samplesForToken = (
+  tokenIndex: number,
+  text: string,
+  startMs: number,
+  count: number,
+) => Array.from({ length: count }, (_, index) => ({
+  x: 320 + tokenIndex * 100,
+  y: 240,
+  capturedAtMs: startMs + index * 200,
+  questionNumber: 1,
+  tokenIndex,
+  text,
+}))
+
 describe('mock device submissions', () => {
   it('장치 목데이터 제출을 기본으로 활성화한다', () => {
     expect(mockDeviceSubmissionsEnabled).toBe(true)
@@ -56,7 +70,7 @@ describe('mock device submissions', () => {
       }),
     ])
 
-    expect(gazeData.samples).toHaveLength(4)
+    expect(gazeData.samples).toHaveLength(24)
     expect(gazeData.samples[0]).toMatchObject({ questionNumber: 1 })
     expect(gazeData.words).toEqual([
       expect.objectContaining({
@@ -87,18 +101,29 @@ describe('mock device submissions', () => {
         },
       }),
     ], [
-      { x: 320, y: 240, capturedAtMs: 1_000, questionNumber: 1, tokenIndex: 0, text: 'alpha' },
-      { x: 322, y: 242, capturedAtMs: 1_080, questionNumber: 1, tokenIndex: 0, text: 'alpha' },
-      { x: 420, y: 240, capturedAtMs: 1_300, questionNumber: 1, tokenIndex: 1, text: 'beta' },
-      { x: 422, y: 242, capturedAtMs: 1_380, questionNumber: 1, tokenIndex: 1, text: 'beta' },
-      { x: 320, y: 240, capturedAtMs: 1_700, questionNumber: 1, tokenIndex: 0, text: 'alpha' },
-      { x: 322, y: 242, capturedAtMs: 1_780, questionNumber: 1, tokenIndex: 0, text: 'alpha' },
+      ...samplesForToken(0, 'alpha', 1_000, 12),
+      ...samplesForToken(1, 'beta', 4_000, 6),
+      ...samplesForToken(0, 'alpha', 6_000, 12),
     ])
 
-    expect(gazeData.samples).toHaveLength(6)
+    expect(gazeData.samples).toHaveLength(30)
     expect(gazeData.words).toHaveLength(2)
-    expect(gazeData.words[0]).toMatchObject({ text: 'alpha', visitCount: 2, regressionCount: 1 })
-    expect(gazeData.words[1]).toMatchObject({ text: 'beta', visitCount: 1, regressionCount: 0 })
+    expect(gazeData.words[0]).toMatchObject({
+      text: 'alpha',
+      dwellMs: 4_850,
+      visitCount: 2,
+      readCount: 2,
+      skipped: false,
+      regressionCount: 1,
+    })
+    expect(gazeData.words[1]).toMatchObject({
+      text: 'beta',
+      dwellMs: 0,
+      visitCount: 0,
+      readCount: 1,
+      skipped: false,
+      regressionCount: 0,
+    })
     expect(gazeData.words[0]?.dwellMs).not.toBe(gazeData.words[1]?.dwellMs)
   })
 
@@ -113,13 +138,19 @@ describe('mock device submissions', () => {
         },
       }),
     ], [
-      { x: 320, y: 240, capturedAtMs: 1_000, questionNumber: 1, tokenIndex: 2, text: 'gamma' },
-      { x: 322, y: 242, capturedAtMs: 1_080, questionNumber: 1, tokenIndex: 2, text: 'gamma' },
+      ...samplesForToken(2, 'gamma', 1_000, 12),
     ])
 
     expect(gazeData.words.map((word) => word.text)).toEqual(['alpha', 'beta', 'gamma'])
-    expect(gazeData.words[0]).toMatchObject({ tokenIndex: 0, visitCount: 0 })
-    expect(gazeData.words[1]).toMatchObject({ tokenIndex: 1, visitCount: 0 })
-    expect(gazeData.words[2]).toMatchObject({ tokenIndex: 2, text: 'gamma', visitCount: 1 })
+    expect(gazeData.words[0]).toMatchObject({ tokenIndex: 0, visitCount: 0, readCount: 0, skipped: true })
+    expect(gazeData.words[1]).toMatchObject({ tokenIndex: 1, visitCount: 0, readCount: 0, skipped: true })
+    expect(gazeData.words[2]).toMatchObject({
+      tokenIndex: 2,
+      text: 'gamma',
+      dwellMs: 2_400,
+      visitCount: 1,
+      readCount: 1,
+      skipped: false,
+    })
   })
 })
