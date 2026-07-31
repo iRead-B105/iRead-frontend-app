@@ -24,6 +24,7 @@ export type LearnerTrainingResponseType =
   | 'SINGLE_CHOICE'
   | 'ORDERING'
   | 'COMPONENT_BUILD'
+  | 'BATTLE_ROUNDS'
   | 'TEXT_INPUT'
   | 'AUDIO'
 

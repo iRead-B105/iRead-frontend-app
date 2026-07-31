@@ -44,6 +44,7 @@ const responseTypes: readonly LearnerTrainingResponseType[] = [
   'SINGLE_CHOICE',
   'ORDERING',
   'COMPONENT_BUILD',
+  'BATTLE_ROUNDS',
   'TEXT_INPUT',
   'AUDIO',
 ]
@@ -275,6 +276,42 @@ function mapOrdering(number: number, source: StudentQuestionDto): {
   }
 }
 
+const BATTLE_OPPONENTS: Record<string, 'rabbit' | 'turtle' | 'ant'> = {
+  RABBIT: 'rabbit',
+  TURTLE: 'turtle',
+  ANT: 'ant',
+}
+
+function mapHangulBattle(number: number, source: StudentQuestionDto): TrainingQuestion {
+  const opponentCode = requiredString(source.content, 'opponent')
+  const opponent = BATTLE_OPPONENTS[opponentCode]
+  if (!opponent) {
+    throw new TypeError(`백엔드 훈련 문항의 opponent 값이 올바르지 않습니다: ${opponentCode}`)
+  }
+  const rounds = objectArray(source.content, 'rounds')
+  const answerOrders = source.answer.answerOrders
+  if (!Array.isArray(answerOrders) || answerOrders.length !== rounds.length) {
+    throw new TypeError('백엔드 훈련 문항의 answerOrders 값이 올바르지 않습니다.')
+  }
+  return {
+    ...baseQuestion(number, '상대보다 먼저 만들어요!', 'battle-complete'),
+    battleOpponent: opponent,
+    battleRounds: rounds.map((round, index) => {
+      const id = `battle-${number}-${index}`
+      return {
+        id,
+        word: requiredString(round, 'word'),
+        answer: stringArray({ value: answerOrders[index] }, 'value'),
+        tiles: stringArray(round, 'tiles').map((text, tileIndex) => ({
+          id: `${id}-${tileIndex}`,
+          text,
+        })),
+        opponentDurationMs: requiredInteger(round, 'opponentDurationMs'),
+      }
+    }),
+  }
+}
+
 function mapComponentBuild(number: number, source: StudentQuestionDto): TrainingQuestion {
   const slotSpecs: Array<[LetterBuildSlot['role'], string, string]> = [
     ['initial', 'initialChoices', 'initialAnswerIndex'],
@@ -461,6 +498,9 @@ export function mapTrainingQuestion(payload: LearnerTrainingQuestionPayload): Ma
     const mapped = mapOrdering(payload.questionNumber, source)
     activityType = mapped.activityType
     question = mapped.question
+  } else if (source.responseType === 'BATTLE_ROUNDS') {
+    activityType = 'hangul-battle'
+    question = mapHangulBattle(payload.questionNumber, source)
   } else if (source.responseType === 'COMPONENT_BUILD') {
     activityType = 'letter-build'
     question = mapComponentBuild(payload.questionNumber, source)
