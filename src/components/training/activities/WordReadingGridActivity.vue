@@ -6,7 +6,10 @@ import { useTrainingSession } from '@/composables/useTrainingSession'
 import readingActiveIcon from '@/assets/icons/reading-active.svg'
 import checkIcon from '@/assets/icons/check.svg'
 import progressStar from '@/assets/training/ui/progress-star.png'
-import { mockDeviceSubmissionsEnabled } from '@/features/learner/training/mockDeviceSubmissions'
+import {
+  mockGazeSubmissionsEnabled,
+  mockVoiceSubmissionsEnabled,
+} from '@/features/learner/training/mockDeviceSubmissions'
 
 const props = defineProps<{ question: TrainingQuestion }>()
 defineEmits<{ next: [] }>()
@@ -61,6 +64,11 @@ const items = computed<WordReadingItem[]>(() => {
 })
 const allComplete = computed(() => items.value.length > 0 && completedIds.value.length === items.value.length)
 const activeWord = computed(() => items.value[activeIndex.value] ?? null)
+const completeByRealGaze = computed(() =>
+  mockVoiceSubmissionsEnabled
+  && !mockGazeSubmissionsEnabled
+  && props.question.requiredInputs?.includes('GAZE'),
+)
 const statusMessage = computed(() => {
   switch (messageState.value) {
     case 'listening': return '읽고 있어'
@@ -192,11 +200,12 @@ const startReading = () => {
   started.value = true
   messageState.value = 'listening'
   lastProgressAt = Date.now()
-  if (mockDeviceSubmissionsEnabled) {
+  if (mockVoiceSubmissionsEnabled && !completeByRealGaze.value) {
     completedIds.value = items.value.map((item) => item.id)
     finishAllWords()
     return
   }
+  if (completeByRealGaze.value) return
   startRecognition()
 }
 
@@ -210,10 +219,27 @@ const cardIndexAt = (clientX: number, clientY: number) => {
   return null
 }
 
-const updateGaze = (clientX: number, clientY: number) => {
+const emitGazeWordHit = (clientX: number, clientY: number, tokenIndex: number) => {
+  const text = items.value[tokenIndex]?.text
+  if (typeof text !== 'string') return
+  window.dispatchEvent(new CustomEvent('iread:gaze-word-hit', {
+    detail: {
+      clientX,
+      clientY,
+      tokenIndex,
+      text,
+    },
+  }))
+}
+
+const updateGaze = (clientX: number, clientY: number, emitWordHit = false) => {
   gazePoint.value = { x: clientX, y: clientY }
   gazeVisible.value = true
-  gazeIndex.value = cardIndexAt(clientX, clientY)
+  const nextGazeIndex = cardIndexAt(clientX, clientY)
+  gazeIndex.value = nextGazeIndex
+  if (emitWordHit && nextGazeIndex !== null) {
+    emitGazeWordHit(clientX, clientY, nextGazeIndex)
+  }
 }
 
 const onPointerMove = (event: PointerEvent) => updateGaze(event.clientX, event.clientY)
@@ -229,7 +255,7 @@ const onGaze = (event: Event) => {
     detail?.headPoseStable !== false
     && typeof detail?.clientX === 'number'
     && typeof detail?.clientY === 'number'
-  ) updateGaze(detail.clientX, detail.clientY)
+  ) updateGaze(detail.clientX, detail.clientY, true)
 }
 const onExternalSpeech = (event: Event) => {
   const detail = (event as CustomEvent<{ transcript?: string }>).detail
@@ -263,6 +289,17 @@ onMounted(() => {
   window.addEventListener('iread:speech', onExternalSpeech)
   stateTimer = setInterval(() => {
     if (!started.value || allComplete.value || readingHelp) return
+    if (completeByRealGaze.value) {
+      if (gazeIndex.value === activeIndex.value) {
+        if (!dwellStartedAt) dwellStartedAt = Date.now()
+        dwellProgress.value = Math.min(1, (Date.now() - dwellStartedAt) / 900)
+        if (dwellProgress.value >= 1) acceptCurrentWord()
+      } else {
+        dwellStartedAt = 0
+        dwellProgress.value = 0
+      }
+      return
+    }
     if (assistIndex.value === null && Date.now() - lastProgressAt >= 8000) activateAssist()
 
     if (assistIndex.value !== null && gazeIndex.value === assistIndex.value) {

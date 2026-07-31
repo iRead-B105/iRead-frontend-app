@@ -13,6 +13,7 @@ import type {
 interface TrainingIntroDto {
   readonly trainingId: number
   readonly trainingTemplateId: number
+  readonly trainingType: string
   readonly dailyCurriculumId: number
   readonly sequenceNo: number
   readonly status: string

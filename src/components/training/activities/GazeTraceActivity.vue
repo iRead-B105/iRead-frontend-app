@@ -5,8 +5,8 @@ import { useTrainingSession } from '@/composables/useTrainingSession'
 import { useAudioPlayer } from '@/composables/useAudioPlayer'
 import SoundButton from '@/components/training/SoundButton.vue'
 import microphoneIcon from '@/assets/icons/microphone.svg'
-import { mockDeviceSubmissionsEnabled } from '@/features/learner/training/mockDeviceSubmissions'
 import type { LearnerTraceSubmissionResponse } from '@/features/learner/training'
+import { mockVoiceSubmissionsEnabled } from '@/features/learner/training/mockDeviceSubmissions'
 
 const props = defineProps<{ question: TrainingQuestion }>()
 const emit = defineEmits<{
@@ -160,7 +160,7 @@ const startSpeech = () => {
   stopSpeech()
   speechState.value = 'listening'
 
-  if (mockDeviceSubmissionsEnabled) {
+  if (mockVoiceSubmissionsEnabled) {
     fallbackTimer = setTimeout(() => finishSpeech(true), 1100)
     return
   }

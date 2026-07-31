@@ -10,7 +10,7 @@ import type { TrainingQuestion } from '@/types/training'
 import { useTrainingSession } from '@/composables/useTrainingSession'
 import { useAudioPlayer } from '@/composables/useAudioPlayer'
 import { useVoiceRecorder } from '@/composables/useVoiceRecorder'
-import { mockDeviceSubmissionsEnabled } from '@/features/learner/training/mockDeviceSubmissions'
+import { mockVoiceSubmissionsEnabled } from '@/features/learner/training/mockDeviceSubmissions'
 import SoundButton from '../SoundButton.vue'
 import microphoneIcon from '@/assets/icons/microphone.svg'
 import stopIcon from '@/assets/icons/stop.svg'
@@ -42,6 +42,7 @@ watch(
       session.markRecordingComplete({
         isMock: recorder.state.isMock,
         audioUrl: recorder.audioUrl.value,
+        blob: recorder.audioBlob.value,
       })
     }
   },
@@ -57,7 +58,7 @@ watch(
 )
 
 const handleMicToggle = () => {
-  if (mockDeviceSubmissionsEnabled) {
+  if (mockVoiceSubmissionsEnabled) {
     session.markRecordingComplete({ isMock: true, audioUrl: null })
     return
   }

@@ -8,7 +8,7 @@ import { useDeviceStatus } from '../../composables/useDeviceStatus'
 import { useGazeCalibration } from '../../composables/useGazeCalibration'
 import { useGazeCursorVisibility } from '../../composables/useGazeCursorVisibility'
 import { useTobiiGazeBridge } from '../../composables/useTobiiGazeBridge'
-import { mockDeviceSubmissionsEnabled } from '@/features/learner/training'
+import { mockGazeSubmissionsEnabled } from '@/features/learner/training'
 import { useLearnerSessionStore } from '@/stores/learnerSession'
 import { useLearnerErrorModalStore } from '@/stores/learnerErrorModal'
 import eyeTrackerIcon from '@/assets/icons/eye-tracker.svg'
@@ -54,7 +54,7 @@ const {
   status: eyeTrackerStatus,
   disconnect: disconnectEyeTracker,
   reconnect: reconnectEyeTracker,
-} = useTobiiGazeBridge({ autoConnect: !mockDeviceSubmissionsEnabled })
+} = useTobiiGazeBridge({ autoConnect: !mockGazeSubmissionsEnabled })
 
 watch(eyeTrackerStatus, (status) => {
   // 브리지의 자동 재시도는 수 초마다 connecting/disconnected를 오간다.

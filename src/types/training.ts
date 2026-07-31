@@ -174,6 +174,7 @@ export interface TrainingQuestion {
   battleRounds?: HangulBattleRound[]
   readingWords?: WordReadingItem[]
   readingSentences?: ReadingSentence[]
+  requiredInputs?: readonly string[]
 
   // card-combine 전용
   consonant?: string // 예: 'ㄱ'

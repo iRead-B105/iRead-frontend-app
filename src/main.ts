@@ -8,6 +8,7 @@ import { configureLearnerApiAuth } from '@/features/learner/learnerApiClient'
 import { useLearnerSessionStore } from '@/stores/learnerSession'
 import { useLearnerErrorModalStore } from '@/stores/learnerErrorModal'
 import { configureLearnerAuthApiErrors } from '@/features/learner/auth/apiLearnerAuthRepository'
+import { installLearnerRealtimeSync } from '@/realtime/installLearnerRealtimeSync'
 
 const app = createApp(App)
 const pinia = createPinia()
@@ -21,6 +22,7 @@ configureLearnerApiAuth({
   onError: (error) => learnerErrorModal.show(error),
 })
 configureLearnerAuthApiErrors((error) => learnerErrorModal.show(error))
+installLearnerRealtimeSync(pinia, router)
 
 app.config.errorHandler = (error) => {
   learnerErrorModal.show(error, '화면 처리 오류')

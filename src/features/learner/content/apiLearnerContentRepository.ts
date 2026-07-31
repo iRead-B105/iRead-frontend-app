@@ -1,7 +1,7 @@
 import fallbackCover from '@/assets/story/ui/new-book-icon.png'
 import fallbackScene from '@/assets/story/story-reader-turtle-scene-mock.png'
 import { learnerApiClient } from '../learnerApiClient'
-import { getGrowthAreaId, getTrainingTemplateMapping } from './trainingTemplateMapping'
+import { getGrowthAreaId, resolveTrainingMapping } from './trainingTemplateMapping'
 import type {
   LearnerCurrentCurriculum,
   LearnerDeviceStatus,
@@ -66,6 +66,7 @@ interface CurrentTrainingListDto {
   readonly trainings: readonly {
     readonly trainingId: number
     readonly trainingTemplateId: number
+    readonly trainingType?: string
     readonly sequenceNo: number
     readonly unitName: string
     readonly trainingName: string
@@ -113,10 +114,18 @@ export class ApiLearnerContentRepository implements LearnerContentRepository {
       studyDate: response.studyDate ?? null,
       status: response.curriculumStatus === 'COMPLETED' || allCompleted ? 'COMPLETED' : 'READY',
       currentOrder: current?.sequenceNo ?? orderedTrainings.length + 1,
-      trainings: orderedTrainings.flatMap((training) => {
-        const mapping = getTrainingTemplateMapping(training.trainingTemplateId)
-        if (!mapping) return []
-        return [{
+      trainings: orderedTrainings.map((training) => {
+        const mapping = resolveTrainingMapping(
+          training.trainingType,
+          training.trainingTemplateId,
+        )
+        if (!mapping) {
+          throw new TypeError(
+            `[아동 훈련 계약] trainingType=${training.trainingType ?? 'MISSING'}, `
+            + `trainingTemplateId=${training.trainingTemplateId}의 화면 매핑이 없습니다.`,
+          )
+        }
+        return {
           trainingId: String(training.trainingId),
           trainingTemplateId: String(training.trainingTemplateId),
           order: training.sequenceNo,
@@ -129,7 +138,7 @@ export class ApiLearnerContentRepository implements LearnerContentRepository {
             : training.trainingId === current?.trainingId
               ? 'CURRENT' as const
               : 'LOCKED' as const,
-        }]
+        }
       }),
     }
   }
