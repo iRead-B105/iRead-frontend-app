@@ -10,6 +10,10 @@ import {
 import PageBackButton from '@/components/common/PageBackButton.vue'
 import type { VillageItem } from '@/types/village'
 import { learnerStoryRepository } from '@/features/learner/story'
+import {
+  createMockVoiceFile,
+  mockDeviceSubmissionsEnabled,
+} from '@/features/learner/training'
 import { useVoiceRecorder } from '@/composables/useVoiceRecorder'
 import { useLearnerErrorModalStore } from '@/stores/learnerErrorModal'
 import arrowRightIcon from '@/assets/icons/arrow-right.svg'
@@ -91,6 +95,7 @@ const dwellDurationMs = ref(100)
 const transcript = ref('')
 const speechError = ref(false)
 const branchSubmitting = ref(false)
+const mockBranchVoiceFile = ref<File | null>(null)
 const ttsLoading = ref(false)
 const ttsPlaying = ref(false)
 let leaveTimer: number | undefined
@@ -111,6 +116,13 @@ const isListening = computed(() =>
   voiceRecorder.state.status === 'requesting'
   || voiceRecorder.state.status === 'recording',
 )
+const hasBranchRecording = computed(() =>
+  mockBranchVoiceFile.value !== null || voiceRecorder.state.hasRecording,
+)
+
+function exitToStorySelection() {
+  void router.push({ name: 'story-selection' })
+}
 
 function clearLeaveTimer() {
   if (leaveTimer !== undefined) window.clearTimeout(leaveTimer)
@@ -241,6 +253,7 @@ async function goNext() {
       gaze.value.visible = false
       transcript.value = ''
       speechError.value = false
+      mockBranchVoiceFile.value = null
       voiceRecorder.reset()
       screen.value = 'question'
       return
@@ -250,8 +263,13 @@ async function goNext() {
       clearDwell()
       clearLeaveTimer()
       gaze.value.visible = false
-      rewardedFriend.value = await unlockStoryFriend(storyId.value)
       screen.value = 'reward'
+      try {
+        rewardedFriend.value = await unlockStoryFriend(storyId.value)
+      } catch {
+        // 이야기 완료는 서버에서 이미 확정됐다. 보상 캐릭터 조회 실패가 완료 화면을 막지 않는다.
+        rewardedFriend.value = null
+      }
       return
     }
 
@@ -273,6 +291,11 @@ async function goNext() {
 async function startListening() {
   speechError.value = false
   voiceRecorder.reset()
+  if (mockDeviceSubmissionsEnabled) {
+    mockBranchVoiceFile.value = createMockVoiceFile(5)
+    return
+  }
+  mockBranchVoiceFile.value = null
   await voiceRecorder.start()
   if (
     voiceRecorder.state.status === 'denied'
@@ -289,7 +312,16 @@ function stopListening() {
 async function submitBranchAnswer() {
   const current = page.value
   const blob = voiceRecorder.audioBlob.value
-  if (!current.lineId || !blob || branchSubmitting.value) {
+  const audioFile = mockBranchVoiceFile.value ?? (
+    blob
+      ? new File(
+          [blob],
+          `story-${current.lineId}.${blob.type.includes('mp4') ? 'm4a' : 'webm'}`,
+          { type: blob.type || 'audio/webm' },
+        )
+      : null
+  )
+  if (!current.lineId || !audioFile || branchSubmitting.value) {
     speechError.value = true
     return
   }
@@ -298,14 +330,11 @@ async function submitBranchAnswer() {
   speechError.value = false
   screen.value = 'generating'
   try {
-    const extension = blob.type.includes('mp4') ? 'm4a' : 'webm'
     const result = await learnerStoryRepository.chooseDirection(
       getCachedStudent().studentId,
       storyId.value,
       current.lineId,
-      new File([blob], `story-${current.lineId}.${extension}`, {
-        type: blob.type || 'audio/webm',
-      }),
+      audioFile,
     )
     transcript.value = result.transcript
     await loadStory()
@@ -317,6 +346,7 @@ async function submitBranchAnswer() {
       : Math.max(story.value.pages.length - 1, 0)
     readThrough.value = -1
     showReturnCue.value = false
+    mockBranchVoiceFile.value = null
     voiceRecorder.reset()
     screen.value = 'reading'
     await nextTick()
@@ -407,7 +437,7 @@ onBeforeUnmount(() => {
         <PageBackButton
           class="reader-back"
           label="이야기 나라로 돌아가기"
-          @back="router.push({ name: 'stories' })"
+          @back="exitToStorySelection"
         />
         <div class="story-progress" role="status" :aria-label="`현재 ${currentPage + 1}페이지, 전체 ${allPages.length}페이지`">
           {{ currentPage + 1 }} / {{ allPages.length }}
@@ -441,7 +471,7 @@ onBeforeUnmount(() => {
         <PageBackButton
           class="reader-back"
           label="이야기 나라로 돌아가기"
-          @back="router.push({ name: 'stories' })"
+          @back="exitToStorySelection"
         />
         <img :src="page.image" alt="" :style="{ objectPosition: page.imagePosition ?? 'center' }" />
         <div class="question-backdrop" aria-hidden="true" />
@@ -469,7 +499,7 @@ onBeforeUnmount(() => {
                       ? '녹음 내용을 확인해 주세요'
                       : isListening
                         ? '이야기를 듣고 있어요!'
-                        : voiceRecorder.state.hasRecording
+                        : hasBranchRecording
                           ? '대답을 녹음했어요'
                           : '이야기를 들려주세요!'
                   }}
@@ -480,7 +510,7 @@ onBeforeUnmount(() => {
                       ? (voiceRecorder.state.errorMessage ?? '다시 녹음해 볼까요?')
                       : isListening
                         ? '말을 마치면 마이크를 눌러 주세요.'
-                        : voiceRecorder.state.hasRecording
+                        : hasBranchRecording
                           ? '이 답으로 다음 이야기를 만들 수 있어요.'
                           : '마이크를 누르고 대답해 주세요.'
                   }}
@@ -488,7 +518,7 @@ onBeforeUnmount(() => {
               </div>
               <div class="voice-actions">
                 <button
-                  v-if="voiceRecorder.state.hasRecording"
+                  v-if="hasBranchRecording"
                   class="retry-button"
                   type="button"
                   :disabled="branchSubmitting"
@@ -497,7 +527,7 @@ onBeforeUnmount(() => {
                   다시 말하기
                 </button>
                 <button
-                  v-if="voiceRecorder.state.hasRecording"
+                  v-if="hasBranchRecording"
                   class="confirm-answer"
                   type="button"
                   :disabled="branchSubmitting"
