@@ -5,7 +5,6 @@
 // (향후 자동 커리큘럼 연결 시 이 지점의 goNext/finish 흐름을 서버 세션 기반으로 교체)
 //
 // 본 화면은 "메인 섬 화면"처럼 요소를 최소로 유지합니다.
-// 별도의 피드백 배너/무거운 헤더 대신 토끼 한 마리가 역할을 모두 맡습니다.
 
 import { computed, onBeforeUnmount, onMounted, ref, watch, type Component } from 'vue'
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
@@ -23,7 +22,6 @@ import {
 import { trainingActivityComponents } from '@/components/training/activityRegistry'
 import LearningBackButton from '@/components/training/LearningBackButton.vue'
 import LearningNextButton from '@/components/training/LearningNextButton.vue'
-import RiveGuideCharacter from '@/components/RiveGuideCharacter.vue'
 import leaveTrainingRabbit from '@/assets/training/ui/leave-training-rabbit.png'
 import lessonProgressTitleBoard from '@/assets/training/ui/lesson-progress-title-board-compact.webp'
 import eyeTrackerIcon from '@/assets/icons/eye-tracker.svg'
@@ -44,7 +42,6 @@ import { getCachedStudent } from '@/services/learnerDataRepository'
 import { useLearnerErrorModalStore } from '@/stores/learnerErrorModal'
 import { learnerGazeRepository } from '@/features/learner/gaze'
 import { learnerTestRepository } from '@/features/learner/test'
-import { presentTrainingHint } from '@/features/learner/training/hintPresentation'
 
 const route = useRoute()
 const router = useRouter()
@@ -112,7 +109,6 @@ const activityComponent = computed<Component | null>(() =>
 
 type Phase = 'intro' | 'playing' | 'saving'
 const phase = ref<Phase>('intro')
-const activityGuideMessage = ref('')
 const deviceBlocker = ref<'eye-tracker' | 'microphone' | null>(null)
 const leaveConfirmationOpen = ref(false)
 const integrationError = ref('')
@@ -153,14 +149,40 @@ const microphoneRequired = computed(() =>
 const currentQuestion = computed(() => session.currentQuestion.value)
 const questionScroll = ref<HTMLElement | null>(null)
 const sharedNextEnabled = computed(() => session.progressState.isCurrentCorrect === true)
+type ActivityLayout = 'trace-speak' | 'choice' | 'manipulation' | 'reading-speak'
+const activityLayouts: Record<TrainingActivityType, ActivityLayout> = {
+  'gaze-trace': 'trace-speak',
+  'audio-letter-choice': 'choice',
+  'listen-and-select': 'choice',
+  'sound-choice': 'choice',
+  'sentence-choice': 'choice',
+  'letter-build': 'manipulation',
+  'sound-manipulation': 'manipulation',
+  'sound-omit': 'manipulation',
+  'sound-blend': 'manipulation',
+  'card-combine': 'manipulation',
+  'fill-blank': 'manipulation',
+  'sentence-order': 'manipulation',
+  'hangul-battle': 'manipulation',
+  'word-reading-grid': 'reading-speak',
+  'sentence-reading': 'reading-speak',
+  'read-aloud': 'reading-speak',
+  'card-match': 'choice',
+  'drag-and-drop': 'manipulation',
+}
+const activityLayoutClass = computed(() =>
+  lesson.value
+    ? `activity-layout--${activityLayouts[lesson.value.activityType]}`
+    : undefined,
+)
 const conciseInstructions: Partial<Record<TrainingActivityType, string>> = {
   'gaze-trace': '글자를 따라 읽어요!',
   'audio-letter-choice': '첫소리를 찾아봐!',
   'listen-and-select': '같은 소리를 찾아봐!',
   'sound-choice': '소리를 찾아봐!',
-  'letter-build': '글자를 만들어봐!',
+  'letter-build': '소리 듣고 글자를 만들어봐!',
   'sound-manipulation': '낱말을 바꿔봐!',
-  'sound-omit': '소리를 빼봐!',
+  'sound-omit': '잘 듣고 글자를 잘라봐!',
   'sound-blend': '소리를 합쳐봐!',
   'card-combine': '글자를 합쳐봐!',
   'word-reading-grid': '낱말을 읽어봐!',
@@ -186,11 +208,6 @@ const displayQuestion = computed(() => {
     subInstruction: undefined,
   }
 })
-const displayedHint = computed(() => presentTrainingHint(
-  lesson.value?.activityType,
-  session.currentHint.value,
-  session.progressState.hintLevel,
-))
 const deviceFallbackEnabled = import.meta.env.DEV || mockDeviceSubmissionsEnabled
 
 const onGazeSample = (event: Event) => {
@@ -318,7 +335,7 @@ const startPlaying = async () => {
   }
   startingTraining.value = true
   try {
-    if (learnerDataSource === 'api') {
+    if (learnerDataSource === 'api' && !debugMode.value) {
       const intro = serverIntro.value
       const itemId = learningItemId.value
       if (!intro || !/^\d+$/.test(itemId)) {
@@ -469,7 +486,7 @@ const goNext = async (response?: LearnerTraceSubmissionResponse) => {
   }
   submittingQuestion.value = true
   try {
-    if (learnerDataSource === 'api') {
+    if (learnerDataSource === 'api' && !debugMode.value) {
       const itemId = learningItemId.value
       const mapped = serverQuestions.value[session.progressState.currentQuestionIndex]
       if (!mapped || !/^\d+$/.test(itemId)) {
@@ -570,7 +587,7 @@ const saveAndFinish = async () => {
   phase.value = 'saving'
   let ok = false
   let nextCurriculumItem: (typeof dailyCurriculum.curriculumItems)[number] | null = null
-  if (learnerDataSource === 'api') {
+  if (learnerDataSource === 'api' && !debugMode.value) {
     session.savingState.status = 'saving'
     session.savingState.errorMessage = null
     try {
@@ -644,23 +661,6 @@ const saveAndFinish = async () => {
 }
 
 const isSavingFailed = computed(() => session.savingState.status === 'failed')
-const guideMessage = computed(() => {
-  if (session.progressState.isCurrentCorrect === true) return '잘했어!\n정말 대단해!'
-  if (displayedHint.value) return displayedHint.value
-  if (session.progressState.isCurrentCorrect === false) {
-    return session.progressState.attemptCount >= 2
-      ? '천천히 다시 해봐!\n할 수 있어!'
-      : '괜찮아!\n한 번 더 해봐!'
-  }
-  if (activityGuideMessage.value) return activityGuideMessage.value
-  if (session.progressState.hintLevel > 0) return '힌트를 보고\n천천히 해봐!'
-  if (lesson.value?.activityType === 'gaze-trace') return '파란 선을 눈으로 따라가 봐!'
-  return '할 수 있어!\n같이 해보자!'
-})
-const guideMood = computed(() =>
-  session.progressState.isCurrentCorrect === true ? 'cheer' as const : 'idle' as const,
-)
-
 </script>
 
 <template>
@@ -712,23 +712,15 @@ const guideMood = computed(() =>
           @activate="activateSharedNext"
         />
       </div>
-      <div ref="questionScroll" class="question-scroll">
+      <div ref="questionScroll" class="question-scroll" :class="activityLayoutClass">
         <component
           :is="activityComponent"
           v-if="displayQuestion && activityComponent"
           :key="displayQuestion.id"
           :question="displayQuestion"
           @next="goNext"
-          @guide-message="activityGuideMessage = $event"
         />
       </div>
-      <RiveGuideCharacter
-        class="lesson-guide"
-        :message="guideMessage"
-        :mood="guideMood"
-        :show-bubble="lesson.activityType !== 'gaze-trace'"
-        :speak-message="lesson.activityType === 'gaze-trace'"
-      />
     </div>
 
     <!-- 저장 오버레이(저장 중 입력 잠금) -->

@@ -328,56 +328,60 @@ onBeforeUnmount(() => {
   <section class="activity" :aria-label="question.instruction">
     <header class="activity-heading">
       <h1>{{ allComplete ? '다 읽었어!' : question.instruction }}</h1>
-      <div class="reading-status" :class="messageState" role="status" aria-live="polite">
-        <img :src="allComplete ? progressStar : readingActiveIcon" alt="" aria-hidden="true" />
-        {{ statusMessage }}
-      </div>
     </header>
 
-    <div
-      ref="sentenceStage"
-      class="sentence-stage"
-      :class="{ multi: sentences.length > 1 }"
-      @pointermove="onPointerMove"
-      @pointerleave="onPointerLeave"
-    >
-      <div class="passage" aria-label="읽을 글">
-        <p
-          v-for="(sentence, sentenceIndex) in sentences"
-          :key="sentence.id"
-          class="sentence-row"
-          :class="{ 'row-complete': isSentenceComplete(sentenceIndex) }"
-        >
-          <span
-            v-for="(chunk, localIndex) in sentence.chunks"
-            :key="`${sentence.id}-${localIndex}`"
-            class="sentence-chunk"
-            :class="{
-              active: started && globalChunkIndex(sentenceIndex, localIndex) === activeIndex && !allComplete && !betweenSentences,
-              gazed: gazeIndex === globalChunkIndex(sentenceIndex, localIndex),
-              complete: globalChunkIndex(sentenceIndex, localIndex) < completedCount,
-              assist: assistIndex === globalChunkIndex(sentenceIndex, localIndex),
-            }"
+    <div class="reading-layout">
+      <div
+        ref="sentenceStage"
+        class="sentence-stage"
+        :class="{ multi: sentences.length > 1 }"
+        @pointermove="onPointerMove"
+        @pointerleave="onPointerLeave"
+      >
+        <div class="passage" aria-label="읽을 글">
+          <p
+            v-for="(sentence, sentenceIndex) in sentences"
+            :key="sentence.id"
+            class="sentence-row"
+            :class="{ 'row-complete': isSentenceComplete(sentenceIndex) }"
           >
-            <span class="chunk-text">{{ chunk }}</span>
-            <span v-if="assistIndex === globalChunkIndex(sentenceIndex, localIndex)" class="assist-sweep" aria-hidden="true"></span>
-            <img
-              v-if="globalChunkIndex(sentenceIndex, localIndex) < completedCount"
-              class="read-mark"
-              :src="readingActiveIcon"
-              alt=""
-              aria-hidden="true"
-            />
-          </span>
-        </p>
+            <span
+              v-for="(chunk, localIndex) in sentence.chunks"
+              :key="`${sentence.id}-${localIndex}`"
+              class="sentence-chunk"
+              :class="{
+                active: started && globalChunkIndex(sentenceIndex, localIndex) === activeIndex && !allComplete && !betweenSentences,
+                gazed: gazeIndex === globalChunkIndex(sentenceIndex, localIndex),
+                complete: globalChunkIndex(sentenceIndex, localIndex) < completedCount,
+                assist: assistIndex === globalChunkIndex(sentenceIndex, localIndex),
+              }"
+            >
+              <span class="chunk-text">{{ chunk }}</span>
+              <span v-if="assistIndex === globalChunkIndex(sentenceIndex, localIndex)" class="assist-sweep" aria-hidden="true"></span>
+              <img
+                v-if="globalChunkIndex(sentenceIndex, localIndex) < completedCount"
+                class="read-mark"
+                :src="readingActiveIcon"
+                alt=""
+                aria-hidden="true"
+              />
+            </span>
+          </p>
+        </div>
       </div>
-    </div>
 
-    <footer class="action-bar">
-      <button v-if="!started" class="start-button" type="button" @click="startReading"><img :src="readingActiveIcon" alt="" aria-hidden="true" /> 읽기 시작</button>
-      <button v-else-if="messageState === 'denied'" class="start-button" type="button" @click="startReading">다시 시작</button>
-      <button v-else-if="allComplete" class="next-button shared-next-source" type="button" @click="$emit('next')">다음</button>
-    </footer>
+      <aside class="reading-side">
+        <div class="reading-status" :class="messageState" role="status" aria-live="polite">
+          <img :src="allComplete ? progressStar : readingActiveIcon" alt="" aria-hidden="true" />
+          {{ statusMessage }}
+        </div>
+        <footer class="action-bar">
+          <button v-if="!started" class="start-button" type="button" @click="startReading"><img :src="readingActiveIcon" alt="" aria-hidden="true" /> 읽기 시작</button>
+          <button v-else-if="messageState === 'denied'" class="start-button" type="button" @click="startReading">다시 시작</button>
+          <button v-else-if="allComplete" class="next-button shared-next-source" type="button" @click="$emit('next')">다음</button>
+        </footer>
+      </aside>
+    </div>
   </section>
 </template>
 

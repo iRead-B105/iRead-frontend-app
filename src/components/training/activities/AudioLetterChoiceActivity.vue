@@ -54,11 +54,13 @@ watch(
     <h1>{{ question.instruction }}</h1>
 
     <div class="learning-area">
-      <SoundButton
-        :text="question.audioText ?? ''"
-        size="large"
-        variant="primary"
-      />
+      <div class="listen-panel">
+        <SoundButton
+          :text="question.audioText ?? ''"
+          size="large"
+          variant="primary"
+        />
+      </div>
 
       <div class="choices" aria-label="글자 선택지">
         <LetterCard

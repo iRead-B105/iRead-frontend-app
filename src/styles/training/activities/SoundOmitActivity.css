@@ -29,13 +29,10 @@
   min-width: 0;
   min-height: 0;
   display: grid;
-  grid-template-rows: minmax(0, 1fr) clamp(96px, 11cqh, 122px);
+  grid-template-rows: minmax(0, 1fr) clamp(70px, 8.5cqh, 92px);
   justify-items: center;
-  gap: clamp(4px, .7cqh, 9px);
-  padding:
-    clamp(20px, 2.1cqmin, 30px)
-    clamp(22px, 2.3cqmin, 34px)
-    clamp(16px, 1.8cqmin, 25px);
+  gap: clamp(8px, 1cqh, 12px);
+  padding: 0;
 }
 
 .puzzle-panel {
@@ -45,16 +42,8 @@
   min-width: 0;
   display: grid;
   place-items: center;
-  padding: clamp(22px, 2.6cqmin, 38px);
-}
-
-.puzzle-panel-image {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: fill;
-  pointer-events: none;
+  overflow: hidden;
+  padding: clamp(14px, 1.8cqmin, 24px);
 }
 
 .puzzle-stage {
@@ -62,17 +51,17 @@
   z-index: 1;
   width: min(100%, 900px);
   height: 100%;
-  min-height: 280px;
+  min-height: 0;
   display: grid;
   place-items: center;
 }
 
 .puzzle-word {
-  --puzzle-unit: clamp(180px, 16.5cqw, 238px);
+  --puzzle-unit: clamp(124px, 11.5cqw, 166px);
   position: relative;
   width: 100%;
   min-width: 0;
-  min-height: calc(var(--puzzle-unit) * 1.24);
+  min-height: var(--puzzle-unit);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -115,7 +104,7 @@
   position: relative;
   z-index: 1;
   font-family: var(--learner-font-reading);
-  font-size: clamp(58px, 5.2cqw, 80px);
+  font-size: clamp(48px, 4.6cqw, 68px);
   font-weight: var(--learner-font-weight-heavy);
   line-height: 1;
   pointer-events: none;
@@ -140,21 +129,13 @@
 
 .puzzle-tools {
   position: relative;
-  width: clamp(310px, 29cqw, 410px);
+  width: clamp(300px, 28cqw, 390px);
   height: 100%;
   display: grid;
   grid-template-columns: 1fr 1fr;
+  gap: clamp(10px, 1.2cqw, 18px);
   align-items: stretch;
   justify-self: center;
-}
-
-.puzzle-tools-image {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: fill;
-  pointer-events: none;
 }
 
 .tool-button {
@@ -163,15 +144,15 @@
   min-width: 0;
   display: grid;
   place-items: center;
-  padding: 8px;
+  padding: 0;
   border: 0;
   background: transparent;
 }
 
 .tool-button img {
-  width: clamp(64px, 5.8cqw, 84px);
-  height: clamp(64px, 5.8cqw, 84px);
-  object-fit: contain;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
   pointer-events: none;
 }
 
@@ -194,7 +175,7 @@
 }
 
 .undo-button:disabled {
-  opacity: .34;
+  opacity: 1;
   cursor: not-allowed;
 }
 
@@ -202,7 +183,7 @@
   min-height: 0;
   display: grid;
   grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 20px;
+  gap: clamp(10px, 1.3cqh, 16px);
 }
 
 .sound-control-card {
@@ -226,7 +207,7 @@
 .sound-control-card :deep(.sound-button) {
   position: relative;
   z-index: 1;
-  transform: scale(1.08);
+  transform: scale(.94);
 }
 
 .complete-button {
@@ -241,7 +222,7 @@
   background: transparent;
   color: #fff;
   font-family: var(--learner-font-display);
-  font-size: clamp(29px, 2.7cqw, 40px);
+  font-size: clamp(25px, 2.3cqw, 34px);
   font-weight: var(--learner-font-weight-heavy);
   cursor: pointer;
   transition:
@@ -349,26 +330,21 @@
   }
 
   .puzzle-column {
-    grid-template-rows: minmax(0, 1fr) 84px;
+    grid-template-rows: minmax(0, 1fr) 66px;
     gap: 6px;
-    padding: 16px 18px 13px;
+    padding: 0;
   }
 
   .puzzle-stage {
-    min-height: 210px;
+    min-height: 0;
   }
 
   .puzzle-word {
-    --puzzle-unit: 170px;
+    --puzzle-unit: 128px;
   }
 
   .puzzle-tools {
-    width: 320px;
-  }
-
-  .tool-button img {
-    width: 66px;
-    height: 66px;
+    width: 300px;
   }
 
   .function-panel {

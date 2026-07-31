@@ -82,25 +82,6 @@ const onDrop = (index: number) => {
     </header>
 
     <div class="activity-main">
-      <div v-if="question.audioPromptEnabled !== false" class="sound-panel">
-        <strong v-if="isSplit" class="target-word">{{ question.targetText }}</strong>
-        <div v-else class="sound-pieces" aria-hidden="true">
-          <template v-for="(_, index) in question.soundParts" :key="index">
-            <span class="sound-piece">
-              <img :src="soundIcon" alt="" />
-            </span>
-            <span v-if="index < slotCount - 1" class="piece-plus">+</span>
-          </template>
-        </div>
-        <SoundButton
-          :text="question.targetText || question.soundParts?.join('') || ''"
-          :parts="isSplit ? undefined : question.soundParts"
-          :rate="isSplit ? 0.75 : 0.68"
-          :disabled="isPlaying"
-          label="문제 소리"
-        />
-      </div>
-
       <div class="build-panel">
         <div class="slot-row" :class="{ 'slot-row--wrong': isWrong }">
           <template v-for="(choice, index) in placedChoices" :key="index">
@@ -145,21 +126,42 @@ const onDrop = (index: number) => {
           </button>
         </div>
       </div>
-    </div>
 
-    <div class="action-bar">
-      <button
-        v-if="!isAnswered"
-        class="action action--primary"
-        type="button"
-        :disabled="!allFilled"
-        @click="session.submitAnswer()"
-      >
-        확인
-      </button>
-      <button v-else class="action action--next shared-next-source" type="button" @click="$emit('next')">
-        다음 문제
-      </button>
+      <div class="function-panel">
+        <div v-if="question.audioPromptEnabled !== false" class="sound-panel">
+          <strong v-if="isSplit" class="target-word">{{ question.targetText }}</strong>
+          <div v-else class="sound-pieces" aria-hidden="true">
+            <template v-for="(_, index) in question.soundParts" :key="index">
+              <span class="sound-piece">
+                <img :src="soundIcon" alt="" />
+              </span>
+              <span v-if="index < slotCount - 1" class="piece-plus">+</span>
+            </template>
+          </div>
+          <SoundButton
+            :text="question.targetText || question.soundParts?.join('') || ''"
+            :parts="isSplit ? undefined : question.soundParts"
+            :rate="isSplit ? 0.75 : 0.68"
+            :disabled="isPlaying"
+            label="문제 소리"
+          />
+        </div>
+
+        <div class="action-bar">
+          <button
+            v-if="!isAnswered"
+            class="action action--primary"
+            type="button"
+            :disabled="!allFilled"
+            @click="session.submitAnswer()"
+          >
+            확인
+          </button>
+          <button v-else class="action action--next shared-next-source" type="button" @click="$emit('next')">
+            다음 문제
+          </button>
+        </div>
+      </div>
     </div>
   </section>
 </template>

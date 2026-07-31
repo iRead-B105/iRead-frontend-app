@@ -13,14 +13,13 @@ import puzzleRearMint from '@/assets/training/sound-puzzle/puzzle-rear-mint.svg'
 import puzzleFrontPurple from '@/assets/training/sound-puzzle/puzzle-front-purple.svg'
 import puzzleMiddlePurple from '@/assets/training/sound-puzzle/puzzle-middle-purple.svg'
 import puzzleRearPurple from '@/assets/training/sound-puzzle/puzzle-rear-purple.svg'
-import trashIcon from '@/assets/training/sound-puzzle/trash-bin.svg'
-import undoIcon from '@/assets/training/sound-puzzle/undo.svg'
-import puzzleWorkspacePanel from '@/assets/training/sound-puzzle/puzzle-workspace-panel.svg'
-import puzzleToolTray from '@/assets/training/sound-puzzle/puzzle-tool-tray.svg'
+import trashTool from '@/assets/training/sound-puzzle/tool-trash.png'
+import undoToolActive from '@/assets/training/sound-puzzle/tool-undo-active.png'
+import undoToolDisabled from '@/assets/training/sound-puzzle/tool-undo-disabled.png'
 import soundControlPanel from '@/assets/training/sound-puzzle/sound-control-panel.svg'
-import completeButtonDisabled from '@/assets/training/sound-puzzle/complete-button-disabled.svg'
-import completeButtonActive from '@/assets/training/sound-puzzle/complete-button-active.svg'
-import completeButtonSuccess from '@/assets/training/sound-puzzle/complete-button-success.svg'
+import completeButtonDisabled from '@/assets/training/sound-puzzle/complete-button-disabled.png'
+import completeButtonActive from '@/assets/training/sound-puzzle/complete-button-active.png'
+import completeButtonSuccess from '@/assets/training/sound-puzzle/complete-button-success.png'
 
 const props = defineProps<{ question: TrainingQuestion }>()
 defineEmits<{ next: [] }>()
@@ -162,7 +161,6 @@ const cancelDrag = () => {
 
     <div class="play-area">
       <div class="puzzle-column">
-        <img class="puzzle-panel-image" :src="puzzleWorkspacePanel" alt="" aria-hidden="true" />
         <div class="puzzle-panel">
           <div
             class="puzzle-stage"
@@ -203,7 +201,6 @@ const cancelDrag = () => {
         </div>
 
         <div class="puzzle-tools" aria-label="퍼즐 조작 도구">
-          <img class="puzzle-tools-image" :src="puzzleToolTray" alt="" aria-hidden="true" />
           <button
             ref="trashZone"
             class="tool-button trash-zone"
@@ -212,7 +209,7 @@ const cancelDrag = () => {
             tabindex="-1"
             aria-label="퍼즐 조각을 이곳으로 끌어 놓아 제거"
           >
-            <img :src="trashIcon" alt="" aria-hidden="true" />
+            <img :src="trashTool" alt="" aria-hidden="true" />
           </button>
           <button
             class="tool-button undo-button"
@@ -221,7 +218,7 @@ const cancelDrag = () => {
             aria-label="직전에 제거한 퍼즐 조각 되돌리기"
             @click="undoRemoval"
           >
-            <img :src="undoIcon" alt="" aria-hidden="true" />
+            <img :src="canUndo ? undoToolActive : undoToolDisabled" alt="" aria-hidden="true" />
           </button>
         </div>
       </div>

@@ -8,8 +8,12 @@ import { traceConsonantLesson, traceSyllableLesson, traceVowelLesson } from './g
 import { letterSoundChoiceLesson, wordFirstSoundChoiceLesson } from './audioChoiceLessons'
 import { basicLetterBuildLesson, batchimLetterBuildLesson, doubleBatchimLetterBuildLesson } from './letterBuildLessons'
 import { removeBatchimLesson, removeSyllableLesson, replaceSyllableLesson } from './soundManipulationLessons'
-import { antBattleLesson, rabbitBattleLesson, turtleBattleLesson } from './hangulBattleLessons'
-import { nonwordReadingLesson, realWordReadingLesson } from './wordReadingLessons'
+import {
+  batchimWordReadingLesson,
+  nonwordReadingLesson,
+  realWordReadingLesson,
+  shortSentenceWordReadingLesson,
+} from './wordReadingLessons'
 import { sentenceReadingLesson } from './sentenceReadingLessons'
 import { shortPassageReadingLesson } from './shortPassageReadingLessons'
 import { pictureSentenceLesson } from './pictureSentenceLessons'
@@ -666,11 +670,10 @@ export const lessonMap: Record<string, TrainingLesson> = {
   'remove-batchim': removeBatchimLesson,
   'remove-syllable': removeSyllableLesson,
   'replace-syllable': replaceSyllableLesson,
-  'battle-rabbit': rabbitBattleLesson,
-  'battle-turtle': turtleBattleLesson,
-  'battle-ant': antBattleLesson,
   'read-real-words': realWordReadingLesson,
+  'read-batchim-words': batchimWordReadingLesson,
   'read-nonwords': nonwordReadingLesson,
+  'read-short-sentences': shortSentenceWordReadingLesson,
   'read-sentences': sentenceReadingLesson,
   'read-short-passage': shortPassageReadingLesson,
   'same-sound': sameSoundLesson,
@@ -680,7 +683,6 @@ export const lessonMap: Record<string, TrainingLesson> = {
   'sound-combine': soundCombineLesson,
   'consonant-sound': consonantSoundLesson,
   'vowel-sound': vowelSoundLesson,
-  'combine-cv': combineCVLesson,
   'batchim-sound': batchimSoundLesson,
   'similar-sound': similarSoundLesson,
   'repeat-sentence': repeatSentenceLesson,
@@ -733,11 +735,6 @@ const devPreviewDefinitions: DevPreviewDefinition[] = [
     sourceLessonIds: ['build-basic-letter', 'build-batchim-letter', 'build-double-batchim-letter'],
   },
   {
-    id: 'card-combine',
-    title: '자음·모음 합치기 UI',
-    sourceLessonIds: ['combine-cv'],
-  },
-  {
     id: 'sound-manipulation',
     title: '소리 빼기·바꾸기 UI',
     sourceLessonIds: ['remove-batchim', 'remove-syllable', 'replace-syllable'],
@@ -748,19 +745,14 @@ const devPreviewDefinitions: DevPreviewDefinition[] = [
     sourceLessonIds: ['sound-split'],
   },
   {
-    id: 'hangul-battle',
-    title: '글자 배틀 UI',
-    sourceLessonIds: ['battle-rabbit', 'battle-turtle', 'battle-ant'],
-  },
-  {
     id: 'word-reading-grid',
-    title: '낱말 읽기 UI',
-    sourceLessonIds: ['read-real-words', 'read-nonwords'],
-  },
-  {
-    id: 'sentence-reading',
-    title: '문장·짧은 글 읽기 UI',
-    sourceLessonIds: ['read-sentences', 'read-short-passage'],
+    title: '눈으로 보고 읽기 UI',
+    sourceLessonIds: [
+      'read-real-words',
+      'read-batchim-words',
+      'read-nonwords',
+      'read-short-sentences',
+    ],
   },
   {
     id: 'fill-blank',
@@ -776,19 +768,6 @@ const devPreviewDefinitions: DevPreviewDefinition[] = [
     id: 'sentence-order',
     title: '문장 조립 UI',
     sourceLessonIds: ['sentence-order'],
-  },
-  {
-    id: 'read-aloud',
-    title: '소리 내어 읽기 UI',
-    sourceLessonIds: [
-      'hard-word',
-      'repeat-sentence',
-      'word-chain',
-      'follow-sentence',
-      'phrase-reading',
-      're-read',
-      'short-story',
-    ],
   },
 ]
 

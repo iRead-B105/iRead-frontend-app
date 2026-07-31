@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import type { TrainingQuestion } from '@/types/training'
+import type { TrainingQuestion, WordReadingItem } from '@/types/training'
 import { useAudioPlayer } from '@/composables/useAudioPlayer'
 import { useTrainingSession } from '@/composables/useTrainingSession'
 import readingActiveIcon from '@/assets/icons/reading-active.svg'
@@ -54,7 +54,11 @@ let dwellStartedAt = 0
 let readingHelp = false
 let disposed = false
 
-const items = computed(() => props.question.readingWords ?? [])
+const items = computed<WordReadingItem[]>(() => {
+  if (props.question.readingWords?.length) return props.question.readingWords
+  const text = props.question.targetText?.trim()
+  return text ? [{ id: `${props.question.id}-reading`, text }] : []
+})
 const allComplete = computed(() => items.value.length > 0 && completedIds.value.length === items.value.length)
 const activeWord = computed(() => items.value[activeIndex.value] ?? null)
 const statusMessage = computed(() => {
@@ -286,37 +290,53 @@ onBeforeUnmount(() => {
   <section class="activity" :aria-label="question.instruction">
     <header class="activity-heading">
       <h1>{{ allComplete ? '다 읽었어!' : question.instruction }}</h1>
-      <div class="reading-status" :class="messageState" role="status" aria-live="polite">
-        <img class="status-icon" :src="allComplete ? progressStar : readingActiveIcon" alt="" aria-hidden="true" />
-        {{ statusMessage }}
-      </div>
     </header>
 
-    <div ref="grid" class="word-grid" @pointermove="onPointerMove" @pointerleave="onPointerLeave">
-      <article
-        v-for="(word, index) in items"
-        :key="word.id"
-        class="word-card"
-        :class="{
-          active: started && index === activeIndex && !allComplete,
-          gazed: gazeIndex === index,
-          complete: completedIds.includes(word.id),
-          assist: assistIndex === index,
-        }"
+    <div class="reading-layout">
+      <div
+        ref="grid"
+        class="word-grid"
+        :class="{ 'word-grid--single': items.length === 1 }"
+        @pointermove="onPointerMove"
+        @pointerleave="onPointerLeave"
       >
-        <img v-if="completedIds.includes(word.id)" class="complete-mark" :src="checkIcon" alt="읽기 완료" />
-        <strong>{{ word.text }}</strong>
-        <span v-if="assistIndex === index" class="assist-sweep" aria-hidden="true"></span>
-      </article>
-    </div>
+        <article
+          v-for="(word, index) in items"
+          :key="word.id"
+          class="word-card"
+          :class="{
+            active: started && index === activeIndex && !allComplete,
+            gazed: gazeIndex === index,
+            complete: completedIds.includes(word.id),
+            assist: assistIndex === index,
+          }"
+        >
+          <img v-if="completedIds.includes(word.id)" class="complete-mark" :src="checkIcon" alt="읽기 완료" />
+          <strong>{{ word.text }}</strong>
+          <span v-if="assistIndex === index" class="assist-sweep" aria-hidden="true"></span>
+        </article>
+      </div>
 
-    <footer class="action-bar">
-      <button v-if="!started" class="start-button" type="button" @click="startReading">
-        <img :src="readingActiveIcon" alt="" aria-hidden="true" /> 읽기 시작
-      </button>
-      <button v-else-if="messageState === 'denied'" class="start-button" type="button" @click="startReading">다시 시작</button>
-      <button v-else-if="allComplete" class="next-button shared-next-source" type="button" @click="$emit('next')">다음</button>
-    </footer>
+      <aside class="reading-side">
+        <div class="reading-status" :class="messageState" role="status" aria-live="polite">
+          <img class="status-icon" :src="allComplete ? progressStar : readingActiveIcon" alt="" aria-hidden="true" />
+          {{ statusMessage }}
+        </div>
+        <footer class="action-bar">
+          <button
+            v-if="!started"
+            class="start-button start-button--icon-only"
+            type="button"
+            aria-label="마이크로 읽기 시작"
+            @click="startReading"
+          >
+            <img :src="readingActiveIcon" alt="" aria-hidden="true" />
+          </button>
+          <button v-else-if="messageState === 'denied'" class="start-button" type="button" @click="startReading">다시 시작</button>
+          <button v-else-if="allComplete" class="next-button shared-next-source" type="button" @click="$emit('next')">다음</button>
+        </footer>
+      </aside>
+    </div>
   </section>
 </template>
 

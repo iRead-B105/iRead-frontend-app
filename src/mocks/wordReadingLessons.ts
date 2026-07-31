@@ -22,9 +22,23 @@ export const realWordReadingLesson: TrainingLesson = {
   activityType: 'word-reading-grid',
   estimatedMinutes: 8,
   questions: [
-    question('real-1', ['나비', '모자', '가위', '토끼']),
-    question('real-2', ['사과', '다리', '나무', '기차']),
-    question('real-3', ['바다', '우유', '구름', '하늘']),
+    question('real-1', ['나비']),
+    question('real-2', ['사과']),
+    question('real-3', ['기차']),
+  ],
+}
+
+export const batchimWordReadingLesson: TrainingLesson = {
+  id: 'read-batchim-words',
+  categoryId: 'fluency',
+  title: '겹받침 낱말 읽기',
+  description: '겹받침이 들어간 낱말을 소리 내어 읽어요.',
+  activityType: 'word-reading-grid',
+  estimatedMinutes: 8,
+  questions: [
+    question('batchim-1', ['닭']),
+    question('batchim-2', ['흙']),
+    question('batchim-3', ['값']),
   ],
 }
 
@@ -36,8 +50,22 @@ export const nonwordReadingLesson: TrainingLesson = {
   activityType: 'word-reading-grid',
   estimatedMinutes: 8,
   questions: [
-    question('nonword-1', ['머눅', '가핌', '도밴', '비럭']),
-    question('nonword-2', ['누밥', '퍼딤', '재몬', '히둑']),
-    question('nonword-3', ['버깁', '초뭄', '래둔', '키덜']),
+    question('nonword-1', ['머눅']),
+    question('nonword-2', ['퍼딤']),
+    question('nonword-3', ['히둑']),
+  ],
+}
+
+export const shortSentenceWordReadingLesson: TrainingLesson = {
+  id: 'read-short-sentences',
+  categoryId: 'fluency',
+  title: '짧은 문장 읽기',
+  description: '짧은 문장을 눈으로 보고 소리 내어 읽어요.',
+  activityType: 'word-reading-grid',
+  estimatedMinutes: 9,
+  questions: [
+    question('short-sentence-1', ['새가 날아요.']),
+    question('short-sentence-2', ['토끼가 뛰어요.']),
+    question('short-sentence-3', ['비가 내려요.']),
   ],
 }

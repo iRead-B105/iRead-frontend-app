@@ -29,10 +29,12 @@
 }
 
 .playing {
-  flex: 1;
+  /* 커리큘럼 선택 화면과 동일한 기준 프레임과 강조 배율을 사용한다. */
+  flex: 0 0 auto;
   min-height: 0;
-  width: min(92cqw, var(--learner-activity-panel-width));
-  margin: clamp(8px, 1.2cqh, 18px) auto clamp(10px, 1.8cqh, 24px);
+  width: min(95%, var(--learner-selection-frame-width));
+  height: min(95%, var(--learner-selection-frame-height));
+  margin: auto;
   overflow: hidden;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
@@ -46,20 +48,8 @@
   background-size: cover;
   background-repeat: no-repeat;
   box-shadow: var(--learner-shadow-panel);
-}
-
-.lesson-guide {
-  right: -4%;
-  bottom: -10%;
-  width: clamp(190px, 14cqw, 270px);
-}
-
-.lesson-guide :deep(.bubble) {
-  right: 82%;
-  bottom: 54%;
-  width: clamp(150px, 12cqw, 210px);
-  padding: 11px 13px;
-  font-size: clamp(15px, 1.05cqw, 18px);
+  transform: scale(var(--learner-main-selection-scale));
+  transform-origin: center;
 }
 
 .lesson-topbar--inside {
@@ -166,7 +156,7 @@
 }
 
 .lesson-instruction {
-  max-width: 22ch;
+  max-width: none;
   justify-self: center;
   margin: 0;
   padding: 0 var(--learner-space-4);
@@ -174,6 +164,7 @@
   font-size: clamp(31px, 3cqw, 49px);
   line-height: 1.05;
   letter-spacing: -.035em;
+  white-space: nowrap;
   text-shadow: 0 2px 0 rgb(255 255 255 / 94%);
 }
 
@@ -211,6 +202,300 @@
   background: transparent !important;
   background-image: none !important;
   box-shadow: none !important;
+}
+
+/* 공통 학습 레이아웃 4종
+ * 기준 화면: GazeTraceActivity의 1180px 작업대와 1fr + 190~230px 기능 패널 */
+.question-scroll {
+  --activity-shell-width: 1180px;
+  --activity-shell-padding-block: 12px;
+  --activity-shell-padding-inline: 18px;
+  --activity-shell-gap: 20px;
+  --activity-side-width: clamp(185px, 19cqw, 230px);
+  --activity-panel-radius: 28px;
+  --activity-panel-border: 2px solid rgb(224 217 205 / 78%);
+  --activity-panel-background: #fff;
+  --activity-panel-shadow: 0 8px 20px rgb(70 63 50 / 9%);
+}
+
+.question-scroll[class*="activity-layout--"] :deep(.activity),
+.question-scroll[class*="activity-layout--"] :deep(.battle) {
+  position: relative;
+  width: 100% !important;
+  max-width: var(--activity-shell-width) !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  max-height: 100% !important;
+  margin: 0 auto !important;
+  padding:
+    var(--activity-shell-padding-block)
+    var(--activity-shell-padding-inline) !important;
+  gap: 0 !important;
+  overflow: hidden !important;
+}
+
+.question-scroll[class*="activity-layout--"] :deep(.activity-heading) {
+  display: none !important;
+}
+
+/* 1. 획순을 따라 보고 말하기 */
+.activity-layout--trace-speak :deep(.trace-layout) {
+  grid-template-columns: minmax(0, 1fr) var(--activity-side-width) !important;
+  gap: var(--activity-shell-gap) !important;
+}
+
+.activity-layout--trace-speak :deep(.trace-side) {
+  gap: var(--activity-shell-gap) !important;
+}
+
+/* 2. 그림·소리를 보고 세 카드 중 고르기 */
+.activity-layout--choice :deep(.learning-area),
+.activity-layout--choice :deep(.activity-main),
+.activity-layout--choice :deep(.choice-layout) {
+  display: grid !important;
+  grid-template-columns: var(--activity-side-width) minmax(0, 1fr) !important;
+  grid-template-rows: minmax(0, 1fr) !important;
+  align-items: stretch !important;
+  gap: var(--activity-shell-gap) !important;
+  flex: 1 !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+}
+
+.activity-layout--choice :deep(.activity--first-sound .learning-area) {
+  grid-template-columns: var(--activity-side-width) minmax(0, 1fr) !important;
+  grid-template-rows: minmax(0, 1fr) !important;
+}
+
+.activity-layout--choice :deep(.target-area),
+.activity-layout--choice :deep(.listen-panel),
+.activity-layout--choice :deep(.picture-panel) {
+  width: 100% !important;
+  height: 100% !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  border: var(--activity-panel-border) !important;
+  border-radius: var(--activity-panel-radius) !important;
+  background: var(--activity-panel-background) !important;
+  box-shadow: var(--activity-panel-shadow) !important;
+}
+
+.activity-layout--choice :deep(.listen-panel) {
+  display: grid !important;
+  place-items: center !important;
+  padding: clamp(14px, 1.8cqmin, 24px) !important;
+}
+
+.activity-layout--choice :deep(.listen-panel > .sound-button) {
+  width: var(--learner-sound-control-width) !important;
+  min-width: var(--learner-sound-control-width) !important;
+  max-width: var(--learner-sound-control-width) !important;
+  height: var(--learner-sound-control-height) !important;
+  min-height: var(--learner-sound-control-height) !important;
+}
+
+.activity-layout--choice :deep(.choices),
+.activity-layout--choice :deep(.choice-panel),
+.activity-layout--choice :deep(.sentence-target) {
+  min-width: 0 !important;
+  min-height: 0 !important;
+  border: var(--activity-panel-border) !important;
+  border-radius: var(--activity-panel-radius) !important;
+  background: var(--activity-panel-background) !important;
+  box-shadow: var(--activity-panel-shadow) !important;
+}
+
+.activity-layout--choice :deep(.choices) {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  align-items: center !important;
+  justify-items: center !important;
+  gap: clamp(16px, 2cqw, 28px) !important;
+  width: 100% !important;
+  height: 100% !important;
+  padding: clamp(18px, 2.2cqmin, 30px) !important;
+}
+
+.activity-layout--choice :deep(.activity--first-sound .choices) {
+  align-self: stretch !important;
+  min-height: 0 !important;
+  background: #fff !important;
+}
+
+.activity-layout--choice :deep(.word-choice),
+.activity-layout--choice :deep(.text-choice),
+.activity-layout--choice :deep(.choices .letter-card) {
+  width: min(100%, 220px) !important;
+  height: clamp(180px, 25cqh, 260px) !important;
+  max-height: 100% !important;
+}
+
+/* 3. 카드·퍼즐을 조립하거나 제거하기 */
+.activity-layout--manipulation :deep(.learning-area),
+.activity-layout--manipulation :deep(.task-row) {
+  display: grid !important;
+  grid-template-columns: var(--activity-side-width) minmax(0, 1fr) !important;
+  align-items: stretch !important;
+  gap: var(--activity-shell-gap) !important;
+  flex: 1 !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+}
+
+.activity-layout--manipulation :deep(.play-area),
+.activity-layout--manipulation :deep(.activity-main:has(.function-panel)) {
+  grid-template-columns: minmax(0, 1fr) var(--activity-side-width) !important;
+  gap: var(--activity-shell-gap) !important;
+}
+
+.activity-layout--manipulation :deep(.build-panel),
+.activity-layout--manipulation :deep(.manipulation-panel),
+.activity-layout--manipulation :deep(.puzzle-panel),
+.activity-layout--manipulation :deep(.sentence-card),
+.activity-layout--manipulation :deep(.slots) {
+  min-width: 0 !important;
+  min-height: 0 !important;
+  border: var(--activity-panel-border) !important;
+  border-radius: var(--activity-panel-radius) !important;
+  background: var(--activity-panel-background) !important;
+  box-shadow: var(--activity-panel-shadow) !important;
+}
+
+.activity-layout--manipulation :deep(.function-panel) {
+  grid-template-rows: minmax(0, 1fr) minmax(0, 1fr) !important;
+  gap: var(--activity-shell-gap) !important;
+}
+
+.activity-layout--manipulation :deep(.learning-area > .sound-button),
+.activity-layout--manipulation :deep(.task-row > .sound-button),
+.activity-layout--manipulation :deep(.sound-panel),
+.activity-layout--manipulation :deep(.sound-control-card),
+.activity-layout--manipulation :deep(.complete-button) {
+  min-width: 0 !important;
+  min-height: 0 !important;
+  border-radius: 25px !important;
+}
+
+.activity-layout--manipulation :deep(.action-row),
+.activity-layout--manipulation :deep(.action-bar) {
+  flex: 0 0 clamp(52px, 7cqh, 68px);
+  min-height: 0 !important;
+  margin: 0 !important;
+}
+
+/* 4. 완성된 낱말·문장을 읽고 말하기 */
+.activity-layout--reading-speak :deep(.activity-main) {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) var(--activity-side-width) !important;
+  grid-template-areas: "sentence side" !important;
+  align-items: stretch !important;
+  gap: var(--activity-shell-gap) !important;
+  flex: 1 !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+}
+
+.activity-layout--reading-speak :deep(.reading-layout) {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) var(--activity-side-width) !important;
+  align-items: stretch !important;
+  gap: var(--activity-shell-gap) !important;
+  flex: 1 !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+}
+
+.activity-layout--reading-speak :deep(.reading-side) {
+  display: grid !important;
+  grid-template-rows: minmax(0, 1fr) minmax(0, 1fr) !important;
+  gap: var(--activity-shell-gap) !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+}
+
+.activity-layout--reading-speak :deep(.activity-main > .reading-side) {
+  grid-area: side;
+}
+
+.activity-layout--reading-speak :deep(.reading-layout > .reading-side) {
+  grid-column: 2;
+}
+
+.activity-layout--reading-speak :deep(.reading-side > .listen-panel) {
+  display: grid !important;
+  place-items: center !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  padding: clamp(12px, 1.5cqmin, 20px) !important;
+  border: var(--activity-panel-border) !important;
+  border-radius: 25px !important;
+  background: #fff !important;
+  box-shadow: var(--activity-panel-shadow) !important;
+}
+
+.activity-layout--reading-speak :deep(.sentence-card),
+.activity-layout--reading-speak :deep(.sentence-stage),
+.activity-layout--reading-speak :deep(.word-grid) {
+  min-width: 0 !important;
+  min-height: 0 !important;
+  border: var(--activity-panel-border) !important;
+  border-radius: var(--activity-panel-radius) !important;
+  background: var(--activity-panel-background) !important;
+  box-shadow: var(--activity-panel-shadow) !important;
+}
+
+.activity-layout--reading-speak :deep(.record-area) {
+  min-width: 0 !important;
+  min-height: 0 !important;
+  border: var(--activity-panel-border) !important;
+  border-radius: 25px !important;
+  background: #fff !important;
+  box-shadow: var(--activity-panel-shadow) !important;
+}
+
+.activity-layout--reading-speak :deep(.reading-side > .reading-status),
+.activity-layout--reading-speak :deep(.reading-side > .action-bar) {
+  width: 100% !important;
+  height: 100% !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: clamp(12px, 1.5cqmin, 20px) !important;
+  border: var(--activity-panel-border) !important;
+  border-radius: 25px !important;
+  background: #fff !important;
+  box-shadow: var(--activity-panel-shadow) !important;
+}
+
+.activity-layout--reading-speak :deep(.reading-side .start-button),
+.activity-layout--reading-speak :deep(.reading-side .next-button) {
+  width: 100% !important;
+  min-width: 0 !important;
+}
+
+.activity-layout--reading-speak :deep(.word-grid),
+.activity-layout--reading-speak :deep(.sentence-stage) {
+  flex: 1 !important;
+  width: 100% !important;
+}
+
+.activity-layout--reading-speak :deep(.action-bar) {
+  flex: 0 0 clamp(46px, 6cqh, 58px);
+  min-height: 0 !important;
+  margin: 0 !important;
+}
+
+/* 고정 비율 프로젝트: 폭에 따라 세로 레이아웃으로 접지 않는다. */
+@container learner-canvas (max-height: 800px) {
+  .question-scroll {
+    --activity-shell-padding-block: 8px;
+    --activity-shell-padding-inline: 14px;
+    --activity-shell-gap: 14px;
+    --activity-side-width: 190px;
+  }
 }
 
 /* 모든 훈련의 선택 카드가 같은 표면과 상태 문법을 사용한다. */
@@ -672,15 +957,6 @@
 }
 
 @container learner-canvas (max-width: 900px) {
-  .lesson-guide {
-    right: -8%;
-    width: 210px;
-  }
-
-  .lesson-guide :deep(.bubble) {
-    display: none;
-  }
-
   .playing {
     width: calc(100% - 28px);
     padding: 12px;

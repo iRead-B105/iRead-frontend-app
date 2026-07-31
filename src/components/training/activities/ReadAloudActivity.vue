@@ -120,17 +120,21 @@ const micButtonLabel = computed(() => {
           <span v-for="(chunk, i) in chunks" :key="i" class="chunk">{{ chunk }}</span>
           <span v-if="chunks.length === 0" class="chunk">{{ sentence }}</span>
         </div>
-        <SoundButton
-          v-if="question.audioPromptEnabled === true"
-          :text="sentence"
-          label="모범 문장"
-          size="medium"
-          variant="primary"
-        />
       </div>
 
-      <!-- 녹음 영역 -->
-      <div class="record-area">
+      <div class="reading-side">
+        <div class="listen-panel">
+          <SoundButton
+            v-if="question.audioPromptEnabled === true"
+            :text="sentence"
+            label="모범 문장"
+            size="medium"
+            variant="primary"
+          />
+        </div>
+
+        <!-- 녹음 영역 -->
+        <div class="record-area">
         <!-- 목업 파형 -->
         <div class="waveform" :class="{ active: isRecording }" aria-hidden="true">
           <span
@@ -163,9 +167,10 @@ const micButtonLabel = computed(() => {
         <p v-if="status === 'denied'" class="denied-note">권한을 허용하면 녹음할 수 있어.</p>
 
         <!-- 녹음 후 액션 -->
-        <div v-if="hasRecording && !isRecording" class="record-actions">
-          <button v-if="!isMock" class="chip" type="button" @click="playMyRecording">내 녹음 듣기</button>
-          <button class="chip" type="button" @click="handleReRecord">다시 녹음하기</button>
+          <div v-if="hasRecording && !isRecording" class="record-actions">
+            <button v-if="!isMock" class="chip" type="button" @click="playMyRecording">내 녹음 듣기</button>
+            <button class="chip" type="button" @click="handleReRecord">다시 녹음하기</button>
+          </div>
         </div>
       </div>
     </div>

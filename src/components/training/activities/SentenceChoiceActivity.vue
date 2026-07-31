@@ -95,42 +95,44 @@ onBeforeUnmount(() => {
       <p v-if="statusMessage" class="status-message" :class="{ success: placedChoice }" role="status" aria-live="polite">{{ statusMessage }}</p>
     </header>
 
-    <div class="picture-panel">
-      <img
-        v-if="question.targetImage"
-        class="picture"
-        :src="question.targetImage"
-        :alt="question.targetImageLabel || '문제 그림'"
-      />
-      <ResourceRequired
-        v-else
-        class="picture"
-        :label="question.targetImageLabel || '문제 그림'"
-      />
-      <div
-        ref="targetSlot"
-        class="sentence-target"
-        :class="{ over: overTarget, filled: placedChoice, hint: showHint }"
-      >
-        <span v-if="placedChoice">{{ placedChoice.text }}</span>
+    <div class="choice-layout">
+      <div class="picture-panel">
+        <img
+          v-if="question.targetImage"
+          class="picture"
+          :src="question.targetImage"
+          :alt="question.targetImageLabel || '문제 그림'"
+        />
+        <ResourceRequired
+          v-else
+          class="picture"
+          :label="question.targetImageLabel || '문제 그림'"
+        />
+        <div
+          ref="targetSlot"
+          class="sentence-target"
+          :class="{ over: overTarget, filled: placedChoice, hint: showHint }"
+        >
+          <span v-if="placedChoice">{{ placedChoice.text }}</span>
+        </div>
       </div>
-    </div>
 
-    <div class="choices" :class="{ locked: placedChoice }" aria-label="문장 카드">
-      <article
-        v-for="choice in choices"
-        :key="choice.id"
-        class="sentence-card"
-        :class="{
-          wrong: wrongChoiceId === choice.id,
-          hint: showHint && choice.id === question.answer,
-          used: placedChoice?.id === choice.id,
-        }"
-        @pointerdown="startPointerDrag($event, choice)"
-      >
-        <img class="grip" :src="dragHandleIcon" alt="" aria-hidden="true" />
-        <strong>{{ choice.text }}</strong>
-      </article>
+      <div class="choices" :class="{ locked: placedChoice }" aria-label="문장 카드">
+        <article
+          v-for="choice in choices"
+          :key="choice.id"
+          class="sentence-card"
+          :class="{
+            wrong: wrongChoiceId === choice.id,
+            hint: showHint && choice.id === question.answer,
+            used: placedChoice?.id === choice.id,
+          }"
+          @pointerdown="startPointerDrag($event, choice)"
+        >
+          <img class="grip" :src="dragHandleIcon" alt="" aria-hidden="true" />
+          <strong>{{ choice.text }}</strong>
+        </article>
+      </div>
     </div>
 
     <Teleport to="body">

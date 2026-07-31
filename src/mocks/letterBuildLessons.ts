@@ -38,6 +38,8 @@ export const batchimLetterBuildLesson: TrainingLesson = {
     { id: 'build-gam', instruction: '소리를 듣고 만들어요.', audioText: '감', combined: '감', answer: '감', buildSlots: [slot('initial', 'initial', 'g', 'ㄱ'), slot('medial', 'medial', 'a', 'ㅏ'), slot('final', 'final', 'm', 'ㅁ')], choices: [card('m', 'ㅁ'), card('a', 'ㅏ'), card('n', 'ㄴ'), card('g', 'ㄱ')], feedback },
     { id: 'build-mun', instruction: '소리를 듣고 만들어요.', audioText: '문', combined: '문', answer: '문', buildSlots: [slot('initial', 'initial', 'm', 'ㅁ'), slot('medial', 'medial', 'u', 'ㅜ'), slot('final', 'final', 'n', 'ㄴ')], choices: [card('b', 'ㅂ'), card('n', 'ㄴ'), card('m', 'ㅁ'), card('u', 'ㅜ')], feedback },
     { id: 'build-dal', instruction: '소리를 듣고 만들어요.', audioText: '달', combined: '달', answer: '달', buildSlots: [slot('initial', 'initial', 'd', 'ㄷ'), slot('medial', 'medial', 'a', 'ㅏ'), slot('final', 'final', 'r', 'ㄹ')], choices: [card('a', 'ㅏ'), card('r', 'ㄹ'), card('m', 'ㅁ'), card('d', 'ㄷ')], feedback },
+    { id: 'build-guk', instruction: '소리를 듣고 만들어요.', audioText: '국', combined: '국', answer: '국', buildSlots: [slot('initial', 'initial', 'g', 'ㄱ'), slot('medial', 'medial', 'u', 'ㅜ'), slot('final', 'final', 'final-g', 'ㄱ')], choices: [card('g', 'ㄱ'), card('u', 'ㅜ'), card('final-g', 'ㄱ'), card('n', 'ㄴ')], feedback },
+    { id: 'build-gwa', instruction: '소리를 듣고 만들어요.', audioText: '과', combined: '과', answer: '과', buildSlots: [slot('initial', 'initial', 'g', 'ㄱ'), slot('medial', 'medial', 'wa', 'ㅘ')], choices: [card('g', 'ㄱ'), card('wa', 'ㅘ'), card('n', 'ㄴ'), card('eo', 'ㅓ')], feedback },
   ],
 }
 
