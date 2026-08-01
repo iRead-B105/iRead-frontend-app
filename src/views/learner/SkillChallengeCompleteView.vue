@@ -1,23 +1,8 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import {
-  getSkillChallengeTrack,
-  isSkillChallengeTrackId,
-  useSkillChallenge,
-} from '@/composables/useSkillChallenge'
+import { useRouter } from 'vue-router'
 import completeRabbit from '@/assets/training/ui/training-complete-rabbit.png'
 
-const route = useRoute()
 const router = useRouter()
-const challenge = useSkillChallenge()
-
-const trackId = computed(() => String(route.query.track ?? ''))
-const track = computed(() =>
-  isSkillChallengeTrackId(trackId.value)
-    ? getSkillChallengeTrack(trackId.value)
-    : challenge.activeTrack.value,
-)
 
 const finish = () => {
   void router.push({ name: 'learner-home' })
@@ -31,11 +16,11 @@ const finish = () => {
         <img :src="completeRabbit" alt="" />
       </div>
       <p class="challenge-complete__eyebrow">실력 검증 완료</p>
-      <h1>{{ track?.title ?? '선택한' }} 훈련을<br />모두 해냈어요!</h1>
+      <h1>실력 도전 9문제를<br />모두 해냈어요!</h1>
       <p>끝까지 집중해서 정말 멋져요.</p>
       <div class="challenge-complete__summary">
         <span>완료한 훈련</span>
-        <strong>{{ challenge.completedCount.value }}개</strong>
+        <strong>9개</strong>
       </div>
       <button type="button" @click="finish">섬으로 돌아가기</button>
     </section>

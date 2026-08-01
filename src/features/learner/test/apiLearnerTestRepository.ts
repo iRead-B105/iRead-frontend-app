@@ -10,8 +10,12 @@ import type {
 } from '@/features/learner/training'
 import type { LearnerSkillChallengePlan, LearnerTestRepository } from './repository'
 
-interface ChallengePlanDto extends Omit<LearnerSkillChallengePlan, 'testCurriculumId' | 'tracks'> {
+interface ChallengePlanDto extends Omit<
+  LearnerSkillChallengePlan,
+  'testCurriculumId' | 'nextTestId' | 'tracks'
+> {
   readonly testCurriculumId: number
+  readonly nextTestId: number | null
   readonly tracks: readonly (Omit<LearnerSkillChallengePlan['tracks'][number], 'nextTestId'> & {
     readonly nextTestId: number | null
   })[]
@@ -56,6 +60,7 @@ export class ApiLearnerTestRepository implements LearnerTestRepository {
     return {
       ...response,
       testCurriculumId: String(response.testCurriculumId),
+      nextTestId: response.nextTestId === null ? null : String(response.nextTestId),
       tracks: response.tracks.map((track) => ({
         ...track,
         nextTestId: track.nextTestId === null ? null : String(track.nextTestId),
