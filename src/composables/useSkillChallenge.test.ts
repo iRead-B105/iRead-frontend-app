@@ -1,20 +1,25 @@
 import { describe, expect, it } from 'vitest'
-import { getSkillChallengeLessons, useSkillChallenge } from './useSkillChallenge'
+import { getSkillChallengeSequence, useSkillChallenge } from './useSkillChallenge'
 
-describe('useSkillChallenge 현재 영역별 완료 흐름', () => {
-  it('선택한 한 영역의 마지막 문제 뒤에는 다른 영역으로 전환하지 않고 완료한다', () => {
+describe('useSkillChallenge 전체 실력 도전 흐름', () => {
+  it('영역 선택 없이 세 영역의 문제를 3개씩 총 9개 진행한다', () => {
     const challenge = useSkillChallenge()
-    const lessons = getSkillChallengeLessons('phonological')
-    expect(lessons.length).toBeGreaterThan(0)
+    const lessons = getSkillChallengeSequence()
+    expect(lessons).toHaveLength(9)
+    expect(lessons.map((lesson) => lesson.trackId)).toEqual([
+      'phonological', 'phonological', 'phonological',
+      'short-text', 'short-text', 'short-text',
+      'fluency', 'fluency', 'fluency',
+    ])
 
-    expect(challenge.startChallenge('phonological')).toEqual(lessons[0])
+    expect(challenge.startChallenge()).toEqual(lessons[0])
     let next = lessons[0] ?? null
     for (const lesson of lessons) {
-      next = challenge.markLessonComplete(lesson.lessonId)
+      next = challenge.markLessonComplete(lesson.lessonId, lesson.trackId)
     }
 
     expect(next).toBeNull()
-    expect(challenge.activeTrackId.value).toBe('phonological')
+    expect(challenge.activeTrackId.value).toBe('fluency')
     expect(challenge.completedCount.value).toBe(lessons.length)
   })
 })

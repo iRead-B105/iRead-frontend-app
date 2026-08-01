@@ -5,6 +5,7 @@ import type { TrainingCategoryId } from '@/types/training'
 export type SkillChallengeTrackId = 'phonological' | 'short-text' | 'fluency'
 
 export interface SkillChallengeLesson {
+  trackId: SkillChallengeTrackId
   categoryId: TrainingCategoryId
   lessonId: string
   title: string
@@ -74,6 +75,7 @@ export const getSkillChallengeLessons = (
     return category.lessons
       .filter((lesson) => isPlayableLesson(categoryId, lesson.id))
       .map((lesson) => ({
+        trackId,
         categoryId,
         lessonId: lesson.id,
         title: lesson.title,
@@ -81,11 +83,21 @@ export const getSkillChallengeLessons = (
   })
 }
 
+export const getSkillChallengeSequence = (): SkillChallengeLesson[] =>
+  skillChallengeTracks.flatMap((track) => getSkillChallengeLessons(track.id).slice(0, 3))
+
 const resetTrack = (trackId: SkillChallengeTrackId) => {
   activeTrackId.value = trackId
-  orderedLessons.value = getSkillChallengeLessons(trackId)
+  orderedLessons.value = getSkillChallengeSequence()
   currentIndex.value = 0
   completedLessonIds.value = []
+}
+
+const resetChallenge = () => {
+  orderedLessons.value = getSkillChallengeSequence()
+  currentIndex.value = 0
+  completedLessonIds.value = []
+  activeTrackId.value = orderedLessons.value[0]?.trackId ?? null
 }
 
 export function useSkillChallenge() {
@@ -99,8 +111,10 @@ export function useSkillChallenge() {
     totalLessons.value === 0 ? 0 : (completedCount.value / totalLessons.value) * 100,
   )
 
-  const startChallenge = (trackId: SkillChallengeTrackId): SkillChallengeLesson | null => {
-    resetTrack(trackId)
+  const startChallenge = (): SkillChallengeLesson | null => {
+    if (orderedLessons.value.length === 0 || currentIndex.value >= orderedLessons.value.length) {
+      resetChallenge()
+    }
     return currentLesson.value
   }
 
@@ -108,28 +122,40 @@ export function useSkillChallenge() {
     trackId: SkillChallengeTrackId,
     lessonId?: string,
   ): SkillChallengeLesson | null => {
-    if (activeTrackId.value !== trackId || orderedLessons.value.length === 0) {
+    if (orderedLessons.value.length === 0) {
       resetTrack(trackId)
     }
 
     if (lessonId) {
-      const lessonIndex = orderedLessons.value.findIndex((lesson) => lesson.lessonId === lessonId)
-      if (lessonIndex >= 0) currentIndex.value = lessonIndex
+      const lessonIndex = orderedLessons.value.findIndex(
+        (lesson) => lesson.trackId === trackId && lesson.lessonId === lessonId,
+      )
+      if (lessonIndex >= 0) {
+        currentIndex.value = lessonIndex
+        activeTrackId.value = trackId
+      }
     }
 
     return currentLesson.value
   }
 
-  const markLessonComplete = (lessonId: string): SkillChallengeLesson | null => {
-    if (!completedLessonIds.value.includes(lessonId)) {
-      completedLessonIds.value = [...completedLessonIds.value, lessonId]
+  const markLessonComplete = (
+    lessonId: string,
+    trackId: SkillChallengeTrackId = activeTrackId.value ?? 'phonological',
+  ): SkillChallengeLesson | null => {
+    const completionKey = `${trackId}:${lessonId}`
+    if (!completedLessonIds.value.includes(completionKey)) {
+      completedLessonIds.value = [...completedLessonIds.value, completionKey]
     }
 
-    const lessonIndex = orderedLessons.value.findIndex((lesson) => lesson.lessonId === lessonId)
+    const lessonIndex = orderedLessons.value.findIndex(
+      (lesson) => lesson.trackId === trackId && lesson.lessonId === lessonId,
+    )
     if (lessonIndex >= 0) currentIndex.value = lessonIndex
 
     if (currentIndex.value >= orderedLessons.value.length - 1) return null
     currentIndex.value += 1
+    activeTrackId.value = currentLesson.value?.trackId ?? activeTrackId.value
     return currentLesson.value
   }
 

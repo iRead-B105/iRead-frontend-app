@@ -1,5 +1,10 @@
 import { defineStore } from 'pinia'
 import { learnerAuthRepository, type LearnerAuthRepository } from '@/features/learner/auth'
+import {
+  learnerStudentRepository,
+  type LearnerLearningEntry,
+  type LearnerStudentRepository,
+} from '@/features/learner/student'
 import type {
   LearnerStudent,
   LearnerTeacherLoginInput,
@@ -63,6 +68,9 @@ export const useLearnerSessionStore = defineStore('learner-session', {
     restorePromise: null as Promise<boolean> | null,
     refreshPromise: null as Promise<boolean> | null,
     authenticationError: null as string | null,
+    learningEntry: null as LearnerLearningEntry | null,
+    learningEntryError: null as string | null,
+    learningEntryPromise: null as Promise<LearnerLearningEntry> | null,
   }),
   getters: {
     authenticated: (state) =>
@@ -82,6 +90,9 @@ export const useLearnerSessionStore = defineStore('learner-session', {
       this.linkedStudents = []
       this.student = null
       this.authenticationError = null
+      this.learningEntry = null
+      this.learningEntryError = null
+      this.learningEntryPromise = null
       if (!options.preserveStudentCache) cacheStudent(null)
     },
     async loginTeacher(
@@ -124,6 +135,8 @@ export const useLearnerSessionStore = defineStore('learner-session', {
         cacheStudent(this.student)
         this.bootstrapToken = null
         this.status = 'authenticated'
+        this.learningEntry = null
+        this.learningEntryError = null
         return true
       } catch (error) {
         this.authenticationError =
@@ -132,6 +145,46 @@ export const useLearnerSessionStore = defineStore('learner-session', {
       } finally {
         this.loginPending = false
       }
+    },
+    async resolveLearningEntry(
+      force = false,
+      repository: LearnerStudentRepository = learnerStudentRepository,
+    ) {
+      if (!this.authenticated || !this.student) {
+        throw new Error('아동 학습 세션을 먼저 시작해 주세요.')
+      }
+      if (!force && this.learningEntry) return this.learningEntry
+      if (this.learningEntryPromise) return this.learningEntryPromise
+
+      this.learningEntryError = null
+      const studentId = this.student.studentId
+      const task = repository.getLearningEntry(studentId)
+        .then((entry) => {
+          if (this.student?.studentId === studentId) this.learningEntry = entry
+          return entry
+        })
+        .catch((error: unknown) => {
+          this.learningEntryError =
+            error instanceof Error ? error.message : '학습 시작 상태를 확인하지 못했습니다.'
+          throw error
+        })
+        .finally(() => {
+          if (this.learningEntryPromise === task) this.learningEntryPromise = null
+        })
+
+      this.learningEntryPromise = task
+      return task
+    },
+    markChallengeCompleted() {
+      if (!this.student) return
+      this.learningEntry = {
+        studentId: this.student.studentId,
+        entryStatus: 'HOME',
+        testCurriculumId: null,
+        completedQuestions: 9,
+        totalQuestions: 9,
+      }
+      this.learningEntryError = null
     },
     async refreshAccessToken(repository: LearnerAuthRepository = learnerAuthRepository) {
       if (this.refreshPromise) return this.refreshPromise

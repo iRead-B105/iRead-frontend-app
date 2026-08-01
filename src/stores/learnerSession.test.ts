@@ -4,6 +4,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { LearnerAuthRepository } from '@/features/learner/auth'
 import type { LearnerStudent } from '@/features/learner/model'
+import type { LearnerStudentRepository } from '@/features/learner/student'
 import { useLearnerSessionStore } from './learnerSession'
 
 const student: LearnerStudent = {
@@ -192,5 +193,49 @@ describe('learner session store', () => {
     expect(session.status).toBe('anonymous')
     expect(session.student).toBeNull()
     expect(sessionStorage).toHaveLength(0)
+  })
+
+  it('학습 진입 상태를 한 번 조회해 같은 세션의 라우팅 기준으로 재사용한다', async () => {
+    const authRepository = createRepository()
+    const session = useLearnerSessionStore()
+    await session.loginTeacher(
+      { email: 'teacher@example.com', password: 'password123' },
+      authRepository,
+    )
+    await session.loginStudent(student.studentId, authRepository)
+    const studentRepository: LearnerStudentRepository = {
+      source: 'api',
+      getLearningEntry: vi.fn().mockResolvedValue({
+        studentId: student.studentId,
+        entryStatus: 'CHALLENGE_IN_PROGRESS',
+        testCurriculumId: '500',
+        completedQuestions: 4,
+        totalQuestions: 9,
+      }),
+    }
+
+    const first = await session.resolveLearningEntry(false, studentRepository)
+    const second = await session.resolveLearningEntry(false, studentRepository)
+
+    expect(first).toEqual(second)
+    expect(studentRepository.getLearningEntry).toHaveBeenCalledOnce()
+  })
+
+  it('9문제 완료 뒤 홈 진입 상태로 전환한다', async () => {
+    const repository = createRepository()
+    const session = useLearnerSessionStore()
+    await session.loginTeacher(
+      { email: 'teacher@example.com', password: 'password123' },
+      repository,
+    )
+    await session.loginStudent(student.studentId, repository)
+
+    session.markChallengeCompleted()
+
+    expect(session.learningEntry).toMatchObject({
+      entryStatus: 'HOME',
+      completedQuestions: 9,
+      totalQuestions: 9,
+    })
   })
 })

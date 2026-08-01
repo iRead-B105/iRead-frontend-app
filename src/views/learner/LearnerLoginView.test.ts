@@ -7,8 +7,8 @@ import { describe, expect, it, vi } from 'vitest'
 import { useLearnerSessionStore } from '@/stores/learnerSession'
 import LearnerLoginView from './LearnerLoginView.vue'
 
-describe('LearnerLoginView 현재 진입 흐름', () => {
-  it('아동 세션 생성에 성공하면 별도 상태 조회 없이 기존 홈으로 이동한다', async () => {
+describe('LearnerLoginView 학습 진입 흐름', () => {
+  it('신규 아동 세션이면 학습 진입 상태를 조회하고 실력 도전으로 이동한다', async () => {
     const pinia = createPinia()
     setActivePinia(pinia)
     const session = useLearnerSessionStore(pinia)
@@ -24,11 +24,19 @@ describe('LearnerLoginView 현재 진입 흐름', () => {
       return true
     })
     const loginStudent = vi.spyOn(session, 'loginStudent').mockResolvedValue(true)
+    const resolveLearningEntry = vi.spyOn(session, 'resolveLearningEntry').mockResolvedValue({
+      studentId: '20',
+      entryStatus: 'CHALLENGE_REQUIRED',
+      testCurriculumId: null,
+      completedQuestions: 0,
+      totalQuestions: 9,
+    })
     const router = createRouter({
       history: createMemoryHistory(),
       routes: [
         { path: '/login', name: 'learner-login', component: LearnerLoginView },
         { path: '/home', name: 'learner-home', component: { template: '<div>홈</div>' } },
+        { path: '/challenge', name: 'skill-challenge', component: { template: '<div>실력 도전</div>' } },
       ],
     })
     await router.push('/login')
@@ -47,6 +55,7 @@ describe('LearnerLoginView 현재 진입 흐름', () => {
     await flushPromises()
 
     expect(loginStudent).toHaveBeenCalledWith('20')
-    expect(router.currentRoute.value.name).toBe('learner-home')
+    expect(resolveLearningEntry).toHaveBeenCalledWith(true)
+    expect(router.currentRoute.value.name).toBe('skill-challenge')
   })
 })
