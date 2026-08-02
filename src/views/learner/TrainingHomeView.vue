@@ -64,6 +64,10 @@ const handleCurriculumSelect = (step: CurriculumPathStep) => {
 
 const handleLockedSelect = () => undefined
 
+const retryCurriculum = () => {
+  void dailyCurriculum.reloadCurrentCurriculum().catch(() => undefined)
+}
+
 const handleLessonSelect = (lessonId: string) => {
   if (!activeCategoryId.value) return
   // 준비된 레슨 선택 → 레슨 화면(인트로)으로 이동
@@ -92,12 +96,30 @@ const handleCloseModal = () => {
     </button>
 
     <section
-      v-if="!showAllTrainings && dailyCurriculum.curriculumStatus.value === 'preparing'"
+      v-if="!showAllTrainings && dailyCurriculum.curriculumError.value"
+      class="curriculum-state"
+      role="alert"
+    >
+      <h1>오늘 학습 정보를 불러오지 못했어.</h1>
+      <button type="button" @click="retryCurriculum">다시 불러오기</button>
+    </section>
+
+    <section
+      v-else-if="!showAllTrainings && dailyCurriculum.curriculumStatus.value === 'preparing'"
       class="curriculum-state"
       aria-live="polite"
     >
       <span class="state-loader" aria-hidden="true"><i/><i/><i/></span>
       <h1>오늘 학습을 준비하고 있어!</h1>
+    </section>
+
+    <section
+      v-else-if="!showAllTrainings && dailyCurriculum.curriculumStatus.value === 'unavailable'"
+      class="curriculum-state"
+      aria-live="polite"
+    >
+      <h1>선생님이 추천 훈련을 준비하고 있어!</h1>
+      <p>준비와 검수가 끝나면 여기에서 시작할 수 있어.</p>
     </section>
 
     <section

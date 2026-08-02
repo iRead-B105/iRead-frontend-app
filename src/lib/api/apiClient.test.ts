@@ -355,6 +355,33 @@ describe('ApiClient', () => {
     expect(onUnauthorized).not.toHaveBeenCalled()
   })
 
+  it('예상 가능한 빈 상태 요청은 전역 오류 hook만 생략한다', async () => {
+    const fetchMock = createFetchMock()
+    fetchMock.mockResolvedValue(
+      jsonResponse(
+        {
+          error: {
+            code: 'ACTIVE_CURRICULUM_NOT_FOUND',
+            message: '현재 진행 가능한 커리큘럼을 찾을 수 없습니다.',
+          },
+        },
+        404,
+      ),
+    )
+    const onError = vi.fn()
+    const client = new ApiClient({ fetch: fetchMock, onError })
+
+    await expect(client.request(
+      '/api/app/training/20',
+      {},
+      { suppressErrorHandler: true },
+    )).rejects.toMatchObject({
+      status: 404,
+      code: 'ACTIVE_CURRICULUM_NOT_FOUND',
+    })
+    expect(onError).not.toHaveBeenCalled()
+  })
+
   it('AbortSignal을 fetch에 전달한다', async () => {
     const fetchMock = createFetchMock()
     fetchMock.mockResolvedValue(jsonResponse({ success: true }))

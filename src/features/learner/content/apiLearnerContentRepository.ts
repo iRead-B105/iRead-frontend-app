@@ -98,6 +98,7 @@ export class ApiLearnerContentRepository implements LearnerContentRepository {
     const response = await learnerApiClient.request<CurrentTrainingListDto>(
       `/api/app/training/${encodeURIComponent(studentId)}`,
       { signal: options.signal },
+      { suppressErrorHandler: true },
     )
     const orderedTrainings = [...response.trainings].sort(
       (left, right) => left.sequenceNo - right.sequenceNo,

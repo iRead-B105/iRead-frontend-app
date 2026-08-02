@@ -24,11 +24,11 @@ describe('fetchLearnerStudentProfile', () => {
     expect(request).toHaveBeenCalledWith('/api/app/student/2001/profile')
   })
 
-  it('learning-entry 숫자 식별자를 App 문자열 모델로 변환한다', async () => {
+  it('learning-entry의 큰 검사 ID 문자열을 손실 없이 유지한다', async () => {
     const request = vi.spyOn(learnerApiClient, 'request').mockResolvedValue({
       studentId: 2001,
       entryStatus: 'CHALLENGE_IN_PROGRESS',
-      testCurriculumId: 501,
+      testCurriculumId: '1739619061890340497',
       completedQuestions: 4,
       totalQuestions: 9,
     })
@@ -38,7 +38,7 @@ describe('fetchLearnerStudentProfile', () => {
     ).resolves.toEqual({
       studentId: '2001',
       entryStatus: 'CHALLENGE_IN_PROGRESS',
-      testCurriculumId: '501',
+      testCurriculumId: '1739619061890340497',
       completedQuestions: 4,
       totalQuestions: 9,
     })
