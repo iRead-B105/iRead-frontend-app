@@ -48,6 +48,7 @@ interface ParsedBody {
 
 export interface ApiRequestOptions {
   readonly retryOnUnauthorized?: boolean
+  readonly suppressErrorHandler?: boolean
 }
 
 async function readResponseBody(response: Response): Promise<ParsedBody> {
@@ -193,7 +194,9 @@ export class ApiClient {
         message: '[API] 서버에 연결할 수 없습니다.',
         originalError: error,
       })
-      await this.authHooks.onError?.(apiError)
+      if (!options.suppressErrorHandler) {
+        await this.authHooks.onError?.(apiError)
+      }
       throw apiError
     }
 
@@ -228,7 +231,9 @@ export class ApiClient {
       }
     }
 
-    await this.authHooks.onError?.(error)
+    if (!options.suppressErrorHandler) {
+      await this.authHooks.onError?.(error)
+    }
     throw error
   }
 }

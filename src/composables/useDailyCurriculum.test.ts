@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { ApiError } from '@/lib/api'
 
 const learnerState = vi.hoisted(() => ({
   studentId: '2001',
@@ -40,6 +41,31 @@ describe('useDailyCurriculum', () => {
   beforeEach(() => {
     learnerState.fetchCurrentCurriculum.mockReset()
     learnerState.studentId = '2001'
+    useDailyCurriculum().clearDailyCurriculum()
+  })
+
+  it('composable 생성만으로 인증 전 현재 커리큘럼을 조회하지 않는다', async () => {
+    learnerState.fetchCurrentCurriculum.mockResolvedValue(curriculum('180001', 'READY', 1))
+
+    useDailyCurriculum()
+    await Promise.resolve()
+
+    expect(learnerState.fetchCurrentCurriculum).not.toHaveBeenCalled()
+  })
+
+  it('최종 검수 전 현재 커리큘럼 없음은 오류가 아닌 대기 상태로 처리한다', async () => {
+    learnerState.fetchCurrentCurriculum.mockRejectedValue(new ApiError({
+      status: 404,
+      code: 'ACTIVE_CURRICULUM_NOT_FOUND',
+      message: '현재 진행 가능한 커리큘럼을 찾을 수 없습니다.',
+    }))
+    const dailyCurriculum = useDailyCurriculum()
+
+    await dailyCurriculum.loadCurrentCurriculum()
+
+    expect(dailyCurriculum.curriculumStatus.value).toBe('unavailable')
+    expect(dailyCurriculum.curriculumError.value).toBeNull()
+    expect(dailyCurriculum.curriculumItems).toHaveLength(0)
   })
 
   it('학습자가 바뀌면 이전 학습자의 완료 상태를 버리고 새 커리큘럼을 조회한다', async () => {

@@ -13,8 +13,8 @@ interface LearningEntryDto extends Omit<
   LearnerLearningEntry,
   'studentId' | 'testCurriculumId'
 > {
-  readonly studentId: number
-  readonly testCurriculumId: number | null
+  readonly studentId: string | number
+  readonly testCurriculumId: string | null
 }
 
 function profileColor(studentId: string): string {
