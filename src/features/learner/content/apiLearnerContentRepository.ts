@@ -18,6 +18,7 @@ interface StoryShelfDto {
     readonly storyId: number
     readonly storyTemplateId: number
     readonly createdAt: string
+    readonly latestBranchSubtitle: string
     readonly storyStatus: 'UNREAD' | 'IN_PROGRESS' | 'COMPLETED'
     readonly progress: number
   }[]
@@ -41,6 +42,7 @@ interface StoryLinesDto {
     readonly storyId: number
     readonly imageUrl: string | null
     readonly branchPrompt: {
+      readonly subtitle: string
       readonly options: readonly {
         readonly optionNo: 1 | 2 | 3
         readonly label: string
@@ -192,6 +194,9 @@ export class ApiLearnerContentRepository implements LearnerContentRepository {
           createdAt: story.createdAt,
           lastReadAt: null,
           title: template?.templateTitle ?? '나의 이야기',
+          latestBranchSubtitle: story.latestBranchSubtitle
+            || template?.templateTitle
+            || '나의 이야기',
           coverImageUrl: template?.imageUrl || fallbackCover,
           status: story.storyStatus,
           progress: story.progress,

@@ -64,6 +64,7 @@ export interface MockStorySession {
   createdAt: string
   lastReadAt: string | null
   title: string
+  latestBranchSubtitle: string
   coverImageUrl: string
   status: MockStoryStatus
   progress: number
@@ -178,6 +179,7 @@ export const learnerRuntimeMock = {
         createdAt: '2026-07-25T14:20:00+09:00',
         lastReadAt: '2026-07-26T18:10:00+09:00',
         title: '이상한 나라의 앨리스',
+        latestBranchSubtitle: '웃는 고양이의 비밀 길',
         coverImageUrl: aliceCover,
         status: 'IN_PROGRESS',
         progress: 62,
@@ -189,6 +191,7 @@ export const learnerRuntimeMock = {
         createdAt: '2026-07-21T10:00:00+09:00',
         lastReadAt: '2026-07-22T16:30:00+09:00',
         title: '개미와 베짱이',
+        latestBranchSubtitle: '겨울 창고의 따뜻한 약속',
         coverImageUrl: antAndGrasshopperCover,
         status: 'COMPLETED',
         progress: 100,

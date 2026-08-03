@@ -24,6 +24,10 @@ export class MockLearnerStoryRepository implements LearnerStoryRepository {
     return { transcript: '', accuracy: 0, readingStatus: 'MOCK' }
   }
 
+  async transcribeBranchIntent() {
+    return { transcript: '별빛 다리를 건너갈래요', confidence: 0.98, accepted: true }
+  }
+
   async synthesizeLine() {
     return { audioUrl: '', durationMs: 0, playbackLimit: null }
   }
