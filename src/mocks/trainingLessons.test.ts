@@ -41,7 +41,6 @@ describe('DEV 훈련 화면 미리보기', () => {
       'dev-word-reading-grid-read-batchim-words',
       'dev-word-reading-grid-read-nonwords',
       'dev-word-reading-grid-read-short-sentences',
-      'dev-word-reading-grid-hard-word',
       'dev-word-reading-grid-read-sentences',
       'dev-word-reading-grid-read-short-passage',
       'dev-word-reading-grid-follow-sentence',

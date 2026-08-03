@@ -25,7 +25,6 @@ import {
 } from './phonicsLessons'
 import {
   fillBlankLesson,
-  hardWordLesson,
   repeatSentenceLesson,
   sentenceOrderLesson,
 } from './shortTextLessons'
@@ -605,7 +604,6 @@ export const lessonMap: Record<string, TrainingLesson> = {
   'repeat-sentence': repeatSentenceLesson,
   'fill-blank': fillBlankLesson,
   'match-picture': pictureSentenceLesson,
-  'hard-word': hardWordLesson,
   'sentence-order': sentenceOrderLesson,
   'word-chain': wordChainLesson,
   'follow-sentence': followSentenceLesson,
@@ -669,7 +667,6 @@ const devPreviewDefinitions: DevPreviewDefinition[] = [
       'read-batchim-words',
       'read-nonwords',
       'read-short-sentences',
-      'hard-word',
       'read-sentences',
       'read-short-passage',
       'follow-sentence',

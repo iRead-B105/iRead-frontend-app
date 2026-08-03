@@ -32,22 +32,6 @@ export const fillBlankLesson: TrainingLesson = {
   ],
 }
 
-export const hardWordLesson: TrainingLesson = {
-  id: 'hard-word',
-  categoryId: 'short-text',
-  title: '어려운 단어 먼저 읽기',
-  description: '긴 낱말을 음절로 나눠 읽어요.',
-  activityType: 'word-reading-grid',
-  estimatedMinutes: 8,
-  questions: [
-    { id: 'q1', instruction: '한 칸씩 천천히 읽어봐요.', targetText: '민들레', phraseChunks: ['민', '들', '레'], answer: 'q1', feedback: { correct: '민들레를 끝까지 읽었어요!', retry: '민, 들, 레로 나눠 읽어봐요.' } },
-    { id: 'q2', instruction: '한 칸씩 천천히 읽어봐요.', targetText: '도서관', phraseChunks: ['도', '서', '관'], answer: 'q2', feedback: { correct: '도서관을 잘 읽었어요!', retry: '도, 서, 관으로 읽어봐요.' } },
-    { id: 'q3', instruction: '한 칸씩 천천히 읽어봐요.', targetText: '잠자리', phraseChunks: ['잠', '자', '리'], answer: 'q3', feedback: { correct: '잠자리를 또박또박 읽었어요!', retry: '한 음절씩 다시 읽어봐요.' } },
-    { id: 'q4', instruction: '한 칸씩 천천히 읽어봐요.', targetText: '무지개', phraseChunks: ['무', '지', '개'], answer: 'q4', feedback: { correct: '무지개를 잘 읽었어요!', retry: '무, 지, 개를 차례로 읽어봐요.' } },
-    { id: 'q5', instruction: '한 칸씩 천천히 읽어봐요.', targetText: '체육관', phraseChunks: ['체', '육', '관'], answer: 'q5', feedback: { correct: '어려운 낱말도 끝까지 읽었어요!', retry: '세 칸을 하나씩 읽어봐요.', completed: '어려운 단어 읽기를 마쳤어요!' } },
-  ],
-}
-
 export const sentenceOrderLesson: TrainingLesson = {
   id: 'sentence-order',
   categoryId: 'short-text',
