@@ -269,6 +269,11 @@
   grid-template-rows: minmax(0, 1fr) !important;
 }
 
+/* 그림·문장 연결: 그림 1 : 문장 1 비율 */
+.activity-layout--choice :deep(.activity--sentence-choice .choice-layout) {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+}
+
 .activity-layout--choice :deep(.target-area),
 .activity-layout--choice :deep(.listen-panel),
 .activity-layout--choice :deep(.picture-panel) {
@@ -529,7 +534,9 @@
 )) {
   --choice-card-image: url('../../assets/training/choice-cards/choice-card-letter-awning-yellow.webp');
   --choice-card-word-image: url('../../assets/training/choice-cards/choice-card-word-yellow.png');
-  --choice-card-sentence-image: url('../../assets/training/choice-cards/choice-card-sentence-yellow.png');
+  /* 문장 카드 프레임 색 (PNG choice-card-sentence-yellow.png에서 추출) */
+  --sentence-frame-border: #fde995;
+  --sentence-frame-dash: #f9d97b;
   position: relative;
   isolation: isolate;
   overflow: visible;
@@ -571,21 +578,18 @@
   background-image: var(--choice-card-word-image);
 }
 
-.lesson-view :deep(.choices > .sentence-card::before) {
-  inset: -9% -4%;
-  background-image: var(--choice-card-sentence-image);
-}
-
 .lesson-view :deep(.choices > :nth-child(3n + 2)) {
   --choice-card-image: url('../../assets/training/choice-cards/choice-card-letter-awning-mint.webp');
   --choice-card-word-image: url('../../assets/training/choice-cards/choice-card-word-mint.png');
-  --choice-card-sentence-image: url('../../assets/training/choice-cards/choice-card-sentence-mint.png');
+  --sentence-frame-border: #a8ead8;
+  --sentence-frame-dash: #99e7d2;
 }
 
 .lesson-view :deep(.choices > :nth-child(3n + 3)) {
   --choice-card-image: url('../../assets/training/choice-cards/choice-card-letter-awning-purple.webp');
   --choice-card-word-image: url('../../assets/training/choice-cards/choice-card-word-purple.png');
-  --choice-card-sentence-image: url('../../assets/training/choice-cards/choice-card-sentence-purple.png');
+  --sentence-frame-border: #bfa8ea;
+  --sentence-frame-dash: #b296e6;
 }
 
 .lesson-view :deep(.choices > :is(
@@ -658,6 +662,31 @@
   .sentence-card
 )::after) {
   display: none !important;
+}
+
+/* 문장 카드는 PNG 프레임 대신 CSS로 프레임을 그린다.
+ * PNG(choice-card-sentence-*.png)를 통짜로 늘리면 실선-점선 사이 간격이
+ * 상하/좌우 비대칭이 되기 때문. 실선은 border, 점선은 ::after의 균일한
+ * inset으로 그려 카드가 어떤 크기로 늘어나도 간격이 같다. */
+.lesson-view :deep(.choices > .sentence-card) {
+  border: 6px solid var(--sentence-frame-border, #fde995) !important;
+  border-radius: 24px !important;
+  background: #fdf9ef !important;
+  box-shadow: 0 8px 12px rgb(86 65 28 / 15%) !important;
+}
+
+.lesson-view :deep(.choices > .sentence-card::before) {
+  content: none !important;
+}
+
+.lesson-view :deep(.choices > .sentence-card::after) {
+  content: '' !important;
+  position: absolute;
+  inset: 6px;
+  display: block !important;
+  border: 1.5px dashed var(--sentence-frame-dash, #f9d97b);
+  border-radius: 13px;
+  pointer-events: none;
 }
 
 .lesson-view :deep(.choices > :is(
