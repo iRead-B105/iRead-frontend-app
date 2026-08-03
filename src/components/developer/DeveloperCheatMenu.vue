@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useDailyCurriculum } from '@/composables/useDailyCurriculum'
 import { useDeviceStatus } from '@/composables/useDeviceStatus'
 import { learnerDataSource } from '@/config/learnerDataSource'
 import { devPreviewLessons } from '@/mocks/trainingLessons'
 import { getCachedStudent } from '@/services/learnerDataRepository'
 import {
+  advanceToNextDemoTraining,
   advanceDemoLearningDay,
   resetDemoLearningProgress,
   type DeveloperCheatResult,
@@ -13,8 +15,10 @@ import {
 
 const route = useRoute()
 const router = useRouter()
+const dailyCurriculum = useDailyCurriculum()
 const open = ref(route.query.debugPanel === '1')
 const busyAction = ref<'reset' | 'next-day' | null>(null)
+const forcingNextTraining = ref(false)
 const message = ref('')
 const errorMessage = ref('')
 const activeStudent = computed(() => getCachedStudent())
@@ -54,6 +58,83 @@ const handleVirtualGazePointer = (event: PointerEvent) => {
 
 const toggleVirtualEyeTracker = () => {
   setVirtualEyeTrackerConnected(!virtualEyeTrackerConnected.value)
+}
+
+const forceMoveToNextTraining = async () => {
+  if (forcingNextTraining.value) return
+  forcingNextTraining.value = true
+
+  try {
+    const currentLessonId = String(route.params.lessonId ?? '')
+    const isDebugPreview = route.query.debug === '1'
+
+    if (isDebugPreview) {
+      const currentPreviewIndex = devPreviewLessons.findIndex(
+        (lesson) => lesson.id === currentLessonId,
+      )
+      const nextPreview = devPreviewLessons[currentPreviewIndex + 1]
+
+      if (!nextPreview) {
+        window.alert('다음 미리보기 훈련이 없습니다.')
+        return
+      }
+
+      await router.push({
+        name: 'training-lesson',
+        params: { categoryId: nextPreview.categoryId, lessonId: nextPreview.id },
+        query: { debug: '1' },
+      })
+      return
+    }
+
+    await dailyCurriculum.reloadCurrentCurriculum()
+    const routeTrainingId = typeof route.query.trainingId === 'string'
+      ? route.query.trainingId
+      : ''
+    const routeTrainingIndex = dailyCurriculum.curriculumItems.findIndex(
+      (item) => item.trainingId === routeTrainingId,
+    )
+    const routeTraining = dailyCurriculum.curriculumItems[routeTrainingIndex]
+    const currentTrainingIndex = routeTrainingIndex >= 0 && routeTraining?.status !== 'LOCKED'
+      ? routeTrainingIndex
+      : dailyCurriculum.currentIndex.value
+    const currentTraining = dailyCurriculum.curriculumItems[currentTrainingIndex]
+
+    if (!currentTraining || !dailyCurriculum.curriculumItems[currentTrainingIndex + 1]) {
+      window.alert('다음 훈련이 없습니다.')
+      return
+    }
+
+    const result = await advanceToNextDemoTraining(
+      activeStudent.value.studentId,
+      currentTraining.trainingId,
+    )
+    await dailyCurriculum.reloadCurrentCurriculum()
+    const nextTraining = dailyCurriculum.curriculumItems.find(
+      (item) => item.trainingId === String(result.nextTrainingId),
+    )
+
+    if (!nextTraining) {
+      throw new Error('서버에서 해제한 다음 훈련을 찾을 수 없습니다.')
+    }
+
+    const alreadyOnNextTraining = routeTrainingId === nextTraining.trainingId
+    await router.push({
+      name: 'training-lesson',
+      params: {
+        categoryId: nextTraining.categoryId,
+        lessonId: nextTraining.lesson.id,
+      },
+      query: { trainingId: nextTraining.trainingId },
+    })
+    if (alreadyOnNextTraining) window.location.reload()
+  } catch (error) {
+    window.alert(error instanceof Error
+      ? `다음 훈련으로 이동하지 못했습니다.\n${error.message}`
+      : '다음 훈련으로 이동하지 못했습니다.')
+  } finally {
+    forcingNextTraining.value = false
+  }
 }
 
 onMounted(() => {
@@ -131,6 +212,15 @@ const reloadPage = () => window.location.reload()
 </script>
 
 <template>
+  <button
+    class="force-next-training-trigger"
+    type="button"
+    :disabled="forcingNextTraining"
+    @click="forceMoveToNextTraining"
+  >
+    {{ forcingNextTraining ? '이동 중...' : '다음 훈련으로 강제 이동' }}
+  </button>
+
   <button
     class="virtual-eye-tracker-trigger"
     :class="{ connected: virtualEyeTrackerConnected }"
