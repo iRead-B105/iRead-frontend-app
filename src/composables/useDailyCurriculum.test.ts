@@ -165,4 +165,20 @@ describe('useDailyCurriculum', () => {
 
     expect(dailyCurriculum.curriculumStatus.value).toBe('completed')
   })
+
+  it('백그라운드 갱신이 실패해도 표시 중인 커리큘럼을 유지한다', async () => {
+    learnerState.studentId = '2200'
+    learnerState.fetchCurrentCurriculum
+      .mockResolvedValueOnce(curriculum('190100', 'READY', 1))
+      .mockRejectedValueOnce(new Error('temporary network error'))
+
+    const dailyCurriculum = useDailyCurriculum()
+    await dailyCurriculum.loadCurrentCurriculum()
+    await dailyCurriculum.reloadCurrentCurriculum()
+
+    expect(dailyCurriculum.curriculumStatus.value).toBe('ready')
+    expect(dailyCurriculum.curriculumItems).toHaveLength(1)
+    expect(dailyCurriculum.curriculumItems[0]?.status).toBe('CURRENT')
+    expect(dailyCurriculum.curriculumError.value).toBeNull()
+  })
 })
