@@ -131,6 +131,7 @@ const textPanel = ref<HTMLElement | null>(null)
 const dwellTargetIndex = ref<number | null>(null)
 const dwellDurationMs = ref(100)
 const transcript = ref('')
+const recognizedBranchIntent = ref('')
 const speechError = ref(false)
 const branchSubmitting = ref(false)
 const mockBranchVoiceFile = ref<File | null>(null)
@@ -707,6 +708,7 @@ async function goNext() {
 
 async function startListening() {
   speechError.value = false
+  recognizedBranchIntent.value = ''
   voiceRecorder.reset()
   if (mockDeviceSubmissionsEnabled) {
     mockBranchVoiceFile.value = createMockVoiceFile(5)
@@ -738,10 +740,10 @@ async function showStoryReward() {
   }
 }
 
-async function submitBranchAnswer(optionNo?: number) {
+function branchAudioFile(): File | null {
   const current = page.value
   const blob = voiceRecorder.audioBlob.value
-  const audioFile = mockBranchVoiceFile.value ?? (
+  return mockBranchVoiceFile.value ?? (
     blob
       ? new File(
           [blob],
@@ -750,7 +752,41 @@ async function submitBranchAnswer(optionNo?: number) {
         )
       : null
   )
-  const answer = optionNo ?? audioFile
+}
+
+async function reviewBranchRecording() {
+  const current = page.value
+  const audioFile = branchAudioFile()
+  if (!current.lineId || !audioFile || branchSubmitting.value) {
+    speechError.value = true
+    return
+  }
+  branchSubmitting.value = true
+  speechError.value = false
+  try {
+    const result = await learnerStoryRepository.transcribeBranchIntent(
+      getCachedStudent().studentId,
+      storyId.value,
+      current.lineId,
+      audioFile,
+    )
+    transcript.value = result.transcript
+    recognizedBranchIntent.value = result.accepted ? result.transcript : ''
+    speechError.value = !result.accepted
+  } catch (error) {
+    speechError.value = true
+    errorModal.show(
+      error instanceof Error ? error : new Error('말한 내용을 확인하지 못했습니다.'),
+      '음성 선택 확인 오류',
+    )
+  } finally {
+    branchSubmitting.value = false
+  }
+}
+
+async function submitBranchAnswer(optionNo?: number, freeIntent?: string) {
+  const current = page.value
+  const answer = optionNo ?? freeIntent
   if (!current.lineId || !answer || branchSubmitting.value) {
     speechError.value = true
     return
@@ -782,6 +818,7 @@ async function submitBranchAnswer(optionNo?: number) {
     await startStoryGazeSession()
     await resetReadingProgressForPage()
     mockBranchVoiceFile.value = null
+    recognizedBranchIntent.value = ''
     voiceRecorder.reset()
     screen.value = 'reading'
   } catch (error) {
@@ -955,7 +992,7 @@ onBeforeUnmount(() => {
                       : isListening
                         ? '이야기를 듣고 있어요!'
                         : hasBranchRecording
-                          ? '대답을 녹음했어요'
+                          ? (recognizedBranchIntent ? '말한 내용을 확인해 주세요' : '대답을 녹음했어요')
                           : '이야기를 들려주세요!'
                   }}
                 </strong>
@@ -966,7 +1003,7 @@ onBeforeUnmount(() => {
                       : isListening
                         ? '말을 마치면 마이크를 눌러 주세요.'
                         : hasBranchRecording
-                          ? '이 답으로 다음 이야기를 만들 수 있어요.'
+                          ? (recognizedBranchIntent || '먼저 말한 내용을 글자로 확인해요.')
                           : '마이크를 누르고 대답해 주세요.'
                   }}
                 </p>
@@ -986,9 +1023,11 @@ onBeforeUnmount(() => {
                   class="confirm-answer"
                   type="button"
                   :disabled="branchSubmitting"
-                  @click="() => submitBranchAnswer()"
+                  @click="recognizedBranchIntent
+                    ? submitBranchAnswer(undefined, recognizedBranchIntent)
+                    : reviewBranchRecording()"
                 >
-                  <span>이어 만들기</span>
+                  <span>{{ recognizedBranchIntent ? '이 내용으로 이어 만들기' : '말한 내용 확인하기' }}</span>
                   <span class="confirm-answer-icon" aria-hidden="true">
                     <img :src="checkIcon" alt="" />
                   </span>

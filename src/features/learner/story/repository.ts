@@ -13,6 +13,12 @@ export interface LearnerStorySpeechResult {
   readonly readingStatus: string
 }
 
+export interface LearnerStoryBranchTranscriptionResult {
+  readonly transcript: string
+  readonly confidence: number
+  readonly accepted: boolean
+}
+
 export interface LearnerStoryTtsResult {
   readonly audioUrl: string
   readonly durationMs: number
@@ -30,8 +36,14 @@ export interface LearnerStoryRepository {
     studentId: string,
     storyId: string,
     lineId: string,
-    answer: File | number,
+    answer: string | number,
   ) => Promise<LearnerStoryBranchResult>
+  readonly transcribeBranchIntent: (
+    studentId: string,
+    storyId: string,
+    lineId: string,
+    audioFile: File,
+  ) => Promise<LearnerStoryBranchTranscriptionResult>
   readonly transcribeLine: (
     studentId: string,
     storyId: string,

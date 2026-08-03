@@ -41,6 +41,7 @@ export class MockLearnerContentRepository implements LearnerContentRepository {
         lines: [...page.lines],
         branchPrompt: page.requiresBranchInput
           ? {
+              subtitle: '다음 길을 고르는 시간',
               options: [
                 { optionNo: 1 as const, label: '친구와 함께 길을 찾아요' },
                 { optionNo: 2 as const, label: '용기를 내어 앞으로 가요' },
