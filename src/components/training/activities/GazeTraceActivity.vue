@@ -159,6 +159,23 @@ watch(() => recorder.state.status, (status) => {
 
 const playPronunciation = () => audio.replay(pronunciationText.value, 0.72)
 
+const emitGazeWordHit = (clientX: number, clientY: number) => {
+  const text =
+    props.question.traceGlyph
+    ?? props.question.targetText
+    ?? props.question.targetResult
+    ?? pronunciationText.value
+  if (!text) return
+  window.dispatchEvent(new CustomEvent('iread:gaze-word-hit', {
+    detail: {
+      clientX,
+      clientY,
+      tokenIndex: 0,
+      text,
+    },
+  }))
+}
+
 const completeTrace = async () => {
   const questionId = props.question.id
   await playPronunciation()
@@ -178,6 +195,7 @@ const advanceFromClientPoint = (clientX: number, clientY: number) => {
   const y = localPoint.y
   if (Math.hypot(x - target.x, y - target.y) > 46) return
 
+  emitGazeWordHit(clientX, clientY)
   if (traceStartedAt === 0) traceStartedAt = Date.now()
   const strokeIndex = strokeIndexAt(progress.value)
   const points = recordedStrokes.value[strokeIndex] ?? []

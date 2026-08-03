@@ -15,11 +15,35 @@ interface GazeSessionDto {
 }
 
 interface CollectedGazeData {
+  readonly contentType?: 'TEST' | 'TRAINING' | 'STORY'
+  readonly storyId?: number
+  readonly trainingId?: number
+  readonly testId?: number
+  readonly gazeSessionDurationMs?: number
   readonly samples?: readonly unknown[]
+  readonly sentenceMetrics?: readonly {
+    readonly storyLineId?: number
+    readonly sequenceNo?: number
+    readonly surfaceText?: string
+    readonly dwellDurationMs?: number
+    readonly fixationCount?: number
+    readonly regressionCount?: number
+    readonly averageFixationTimeMs?: number
+    readonly firstGazeOffsetMs?: number
+    readonly lastGazeOffsetMs?: number
+  }[]
+  readonly regressions?: readonly {
+    readonly fromTargetIndex: number
+    readonly fromTokenIndex: number
+    readonly toTargetIndex: number
+    readonly toTokenIndex: number
+    readonly offsetMs: number
+  }[]
   readonly words?: readonly {
     readonly questionNo?: number
     readonly targetIndex?: number
     readonly tokenIndex?: number
+    readonly storyLineId?: number
     readonly text?: string
     readonly dwellMs?: number
     readonly visitCount?: number
@@ -32,9 +56,14 @@ interface CollectedGazeData {
 
 function analysisBody(studentId: string, data: CollectedGazeData) {
   const words = data.words ?? []
+  const sentenceMetrics = data.sentenceMetrics ?? []
+  const contentType = data.contentType ?? 'TRAINING'
   const totalVisitedDuration = words.reduce((sum, word) => sum + (word.dwellMs ?? 0), 0)
+    + sentenceMetrics.reduce((sum, metric) => sum + (metric.dwellDurationMs ?? 0), 0)
   const totalVisitedCount = words.reduce((sum, word) => sum + (word.visitCount ?? 0), 0)
+    + sentenceMetrics.reduce((sum, metric) => sum + (metric.fixationCount ?? 0), 0)
   const reverseReadCount = words.reduce((sum, word) => sum + (word.regressionCount ?? 0), 0)
+    + (data.regressions?.length ?? 0)
   return {
     studentId: Number(studentId),
     totalVisitedDuration,
@@ -43,8 +72,20 @@ function analysisBody(studentId: string, data: CollectedGazeData) {
     avgVisitedDuration: totalVisitedCount > 0
       ? Math.round(totalVisitedDuration / totalVisitedCount)
       : 0,
+    sentenceMetrics: sentenceMetrics.map((metric) => ({
+      storyLineId: metric.storyLineId,
+      sequenceNo: metric.sequenceNo,
+      surfaceText: metric.surfaceText ?? '-',
+      dwellDurationMs: metric.dwellDurationMs ?? 0,
+      fixationCount: metric.fixationCount ?? 0,
+      regressionCount: metric.regressionCount ?? 0,
+      averageFixationTimeMs: metric.averageFixationTimeMs,
+      firstGazeOffsetMs: metric.firstGazeOffsetMs ?? 0,
+      lastGazeOffsetMs: metric.lastGazeOffsetMs ?? 0,
+    })),
     wordAttempts: words.map((word) => ({
-      useLocation: 'TRAINING',
+      useLocation: contentType,
+      storyLineId: word.storyLineId,
       targetIndex: word.targetIndex ?? 0,
       tokenIndex: word.tokenIndex ?? 0,
       surfaceText: word.text ?? '-',
@@ -58,9 +99,14 @@ function analysisBody(studentId: string, data: CollectedGazeData) {
       questionNo: word.questionNo,
       isFinal: true,
     })),
+    regressions: [...(data.regressions ?? [])],
     analysisMeta: {
-      contentType: 'TRAINING',
+      contentType,
+      storyId: data.storyId,
+      trainingId: data.trainingId,
+      testId: data.testId,
       calculationSource: 'FRONTEND_GAZE_BRIDGE_V1',
+      gazeSessionDurationMs: data.gazeSessionDurationMs,
     },
   }
 }

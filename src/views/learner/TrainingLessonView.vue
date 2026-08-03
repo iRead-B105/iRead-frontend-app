@@ -117,6 +117,7 @@ type GazeWordHit = {
   readonly text: string
 }
 let lastGazeWordHit: GazeWordHit | null = null
+let lastCursorGazeSampleAt = 0
 const gazeDebugVisible = computed(() =>
   route.query.gazeDebug === '1'
   || import.meta.env.VITE_GAZE_DEBUG_PANEL === 'true',
@@ -242,14 +243,21 @@ const displayedHint = computed(() => presentTrainingHint(
   session.progressState.hintLevel,
 ))
 const voiceDeviceFallbackEnabled = mockVoiceSubmissionsEnabled
-const gazeDeviceFallbackEnabled = mockGazeSubmissionsEnabled
+const cursorGazeFallbackEnabled = import.meta.env.VITE_CURSOR_GAZE_FALLBACK !== 'false'
+const gazeDeviceFallbackEnabled = mockGazeSubmissionsEnabled || cursorGazeFallbackEnabled
+
+const gazeTransferSource = () => {
+  if (mockGazeSubmissionsEnabled) return 'mock'
+  if (!eyeTrackerConnected.value && cursorGazeFallbackEnabled) return 'cursor'
+  return 'real'
+}
 
 const updateGazeTransferDebug = (patch: Partial<typeof gazeTransferDebug.value>) => {
   gazeTransferDebug.value = {
     ...gazeTransferDebug.value,
     ...patch,
     sampleCount: gazeSamples.length,
-    source: mockGazeSubmissionsEnabled ? 'mock' : 'real',
+    source: gazeTransferSource(),
   }
   window.localStorage.setItem(
     'iread-gaze-transfer-debug',
@@ -340,6 +348,20 @@ const attachWordHitToRecentSample = (hit: GazeWordHit) => {
   return false
 }
 
+const appendCursorGazeSampleFromHit = (hit: GazeWordHit) => {
+  if (!cursorGazeFallbackEnabled || eyeTrackerConnected.value) return
+  if (hit.capturedAtMs - lastCursorGazeSampleAt < 80) return
+  lastCursorGazeSampleAt = hit.capturedAtMs
+  const sample: DeviceGazeSample = {
+    x: hit.clientX,
+    y: hit.clientY,
+    capturedAtMs: hit.capturedAtMs,
+    questionNumber: hit.questionNumber,
+  }
+  gazeSamples.push(applyWordHitToSample(sample, hit))
+  updateGazeTransferDebug({ lastSampleAt: new Date().toLocaleTimeString() })
+}
+
 const onGazeSample = (event: Event) => {
   if (phase.value !== 'playing' || !gazeSessionId.value) return
   const detail = (event as CustomEvent<Record<string, unknown>>).detail
@@ -381,7 +403,9 @@ const onGazeWordHit = (event: Event) => {
     tokenIndex,
     text,
   }
-  attachWordHitToRecentSample(lastGazeWordHit)
+  if (!attachWordHitToRecentSample(lastGazeWordHit)) {
+    appendCursorGazeSampleFromHit(lastGazeWordHit)
+  }
 }
 
 onMounted(async () => {
