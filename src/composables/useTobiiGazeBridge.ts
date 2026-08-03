@@ -85,9 +85,26 @@ type GazeBridgeControls = {
   getHeadPoseState: () => { baseline: HeadPose | null; delta: HeadPoseDelta | null }
 }
 
+type IreadGazeIpcStatus = {
+  running?: boolean
+  mode?: string
+  fake?: boolean
+  exePath?: string | null
+}
+
+// Electron preload(iRead-electron)가 노출하는 IPC 어댑터.
+// 존재하면 WebSocket 대신 이 채널로 시선 프레임을 받는다.
+type IreadGazeIpc = {
+  onFrame: (callback: (frame: TobiiGazeFrame) => void) => () => void
+  onStatus: (callback: (status: IreadGazeIpcStatus) => void) => () => void
+  setMode: (mode: 'native' | 'off') => Promise<IreadGazeIpcStatus>
+  getStatus: () => Promise<IreadGazeIpcStatus>
+}
+
 declare global {
   interface Window {
     __ireadTobiiGazeBridge?: GazeBridgeControls
+    ireadGaze?: IreadGazeIpc
   }
 }
 
@@ -111,6 +128,8 @@ const status = computed<'connected' | 'connecting' | 'disconnected'>(() =>
   connected.value ? 'connected' : connecting.value ? 'connecting' : 'disconnected',
 )
 let socket: WebSocket | null = null
+let ipcActive = false
+let ipcUnsubscribers: Array<() => void> = []
 let userStopped = false
 let reconnectTimer: number | undefined
 let animationFrame: number | undefined
@@ -604,7 +623,8 @@ function pumpGaze(now: number) {
   }
 
   const canReplay = performance.now() - lastFreshFrameAt <= GAZE_REPLAY_MAX_MS
-  if (socket?.readyState === WebSocket.OPEN && pendingFrame && canReplay) {
+  const sourceAlive = socket?.readyState === WebSocket.OPEN || ipcActive
+  if (sourceAlive && pendingFrame && canReplay) {
     animationFrame = window.requestAnimationFrame(pumpGaze)
   }
 }
@@ -617,8 +637,57 @@ function scheduleReconnect() {
   }, RECONNECT_DELAY_MS)
 }
 
+// Electron IPC 경로: exe 실행을 main 프로세스에 요청하고 프레임을 구독한다.
+// 재실행(watchdog)은 main이 담당하므로 여기서는 상태 반영만 한다.
+function connectIpc(ipc: IreadGazeIpc) {
+  if (ipcActive || connecting.value) return
+  connecting.value = true
+  emitState()
+  ipc.setMode('native')
+    .then((status) => {
+      if (userStopped) {
+        void ipc.setMode('off')
+        connecting.value = false
+        emitState()
+        return
+      }
+      ipcActive = true
+      ipcUnsubscribers = [
+        ipc.onFrame((frame) => scheduleEmit(frame)),
+        ipc.onStatus((next) => {
+          if (!ipcActive) return
+          connected.value = next.running === true && next.mode === 'native'
+          connecting.value = false
+          emitState()
+        }),
+      ]
+      connecting.value = false
+      connected.value = status.running === true && status.mode === 'native'
+      emitState()
+    })
+    .catch(() => {
+      connecting.value = false
+      connected.value = false
+      emitState()
+      scheduleReconnect()
+    })
+}
+
+function disconnectIpc() {
+  ipcUnsubscribers.forEach((unsubscribe) => unsubscribe())
+  ipcUnsubscribers = []
+  if (!ipcActive) return
+  ipcActive = false
+  void window.ireadGaze?.setMode('off')
+}
+
 function connect() {
   if (userStopped) return
+  const ipc = window.ireadGaze
+  if (ipc) {
+    connectIpc(ipc)
+    return
+  }
   if (
     socket
     && (socket.readyState === WebSocket.CONNECTING || socket.readyState === WebSocket.OPEN)
@@ -686,6 +755,7 @@ function connect() {
 function disconnect() {
   userStopped = true
   clearReconnectTimer()
+  disconnectIpc()
   if (animationFrame !== undefined) window.cancelAnimationFrame(animationFrame)
   animationFrame = undefined
   pendingFrame = null
