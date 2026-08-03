@@ -13,6 +13,7 @@ import type {
   LearnerTrainingResponseType,
 } from './repository'
 import { getTraceAsset } from './traceAssets'
+import { getHangulTraceStrokes } from './hangulTraceStrokes'
 
 interface StudentQuestionDto {
   readonly questionType: string
@@ -188,12 +189,16 @@ function baseQuestion(
 function mapTrace(number: number, source: StudentQuestionDto): TrainingQuestion {
   const target = requiredString(source.content, 'target')
   const soundText = requiredString(source.content, 'soundText')
+  // 글리프에서 표준 획수·획순으로 직접 생성한다.
+  // 한글이 아닐 때만 하드코딩 에셋(traceAssetKey)으로 폴백한다.
+  const traceStrokes = getHangulTraceStrokes(target)
+    ?? getTraceAsset(requiredString(source.content, 'traceAssetKey'))
   return {
     ...baseQuestion(number, '눈으로 글자를 따라가요', target),
     targetText: target,
     audioText: soundText,
     traceGlyph: target,
-    traceStrokes: getTraceAsset(requiredString(source.content, 'traceAssetKey')),
+    traceStrokes,
     speechAliases: [target, soundText],
   }
 }
