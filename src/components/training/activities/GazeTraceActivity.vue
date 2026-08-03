@@ -278,9 +278,24 @@ onBeforeUnmount(() => {
           role="img"
           :aria-label="`${question.traceGlyph} 획순 따라 보기`"
         >
+          <!-- 외곽선 전체 → 중심선 전체 순서로 그려야 획 접점에 이음새가 안 생기고
+               글자가 하나로 이어져 보인다. (획별로 번갈아 그리면 다음 획의 외곽선이
+               이전 획의 중심을 덮어 ㅏ가 ㅣ·ㅡ 두 조각처럼 보인다) -->
+          <g class="glyph-body" aria-hidden="true">
+            <polyline
+              v-for="(stroke, strokeIndex) in strokes"
+              :key="`outline-${strokeIndex}`"
+              class="stroke-outline"
+              :points="pointString(stroke)"
+            />
+            <polyline
+              v-for="(stroke, strokeIndex) in strokes"
+              :key="`guide-${strokeIndex}`"
+              class="stroke-guide"
+              :points="pointString(stroke)"
+            />
+          </g>
           <g v-for="(stroke, strokeIndex) in strokes" :key="`base-${strokeIndex}`">
-            <polyline class="stroke-outline" :points="pointString(stroke)" />
-            <polyline class="stroke-guide" :points="pointString(stroke)" />
             <polyline
               v-if="completedStroke(strokeIndex).length > 1"
               class="stroke-filled"

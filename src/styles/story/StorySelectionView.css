@@ -518,6 +518,14 @@ button {
   border-radius: 18px;
 }
 
+.book-grid--new .book-card {
+  padding: 8px 8px 14px;
+}
+
+.book-grid--new .book-cover {
+  margin: -2px -2px 0;
+}
+
 .status-badge {
   position: absolute;
   top: 12px;
@@ -534,14 +542,6 @@ button {
 
 .status-badge--completed {
   background: #8f63d8;
-}
-
-.status-badge--unread {
-  background: #54b845;
-}
-
-.status-badge--new {
-  background: #54b845;
 }
 
 .book-card > strong {

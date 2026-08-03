@@ -3,7 +3,6 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import type { TrainingChoice, TrainingQuestion } from '@/types/training'
 import { useTrainingSession } from '@/composables/useTrainingSession'
 import ResourceRequired from '@/components/training/ResourceRequired.vue'
-import dragHandleIcon from '@/assets/icons/drag-handle.svg'
 
 const props = defineProps<{ question: TrainingQuestion }>()
 defineEmits<{ next: [] }>()
@@ -129,7 +128,6 @@ onBeforeUnmount(() => {
           }"
           @pointerdown="startPointerDrag($event, choice)"
         >
-          <img class="grip" :src="dragHandleIcon" alt="" aria-hidden="true" />
           <strong>{{ choice.text }}</strong>
         </article>
       </div>
