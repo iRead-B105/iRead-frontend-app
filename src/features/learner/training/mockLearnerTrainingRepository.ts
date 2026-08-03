@@ -25,6 +25,7 @@ export class MockLearnerTrainingRepository implements LearnerTrainingRepository 
 
   async start(): Promise<void> {}
   async reset(): Promise<void> {}
+  async resetPronunciationAttempts(): Promise<void> {}
   async saveSubmission(_studentId: string, _trainingId: string, _questionNumber: number, input: { submissionId: string }) {
     return {
       submissionId: input.submissionId,

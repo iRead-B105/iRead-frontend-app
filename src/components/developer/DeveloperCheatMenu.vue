@@ -6,6 +6,7 @@ import { useDeviceStatus } from '@/composables/useDeviceStatus'
 import { learnerDataSource } from '@/config/learnerDataSource'
 import { devPreviewLessons } from '@/mocks/trainingLessons'
 import { getCachedStudent } from '@/services/learnerDataRepository'
+import { useDeveloperMode } from '@/composables/useDeveloperMode'
 import {
   advanceToNextDemoTraining,
   advanceDemoLearningDay,
@@ -23,6 +24,7 @@ const message = ref('')
 const errorMessage = ref('')
 const activeStudent = computed(() => getCachedStudent())
 const apiCheatsAvailable = learnerDataSource === 'api'
+const { setEnabled: setDeveloperMode } = useDeveloperMode()
 const {
   physicalEyeTrackerConnected,
   virtualEyeTrackerConnected,
@@ -213,15 +215,6 @@ const reloadPage = () => window.location.reload()
 
 <template>
   <button
-    class="force-next-training-trigger"
-    type="button"
-    :disabled="forcingNextTraining"
-    @click="forceMoveToNextTraining"
-  >
-    {{ forcingNextTraining ? '이동 중...' : '다음 훈련으로 강제 이동' }}
-  </button>
-
-  <button
     class="virtual-eye-tracker-trigger"
     :class="{ connected: virtualEyeTrackerConnected }"
     type="button"
@@ -282,6 +275,14 @@ const reloadPage = () => window.location.reload()
           <div class="developer-cheat-action-grid">
             <button
               type="button"
+              :disabled="forcingNextTraining"
+              @click="forceMoveToNextTraining"
+            >
+              <strong>다음 훈련으로 이동</strong>
+              <span>현재 훈련을 완료 처리하고 다음 훈련 열기</span>
+            </button>
+            <button
+              type="button"
               class="danger"
               :disabled="!apiCheatsAvailable || busyAction !== null"
               @click="runServerCheat('reset', resetDemoLearningProgress)"
@@ -300,6 +301,10 @@ const reloadPage = () => window.location.reload()
             <button type="button" @click="reloadPage">
               <strong>현재 화면 새로고침</strong>
               <span>서버 데이터와 화면 상태를 다시 불러오기</span>
+            </button>
+            <button type="button" class="danger" @click="setDeveloperMode(false)">
+              <strong>DEV 모드 끄기</strong>
+              <span>로고를 다시 5번 눌러 켤 수 있어요</span>
             </button>
           </div>
 

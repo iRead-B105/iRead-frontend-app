@@ -16,6 +16,7 @@ import microphoneIcon from '@/assets/icons/microphone.svg'
 import exitIcon from '@/assets/icons/exit.svg'
 
 defineProps<{ userName: string }>()
+const emit = defineEmits<{ brandClick: [] }>()
 
 type OpenMenu = 'eye' | 'microphone' | null
 type MicrophoneStatus = 'disconnected' | 'connecting' | 'connected' | 'recording' | 'ready' | 'playing'
@@ -254,7 +255,7 @@ const handleLogout = async () => {
       </div>
     </div>
 
-    <RouterLink class="brand" :to="{ name: 'learner-home' }" aria-label="아이리드 홈으로 이동">
+    <RouterLink class="brand" :to="{ name: 'learner-home' }" aria-label="아이리드 홈으로 이동" @click="emit('brandClick')">
       <img :src="iReadMainLogo" alt="아이리드" />
     </RouterLink>
 

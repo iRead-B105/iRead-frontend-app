@@ -101,6 +101,7 @@ export interface LearnerTrainingRepository {
   ) => Promise<LearnerTrainingQuestionPayload>
   readonly start: (studentId: string, trainingId: string) => Promise<void>
   readonly reset: (studentId: string, trainingId: string) => Promise<void>
+  readonly resetPronunciationAttempts: (studentId: string, trainingId: string) => Promise<void>
   readonly saveSubmission: (
     studentId: string,
     trainingId: string,

@@ -115,6 +115,10 @@ export class ApiLearnerTestRepository implements LearnerTestRepository {
     })
   }
 
+  async resetPronunciationAttempts(): Promise<void> {
+    // 실력 검증은 각 testId가 독립 시도이므로 별도 발음 재시도 초기화가 필요 없다.
+  }
+
   async saveSubmission(
     studentId: string,
     testId: string,

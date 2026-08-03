@@ -14,6 +14,7 @@ import { useDailyCurriculum } from '@/composables/useDailyCurriculum'
 import { useTrainingSession } from '@/composables/useTrainingSession'
 import { useDeviceStatus } from '@/composables/useDeviceStatus'
 import { useVoiceRecorder } from '@/composables/useVoiceRecorder'
+import { useDeveloperMode } from '@/composables/useDeveloperMode'
 import {
   getSkillChallengeLessons,
   isSkillChallengeTrackId,
@@ -55,6 +56,12 @@ const skillChallenge = useSkillChallenge()
 const errorModal = useLearnerErrorModalStore()
 const { eyeTrackerConnected, virtualEyeTrackerConnected, microphoneAvailable } = useDeviceStatus()
 const voiceRecorder = useVoiceRecorder()
+const {
+  enabled: isDeveloperMode,
+  latestVoiceScore,
+  recordVoiceScore,
+  clearVoiceScore,
+} = useDeveloperMode()
 
 const debugMode = computed(() => import.meta.env.DEV && route.query.debug === '1')
 const challengeTrackId = computed(() => {
@@ -501,6 +508,14 @@ const startPlaying = async () => {
       } else if (intro.status !== 'IN_PROGRESS') {
         throw new Error(`시작할 수 없는 훈련 상태입니다: ${intro.status}`)
       }
+      try {
+        await learningRepository.value.resetPronunciationAttempts(
+          getCachedStudent().studentId,
+          itemId,
+        )
+      } catch (resetError) {
+        console.warn('발음 시도 초기화에 실패했습니다.', resetError)
+      }
       if (
         serverQuestions.value.some((question) => question.requiredInputs.includes('GAZE'))
         && !gazeSessionId.value
@@ -799,6 +814,14 @@ const evaluateActivityVoice = async (
       },
     )
     const score = Math.round(result.pronunciationAccuracyScore)
+    recordVoiceScore({
+      score,
+      threshold: Math.round(result.pronunciationThreshold),
+      passed: result.passed,
+      canRetry: result.canRetry,
+      expectedText: mapped.expectedText,
+      questionNumber: mapped.questionNumber,
+    })
     if (result.canRetry) {
       controls.retry(`${score}점이에요. 한 번 더 또박또박 읽어봐요!`)
       return
@@ -858,6 +881,14 @@ const submitRecordedVoice = async (
         }),
       },
     )
+    recordVoiceScore({
+      score: Math.round(result.pronunciationAccuracyScore),
+      threshold: Math.round(result.pronunciationThreshold),
+      passed: result.passed,
+      canRetry: result.canRetry,
+      expectedText: mapped.expectedText,
+      questionNumber: mapped.questionNumber,
+    })
     voiceFeedback.value = challengeTrackId.value
       ? '목소리를 잘 저장했어요.'
       : result.passed
@@ -891,6 +922,11 @@ watch(() => voiceRecorder.state.status, (status) => {
   clearAutomaticVoiceTimers()
   void submitVoiceRecording()
 })
+
+watch(
+  () => session.progressState.currentQuestionIndex,
+  () => clearVoiceScore(),
+)
 
 watch(voiceSubmitting, (submitting, wasSubmitting) => {
   if (
@@ -1086,8 +1122,31 @@ const isSavingFailed = computed(() => session.savingState.status === 'failed')
             >
               <span v-for="index in 7" :key="index" aria-hidden="true"></span>
             </div>
+            <div
+              v-if="isDeveloperMode && latestVoiceScore"
+              class="developer-voice-score"
+              :class="{ passed: latestVoiceScore.passed, failed: !latestVoiceScore.passed }"
+            >
+              <strong>{{ latestVoiceScore.score }}점</strong>
+              <span>기준 {{ latestVoiceScore.threshold }}점</span>
+              <small>
+                {{ latestVoiceScore.expectedText }} · {{ latestVoiceScore.passed ? '통과' : '재시도' }}
+              </small>
+            </div>
           </aside>
         </Transition>
+        <aside
+          v-if="isDeveloperMode && latestVoiceScore && !voiceGateOpen"
+          class="developer-voice-score developer-voice-score--overlay"
+          :class="{ passed: latestVoiceScore.passed, failed: !latestVoiceScore.passed }"
+          aria-live="polite"
+        >
+          <strong>{{ latestVoiceScore.score }}점</strong>
+          <span>기준 {{ latestVoiceScore.threshold }}점</span>
+          <small>
+            {{ latestVoiceScore.expectedText }} · {{ latestVoiceScore.passed ? '통과' : '재시도' }}
+          </small>
+        </aside>
       </div>
     </div>
 

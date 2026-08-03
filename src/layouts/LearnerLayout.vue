@@ -9,17 +9,20 @@ import { getCachedStudent } from '@/services/learnerDataRepository'
 import { fetchDeviceStatus } from '@/services/learnerDataRepository'
 import { useDeviceStatus } from '@/composables/useDeviceStatus'
 import { useLearnerCanvasScale } from '@/composables/useLearnerCanvasScale'
+import { useDeveloperMode } from '@/composables/useDeveloperMode'
 
 const route = useRoute()
-const isDeveloperMode = import.meta.env.DEV
-const DeveloperCheatMenu = isDeveloperMode
-  ? defineAsyncComponent(() => import('@/components/developer/DeveloperCheatMenu.vue'))
-  : null
+const DeveloperCheatMenu = defineAsyncComponent(() => import('@/components/developer/DeveloperCheatMenu.vue'))
+const { enabled: isDeveloperMode, registerLogoClick } = useDeveloperMode()
 const hideHeader = computed(() => route.meta.hideLearnerHeader === true)
 const activeStudent = computed(() => getCachedStudent())
 const { isOpen: isGazeCalibrationOpen, close: closeGazeCalibration } = useGazeCalibration()
 const { setEyeTrackerConnected, setMicrophoneState } = useDeviceStatus()
 const { canvasStyle } = useLearnerCanvasScale()
+
+const handleBrandClick = () => {
+  if (route.name === 'learner-home') registerLogoClick()
+}
 
 onMounted(async () => {
   try {
@@ -41,6 +44,7 @@ onMounted(async () => {
       <LearnerHeader
         v-if="!hideHeader"
         :user-name="activeStudent.name"
+        @brand-click="handleBrandClick"
       />
       <div class="learner-page" :class="{ 'learner-page--full': hideHeader }">
         <RouterView v-slot="{ Component }">

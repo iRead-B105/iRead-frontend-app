@@ -100,6 +100,13 @@ export class ApiLearnerTrainingRepository implements LearnerTrainingRepository {
     )
   }
 
+  async resetPronunciationAttempts(studentId: string, trainingId: string): Promise<void> {
+    await learnerApiClient.request(
+      `${trainingPath(studentId, trainingId)}/pronunciation-attempts/reset`,
+      { method: 'POST' },
+    )
+  }
+
   async saveSubmission(
     studentId: string,
     trainingId: string,
