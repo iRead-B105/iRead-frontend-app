@@ -13,10 +13,36 @@ import {
   type DeveloperCheatResult,
 } from '@/services/developerCheatService'
 
+type PronunciationDebugDetail = {
+  score?: number
+  passed?: boolean
+  canRetry?: boolean
+  attemptNo?: number
+  maxAttempts?: number
+  questionNumber?: number
+  error?: string
+}
+
 const route = useRoute()
 const router = useRouter()
 const dailyCurriculum = useDailyCurriculum()
 const open = ref(route.query.debugPanel === '1')
+// 디버깅용: 최근 발음 평가 결과를 상단 바에 바로 표시한다.
+const lastPronunciation = ref<PronunciationDebugDetail | null>(null)
+const onPronunciationDebug = (event: Event) => {
+  lastPronunciation.value = (event as CustomEvent<PronunciationDebugDetail>).detail ?? null
+}
+const pronunciationSummary = computed(() => {
+  const result = lastPronunciation.value
+  if (!result) return '발음 점수 대기 중'
+  if (result.error) return `발음 평가 오류: ${result.error}`
+  const outcome = result.passed ? '통과' : result.canRetry ? '재시도 가능' : '시도 종료'
+  const attempts = result.attemptNo != null && result.maxAttempts != null
+    ? ` · ${result.attemptNo}/${result.maxAttempts}회`
+    : ''
+  const questionInfo = result.questionNumber != null ? ` · 문항 ${result.questionNumber}` : ''
+  return `발음 ${result.score}점 · ${outcome}${attempts}${questionInfo}`
+})
 const busyAction = ref<'reset' | 'next-day' | null>(null)
 const forcingNextTraining = ref(false)
 const message = ref('')
@@ -139,10 +165,12 @@ const forceMoveToNextTraining = async () => {
 
 onMounted(() => {
   window.addEventListener('pointermove', handleVirtualGazePointer, { passive: true })
+  window.addEventListener('iread:debug-pronunciation', onPronunciationDebug)
 })
 
 onBeforeUnmount(() => {
   window.removeEventListener('pointermove', handleVirtualGazePointer)
+  window.removeEventListener('iread:debug-pronunciation', onPronunciationDebug)
   if (gazeAnimationFrame) window.cancelAnimationFrame(gazeAnimationFrame)
   pendingGazePoint = null
   setVirtualEyeTrackerConnected(false)
@@ -212,14 +240,26 @@ const reloadPage = () => window.location.reload()
 </script>
 
 <template>
-  <button
-    class="force-next-training-trigger"
-    type="button"
-    :disabled="forcingNextTraining"
-    @click="forceMoveToNextTraining"
-  >
-    {{ forcingNextTraining ? '이동 중...' : '다음 훈련으로 강제 이동' }}
-  </button>
+  <div class="debug-topbar" role="status" aria-live="polite">
+    <span
+      class="debug-pronunciation"
+      :class="{
+        muted: !lastPronunciation,
+        error: lastPronunciation?.error,
+        passed: lastPronunciation?.passed,
+      }"
+    >
+      {{ pronunciationSummary }}
+    </span>
+    <button
+      class="force-next-training-trigger"
+      type="button"
+      :disabled="forcingNextTraining"
+      @click="forceMoveToNextTraining"
+    >
+      {{ forcingNextTraining ? '이동 중...' : '다음 훈련으로 강제 이동' }}
+    </button>
+  </div>
 
   <button
     class="virtual-eye-tracker-trigger"

@@ -1,8 +1,42 @@
-.force-next-training-trigger {
+/* 디버깅용 상단 바: 최근 발음 점수와 다음 훈련 이동 버튼을 항상 보이게 */
+.debug-topbar {
   position: fixed;
-  z-index: 90;
-  right: 12px;
-  bottom: 92px;
+  z-index: 95;
+  top: 8px;
+  left: 50%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 12px;
+  border: 1px solid rgb(255 255 255 / 55%);
+  border-radius: 10px;
+  background: rgb(20 31 58 / 88%);
+  box-shadow: 0 4px 12px rgb(20 31 58 / 30%);
+  transform: translateX(-50%);
+  font-family: Pretendard, Arial, sans-serif;
+}
+
+.debug-pronunciation {
+  color: #ffd66b;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.debug-pronunciation.muted {
+  color: rgb(255 255 255 / 55%);
+  font-weight: 500;
+}
+
+.debug-pronunciation.passed {
+  color: #7be08a;
+}
+
+.debug-pronunciation.error {
+  color: #ff8b8b;
+}
+
+.force-next-training-trigger {
   min-height: 32px;
   padding: 6px 10px;
   border: 1px solid rgb(255 255 255 / 75%);

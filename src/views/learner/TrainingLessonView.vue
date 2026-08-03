@@ -785,6 +785,19 @@ type ActivityVoiceEvaluationControls = {
   retry: (message?: string) => void
 }
 
+// 디버그 상단 바(DeveloperCheatMenu)에 발음 평가 결과를 즉시 알린다.
+const publishPronunciationDebug = (detail: {
+  score?: number
+  passed?: boolean
+  canRetry?: boolean
+  attemptNo?: number
+  maxAttempts?: number
+  questionNumber?: number
+  error?: string
+}) => {
+  window.dispatchEvent(new CustomEvent('iread:debug-pronunciation', { detail }))
+}
+
 // 따라 읽기 액티비티에서 수음한 음성을 즉시 백엔드 발음 평가로 보낸다.
 // 성공한 문항 번호를 기록해 다음 버튼에서 같은 음성을 다시 요구하지 않는다.
 const evaluateActivityVoice = async (
@@ -819,6 +832,14 @@ const evaluateActivityVoice = async (
       },
     )
     const score = Math.round(result.pronunciationAccuracyScore)
+    publishPronunciationDebug({
+      score,
+      passed: result.passed,
+      canRetry: result.canRetry,
+      attemptNo: result.attemptNo,
+      maxAttempts: result.maxAttempts,
+      questionNumber: mapped.questionNumber,
+    })
     if (result.canRetry) {
       controls.retry(`${score}점이에요. 한 번 더 또박또박 읽어봐요!`)
       return
@@ -831,6 +852,10 @@ const evaluateActivityVoice = async (
         : '끝까지 읽었어! 다음 글자도 연습해보자!',
     )
   } catch (error) {
+    publishPronunciationDebug({
+      error: error instanceof Error ? error.message : '발음 평가 실패',
+      questionNumber: mapped.questionNumber,
+    })
     controls.retry(
       error instanceof Error
         ? error.message
@@ -878,6 +903,14 @@ const submitRecordedVoice = async (
         }),
       },
     )
+    publishPronunciationDebug({
+      score: Math.round(result.pronunciationAccuracyScore),
+      passed: result.passed,
+      canRetry: result.canRetry,
+      attemptNo: result.attemptNo,
+      maxAttempts: result.maxAttempts,
+      questionNumber: mapped.questionNumber,
+    })
     voiceFeedback.value = challengeTrackId.value
       ? '목소리를 잘 저장했어요.'
       : result.passed
@@ -899,6 +932,10 @@ const submitRecordedVoice = async (
     pendingNextResponse.value = undefined
     if (advanceAfterAutomaticVoice.value) await goNext(pending)
   } catch (error) {
+    publishPronunciationDebug({
+      error: error instanceof Error ? error.message : '발음 평가 실패',
+      questionNumber: mapped.questionNumber,
+    })
     voiceFeedback.value = error instanceof Error ? error.message : '녹음을 저장하지 못했습니다.'
   } finally {
     voiceSubmitting.value = false
