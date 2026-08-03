@@ -107,6 +107,10 @@ const loadCurrentCurriculum = (preserveCurrentState = false) => {
     })
     .catch((error: unknown) => {
       if (requestVersion !== stateVersion || getCachedStudent().studentId !== studentId) return
+      if (preserveCurrentState && curriculumItems.length > 0) {
+        loadedStudentId = studentId
+        return
+      }
       if (isExpectedUnavailable(error)) {
         resetCurriculumState('unavailable')
         loadedStudentId = studentId
