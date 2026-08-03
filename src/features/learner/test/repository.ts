@@ -16,6 +16,8 @@ export interface LearnerSkillChallengePlan {
   readonly completedQuestions: number
   readonly totalQuestions: number
   readonly completed: boolean
+  readonly nextTestId: string | null
+  readonly nextTrackCode: SkillChallengeTrackCode | null
   readonly tracks: readonly LearnerSkillChallengeTrack[]
 }
 

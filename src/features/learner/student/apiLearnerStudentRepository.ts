@@ -1,11 +1,20 @@
 import { learnerApiClient } from '../learnerApiClient'
 import type { LearnerStudent } from '../model'
+import type { LearnerLearningEntry, LearnerStudentRepository } from './repository'
 
 interface AppStudentProfileDto {
   readonly studentId: string
   readonly name: string
   readonly age: number | null
   readonly profileImageUrl: string | null
+}
+
+interface LearningEntryDto extends Omit<
+  LearnerLearningEntry,
+  'studentId' | 'testCurriculumId'
+> {
+  readonly studentId: string | number
+  readonly testCurriculumId: string | null
 }
 
 function profileColor(studentId: string): string {
@@ -23,5 +32,21 @@ export async function fetchLearnerStudentProfile(
   return {
     ...profile,
     profileColor: profileColor(profile.studentId),
+  }
+}
+
+export class ApiLearnerStudentRepository implements LearnerStudentRepository {
+  readonly source = 'api' as const
+
+  async getLearningEntry(studentId: string): Promise<LearnerLearningEntry> {
+    const response = await learnerApiClient.request<LearningEntryDto>(
+      `/api/app/student/${encodeURIComponent(studentId)}/learning-entry`,
+    )
+    return {
+      ...response,
+      studentId: String(response.studentId),
+      testCurriculumId:
+        response.testCurriculumId === null ? null : String(response.testCurriculumId),
+    }
   }
 }

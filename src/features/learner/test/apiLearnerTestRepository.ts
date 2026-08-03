@@ -10,10 +10,14 @@ import type {
 } from '@/features/learner/training'
 import type { LearnerSkillChallengePlan, LearnerTestRepository } from './repository'
 
-interface ChallengePlanDto extends Omit<LearnerSkillChallengePlan, 'testCurriculumId' | 'tracks'> {
-  readonly testCurriculumId: number
+interface ChallengePlanDto extends Omit<
+  LearnerSkillChallengePlan,
+  'testCurriculumId' | 'nextTestId' | 'tracks'
+> {
+  readonly testCurriculumId: string
+  readonly nextTestId: string | null
   readonly tracks: readonly (Omit<LearnerSkillChallengePlan['tracks'][number], 'nextTestId'> & {
-    readonly nextTestId: number | null
+    readonly nextTestId: string | null
   })[]
 }
 
@@ -56,6 +60,7 @@ export class ApiLearnerTestRepository implements LearnerTestRepository {
     return {
       ...response,
       testCurriculumId: String(response.testCurriculumId),
+      nextTestId: response.nextTestId === null ? null : String(response.nextTestId),
       tracks: response.tracks.map((track) => ({
         ...track,
         nextTestId: track.nextTestId === null ? null : String(track.nextTestId),
@@ -99,14 +104,14 @@ export class ApiLearnerTestRepository implements LearnerTestRepository {
   async start(studentId: string, testId: string): Promise<void> {
     await learnerApiClient.request(`${testPath(studentId)}/start`, {
       method: 'POST',
-      body: jsonBody({ testId: Number(testId) }),
+      body: jsonBody({ testId }),
     })
   }
 
   async reset(studentId: string, testId: string): Promise<void> {
     await learnerApiClient.request(`${testPath(studentId)}/session-reset`, {
       method: 'POST',
-      body: jsonBody({ testId: Number(testId) }),
+      body: jsonBody({ testId }),
     })
   }
 
@@ -120,7 +125,7 @@ export class ApiLearnerTestRepository implements LearnerTestRepository {
       `${testPath(studentId)}/questions/${questionNumber}/responses`,
       {
         method: 'POST',
-        body: jsonBody({ testId: Number(testId), submission: input }),
+        body: jsonBody({ testId, submission: input }),
       },
     )
     return {
@@ -165,7 +170,7 @@ export class ApiLearnerTestRepository implements LearnerTestRepository {
   async complete(studentId: string, testId: string): Promise<void> {
     await learnerApiClient.request(`${testPath(studentId)}/complete`, {
       method: 'POST',
-      body: jsonBody({ testId: Number(testId) }),
+      body: jsonBody({ testId }),
     })
   }
 }

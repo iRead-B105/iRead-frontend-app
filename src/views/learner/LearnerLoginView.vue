@@ -21,6 +21,13 @@ const selectedStudentId = ref('')
 const errorMessage = ref('')
 const isLoading = ref(false)
 
+const routeFromLearningEntry = async () => {
+  const entry = await learnerSession.resolveLearningEntry(true)
+  await router.push({
+    name: entry.entryStatus === 'HOME' ? 'learner-home' : 'skill-challenge',
+  })
+}
+
 const handleTeacherLogin = async () => {
   if (!loginId.value.trim() || !password.value) {
     errorMessage.value = '아이디와 비밀번호를 모두 입력해 주세요.'
@@ -57,9 +64,20 @@ const handleStudentLogin = async () => {
   try {
     const authenticated = await learnerSession.loginStudent(student.studentId)
     if (!authenticated) throw new Error('아동 학습 세션을 시작할 수 없습니다.')
-    await router.push({ name: 'learner-home' })
+    await routeFromLearningEntry()
   } catch (error) {
     errorModal.show(error, '아동 학습 세션 오류')
+  } finally {
+    isLoading.value = false
+  }
+}
+
+const retryLearningEntry = async () => {
+  isLoading.value = true
+  try {
+    await routeFromLearningEntry()
+  } catch (error) {
+    errorModal.show(error, '학습 시작 상태 조회 오류')
   } finally {
     isLoading.value = false
   }
@@ -93,8 +111,17 @@ const returnToTeacherLogin = () => {
           데모 화면이에요. 바로 다음을 눌러 주세요.
         </p>
 
+        <section v-if="learnerSession.authenticated" class="student-empty" aria-live="polite">
+          <span aria-hidden="true">🌱</span>
+          <strong>학습 시작 상태를 다시 확인해요</strong>
+          <p>인터넷 연결을 확인하고 다시 시도해 주세요.</p>
+          <button type="button" class="login-button" :disabled="isLoading" @click="retryLearningEntry">
+            {{ isLoading ? '확인 중...' : '다시 시도' }}
+          </button>
+        </section>
+
         <form
-          v-if="loginStep === 'teacher'"
+          v-else-if="loginStep === 'teacher'"
           class="login-form"
           @submit.prevent="handleTeacherLogin"
         >

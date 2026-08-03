@@ -140,6 +140,8 @@ describe('API learner content repository', () => {
 
     expect(request).toHaveBeenNthCalledWith(1, '/api/app/training/101', {
       signal: undefined,
+    }, {
+      suppressErrorHandler: true,
     })
     expect(curriculum).toMatchObject({
       curriculumId: '71',

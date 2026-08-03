@@ -140,7 +140,7 @@ let automaticVoiceRetryTimer: ReturnType<typeof setTimeout> | null = null
 
 watch(integrationError, (error) => {
   if (!error) return
-  errorModal.show(new Error(error), '훈련 연결 오류')
+  errorModal.show(error, '훈련 연결 오류')
   void router.replace({ name: challengeTrackId.value ? 'skill-challenge' : 'training-home' })
 })
 
