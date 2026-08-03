@@ -35,6 +35,7 @@ import {
   createMockGazeSubmission,
   createMockVoiceFile,
   mapTrainingQuestion,
+  getMockTrainingLessonData,
   mockGazeSubmissionsEnabled,
   mockVoiceSubmissionsEnabled,
   type LearnerTraceSubmissionResponse,
@@ -62,6 +63,7 @@ const {
   latestVoiceScore,
   recordVoiceScore,
   clearVoiceScore,
+  pushDevGaze,
 } = useDeveloperMode()
 
 const debugMode = computed(() => import.meta.env.DEV && route.query.debug === '1')
@@ -209,6 +211,12 @@ const activityLayoutClass = computed(() =>
   lesson.value
     ? `activity-layout--${activityLayouts[lesson.value.activityType]}`
     : undefined,
+)
+// 자체 음성 패널(speech-panel)로 녹음까지 처리하는 액티비티.
+// 이 경우 뷰 단 inline-voice-panel 오버레이는 중복 → 숨긴다(치트 미리보기와 실제 학습 동일 화면).
+const voiceSelfRecordingActivities = new Set<TrainingActivityType>(['gaze-trace', 'word-reading-grid'])
+const activitySelfRecordsVoice = computed(() =>
+  !!lesson.value && voiceSelfRecordingActivities.has(lesson.value.activityType),
 )
 const conciseInstructions: Partial<Record<TrainingActivityType, string>> = {
   'gaze-trace': '글자를 따라 읽어요!',
@@ -413,6 +421,9 @@ const onGazeWordHit = (event: Event) => {
     tokenIndex,
     text,
   }
+  if (isDeveloperMode.value) {
+    pushDevGaze({ text, clientX, clientY, questionNumber: lastGazeWordHit.questionNumber, tokenIndex })
+  }
   if (!attachWordHitToRecentSample(lastGazeWordHit)) {
     appendCursorGazeSampleFromHit(lastGazeWordHit)
   }
@@ -426,7 +437,30 @@ onMounted(async () => {
   }
   // 세션 초기화 및 첫 문제 준비(이전 정답/녹음은 모두 리셋)
   if ((learnerDataSource === 'mock' || debugMode.value) && fallbackLesson.value) {
-    session.startLesson(fallbackLesson.value)
+    // 목업 DTO가 있으면 매퍼를 통과시켜 실제 API 렌더링과 동일하게 구성한다.
+    // (DTO가 없는 레슨은 legacy TrainingLesson 폴백 — Phase 2에서 DTO화 후 제거)
+    try {
+      const mockDtoLesson = getMockTrainingLessonData(lessonId.value)
+      if (mockDtoLesson) {
+        const totalQuestions = mockDtoLesson.questions.length
+        const mappedQuestions = mockDtoLesson.questions.map((question, index) => mapTrainingQuestion({
+          trainingId: learningItemId.value,
+          questionNumber: index + 1,
+          totalQuestions,
+          question,
+        }))
+        serverQuestions.value = mappedQuestions
+        session.startLesson({
+          ...fallbackLesson.value,
+          questions: mappedQuestions.map((entry) => entry.question),
+        })
+      } else {
+        session.startLesson(fallbackLesson.value)
+      }
+    } catch (error) {
+      console.warn('목업 DTO 매핑 실패, legacy 폴백:', error)
+      session.startLesson(fallbackLesson.value)
+    }
   }
   if (learnerDataSource === 'api' && !debugMode.value) {
     const itemId = learningItemId.value
@@ -877,12 +911,66 @@ const isPronunciationAttemptLimitError = (error: unknown): boolean =>
 const evaluateActivityVoice = async (
   blob: Blob,
   controls: ActivityVoiceEvaluationControls,
+  word?: { expectedText: string; targetIndex: number; completesQuestion: boolean },
 ) => {
   const mapped = serverQuestions.value[session.progressState.currentQuestionIndex]
   const itemId = learningItemId.value
 
   if (learnerDataSource !== 'api' || debugMode.value) {
     controls.success()
+    return
+  }
+  // 단어별 평가(word-reading): 시선으로 선택한 단어 하나만 Azure 평가한다.
+  if (word) {
+    if (!mapped || !/^\d+$/.test(itemId)) {
+      controls.retry('음성 평가 정보를 확인할 수 없어요. 다시 말해 주세요.')
+      return
+    }
+    voiceSubmitting.value = true
+    try {
+      const extension = blob.type.includes('mp4') ? 'm4a' : 'webm'
+      const result = await learningRepository.value.saveRecording(
+        getCachedStudent().studentId,
+        itemId,
+        mapped.questionNumber,
+        {
+          targetIndex: word.targetIndex,
+          expectedText: word.expectedText,
+          audioFile: new File([blob], `training-${mapped.questionNumber}-${word.targetIndex}.${extension}`, {
+            type: blob.type || 'audio/webm',
+          }),
+        },
+      )
+      recordVoiceScore({
+        score: Math.round(result.pronunciationAccuracyScore),
+        threshold: Math.round(result.pronunciationThreshold),
+        passed: result.passed,
+        canRetry: result.canRetry,
+        expectedText: word.expectedText,
+        questionNumber: mapped.questionNumber,
+      })
+      if (result.canRetry) {
+        controls.retry(`${Math.round(result.pronunciationAccuracyScore)}점이에요. 다시 읽어봐요!`)
+        return
+      }
+      if (word.completesQuestion) recordedQuestionNumbers.add(mapped.questionNumber)
+      controls.success(
+        result.passed
+          ? `${Math.round(result.pronunciationAccuracyScore)}점! 잘 읽었어요!`
+          : '끝까지 읽었어요!',
+      )
+    } catch (error) {
+      if (isPronunciationAttemptLimitError(error)) {
+        if (word.completesQuestion) recordedQuestionNumbers.add(mapped.questionNumber)
+        controls.success('횟수를 다 썼어요. 다음으로 넘어가요.')
+        return
+      }
+      controls.retry(
+        error instanceof Error ? error.message : '목소리를 확인하지 못했어요. 다시 말해 주세요.',
+      )
+    } finally {
+      voiceSubmitting.value = false
+    }
     return
   }
   if (!mapped?.expectedText || !/^\d+$/.test(itemId)) {
@@ -1236,7 +1324,7 @@ const isSavingFailed = computed(() => session.savingState.status === 'failed')
         />
         <Transition name="fade">
           <aside
-            v-if="voiceGateOpen || voiceAttemptLimitReached || voiceCompleted"
+            v-if="(voiceGateOpen || voiceAttemptLimitReached || voiceCompleted) && !activitySelfRecordsVoice"
             class="inline-voice-panel"
             :class="{
               'inline-voice-panel--ready': voiceRecorder.state.status === 'idle' && !voiceAttemptLimitReached && !voiceCompleted,
@@ -1273,31 +1361,8 @@ const isSavingFailed = computed(() => session.savingState.status === 'failed')
             >
               말하기
             </button>
-            <div
-              v-if="isDeveloperMode && latestVoiceScore"
-              class="developer-voice-score"
-              :class="{ passed: latestVoiceScore.passed, failed: !latestVoiceScore.passed }"
-            >
-              <strong>{{ latestVoiceScore.score }}점</strong>
-              <span>기준 {{ latestVoiceScore.threshold }}점</span>
-              <small>
-                {{ latestVoiceScore.expectedText }} · {{ latestVoiceScore.passed ? '통과' : '재시도' }}
-              </small>
-            </div>
           </aside>
         </Transition>
-        <aside
-          v-if="isDeveloperMode && latestVoiceScore && !voiceGateOpen"
-          class="developer-voice-score developer-voice-score--overlay"
-          :class="{ passed: latestVoiceScore.passed, failed: !latestVoiceScore.passed }"
-          aria-live="polite"
-        >
-          <strong>{{ latestVoiceScore.score }}점</strong>
-          <span>기준 {{ latestVoiceScore.threshold }}점</span>
-          <small>
-            {{ latestVoiceScore.expectedText }} · {{ latestVoiceScore.passed ? '통과' : '재시도' }}
-          </small>
-        </aside>
       </div>
     </div>
 

@@ -1,6 +1,7 @@
 import type {
   HangulLetter,
   LetterBuildSlot,
+  ReadingItem,
   ReadingSentence,
   TrainingActivityType,
   TrainingChoice,
@@ -399,6 +400,25 @@ function readingWords(content: Readonly<Record<string, unknown>>): WordReadingIt
   }))
 }
 
+// 시선 주도 읽기용 통일 항목(readingItems)을 question에 붙인다.
+// 각 항목의 targetIndex는 백엔드 recordingTargets 중 텍스트가 일치하는 것으로 매칭(불가 시 폴백 index).
+function withReadingItems(
+  question: TrainingQuestion,
+  source: StudentQuestionDto,
+  layout: 'cards' | 'segments',
+): TrainingQuestion {
+  const chunks: string[] = question.readingWords?.map((word) => word.text)
+    ?? question.readingSentences?.flatMap((sentence) => sentence.chunks)
+    ?? question.phraseChunks
+    ?? (question.targetText ? [question.targetText] : [])
+  const readingItems: ReadingItem[] = chunks.map((text, index) => ({
+    id: `reading-${index}`,
+    text,
+    targetIndex: source.recordingTargets.find((target) => target.text === text)?.targetIndex ?? index,
+  }))
+  return { ...question, readingItems, readingLayout: layout }
+}
+
 function mapAudio(number: number, source: StudentQuestionDto): {
   activityType: TrainingActivityType
   expectedText: string
@@ -409,11 +429,11 @@ function mapAudio(number: number, source: StudentQuestionDto): {
     return {
       activityType: 'word-reading-grid',
       expectedText,
-      question: {
+      question: withReadingItems({
         ...baseQuestion(number, '낱말을 소리 내어 읽어요', expectedText),
         targetText: expectedText,
         readingWords: readingWords(source.content),
-      },
+      }, source, 'cards'),
     }
   }
   if (['SENTENCE_READING', 'SHORT_PASSAGE_READING'].includes(source.questionType)) {
@@ -426,11 +446,11 @@ function mapAudio(number: number, source: StudentQuestionDto): {
     return {
       activityType: 'word-reading-grid',
       expectedText,
-      question: {
+      question: withReadingItems({
         ...baseQuestion(number, '처음부터 차례대로 읽어요', expectedText),
         targetText: expectedText,
         readingSentences: sentences,
-      },
+      }, source, 'segments'),
     }
   }
   let phraseChunks: string[] = []
@@ -453,16 +473,17 @@ function mapAudio(number: number, source: StudentQuestionDto): {
   } else {
     phraseChunks = [expectedText]
   }
+  const layout: 'cards' | 'segments' = source.questionType === 'WORD_CHAIN_READING' ? 'cards' : 'segments'
   return {
     activityType: 'word-reading-grid',
     expectedText,
-    question: {
+    question: withReadingItems({
       ...baseQuestion(number, '소리 내어 읽어요', expectedText),
       targetText: expectedText,
       phraseChunks,
       focusWord,
       audioPromptEnabled: source.questionType === 'SENTENCE_REPEAT',
-    },
+    }, source, layout),
   }
 }
 

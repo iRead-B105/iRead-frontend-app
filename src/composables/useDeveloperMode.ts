@@ -23,12 +23,33 @@ export interface DeveloperVoiceScore {
   readonly questionNumber: number
 }
 
+export interface DevGazeLogEntry {
+  readonly text: string
+  readonly clientX: number
+  readonly clientY: number
+  readonly questionNumber: number
+  readonly tokenIndex: number
+  readonly capturedAt: string
+}
+
+export interface DevVoiceLogEntry extends DeveloperVoiceScore {
+  readonly capturedAt: string
+}
+
+// DEV 로그: 시선 단어 히트 + 음성 정답/정확도 결과를 최근 DEV_LOG_CAP개까지 보관.
+const devGazeLog = ref<DevGazeLogEntry[]>([])
+const devVoiceLog = ref<DevVoiceLogEntry[]>([])
+const DEV_LOG_CAP = 30
+
 const setEnabled = (value: boolean) => {
   enabled.value = value
   if (typeof window !== 'undefined') {
     window.localStorage.setItem(STORAGE_KEY, value ? 'on' : 'off')
   }
-  if (!value) latestVoiceScore.value = null
+  if (!value) {
+    latestVoiceScore.value = null
+    clearDevLogs()
+  }
 }
 
 const toggle = () => setEnabled(!enabled.value)
@@ -52,18 +73,38 @@ const registerLogoClick = () => {
 
 const recordVoiceScore = (score: DeveloperVoiceScore) => {
   latestVoiceScore.value = score
+  devVoiceLog.value = [
+    { ...score, capturedAt: new Date().toLocaleTimeString() },
+    ...devVoiceLog.value,
+  ].slice(0, DEV_LOG_CAP)
 }
 
 const clearVoiceScore = () => {
   latestVoiceScore.value = null
 }
 
+const pushDevGaze = (entry: Omit<DevGazeLogEntry, 'capturedAt'> & { capturedAt?: string }) => {
+  devGazeLog.value = [
+    { ...entry, capturedAt: entry.capturedAt ?? new Date().toLocaleTimeString() },
+    ...devGazeLog.value,
+  ].slice(0, DEV_LOG_CAP)
+}
+
+function clearDevLogs() {
+  devGazeLog.value = []
+  devVoiceLog.value = []
+}
+
 export const useDeveloperMode = () => ({
   enabled: readonly(enabled),
   latestVoiceScore: readonly(latestVoiceScore),
+  devGazeLog: readonly(devGazeLog),
+  devVoiceLog: readonly(devVoiceLog),
   setEnabled,
   toggle,
   registerLogoClick,
   recordVoiceScore,
   clearVoiceScore,
+  pushDevGaze,
+  clearDevLogs,
 })
