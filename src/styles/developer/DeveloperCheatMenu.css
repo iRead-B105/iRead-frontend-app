@@ -1,0 +1,252 @@
+.developer-cheat-trigger {
+  position: fixed;
+  z-index: 70;
+  right: 12px;
+  bottom: 12px;
+  min-width: 48px;
+  min-height: 30px;
+  padding: 5px 9px;
+  border: 1px solid rgb(255 255 255 / 70%);
+  border-radius: 8px;
+  background: rgb(25 35 62 / 78%);
+  box-shadow: 0 4px 12px rgb(20 31 58 / 25%);
+  color: #fff;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .08em;
+  cursor: pointer;
+  opacity: .72;
+}
+
+.developer-cheat-trigger:hover,
+.developer-cheat-trigger:focus-visible {
+  outline: none;
+  opacity: 1;
+  box-shadow: 0 0 0 3px rgb(255 255 255 / 72%);
+}
+
+.developer-cheat-backdrop {
+  position: fixed;
+  z-index: 100;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgb(11 18 35 / 68%);
+  backdrop-filter: blur(6px);
+}
+
+.developer-cheat-menu {
+  display: flex;
+  flex-direction: column;
+  width: min(1120px, calc(100vw - 48px));
+  max-height: min(860px, calc(100vh - 48px));
+  overflow: hidden;
+  border: 1px solid #c7d0df;
+  border-radius: 18px;
+  background: #f5f7fb;
+  color: #1d2940;
+  box-shadow: 0 28px 84px rgb(3 10 24 / 42%);
+  font-family: Pretendard, Arial, sans-serif;
+  text-align: left;
+}
+
+.developer-cheat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 18px 22px;
+  border-bottom: 1px solid #dbe1eb;
+  background: #fff;
+}
+
+.developer-cheat-header span {
+  color: #65738d;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .13em;
+}
+
+.developer-cheat-header h2 {
+  margin: 3px 0 0;
+  font-size: 23px;
+}
+
+.developer-cheat-header p {
+  margin: 4px 0 0;
+  color: #68758c;
+  font-size: 12px;
+}
+
+.developer-cheat-header > button {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid #ced6e3;
+  border-radius: 9px;
+  background: #f4f6fa;
+  color: #35425b;
+  font-size: 25px;
+  cursor: pointer;
+}
+
+.developer-cheat-content {
+  overflow: auto;
+  padding: 20px 22px 28px;
+}
+
+.developer-cheat-section + .developer-cheat-section {
+  margin-top: 26px;
+}
+
+.developer-cheat-section-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 11px;
+}
+
+.developer-cheat-section-heading h3 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.developer-cheat-section-heading p {
+  margin: 3px 0 0;
+  color: #707d92;
+  font-size: 12px;
+}
+
+.developer-cheat-section-heading > span {
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #e4f4ea;
+  color: #27734a;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.developer-cheat-section-heading > span.unavailable {
+  background: #eceef2;
+  color: #737b89;
+}
+
+.developer-cheat-action-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.developer-cheat-action-grid > button,
+.developer-cheat-lesson-grid > button {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
+  padding: 13px 14px;
+  border: 1px solid #d4dce8;
+  border-radius: 11px;
+  background: #fff;
+  color: #24314a;
+  text-align: left;
+  cursor: pointer;
+}
+
+.developer-cheat-action-grid > button:hover:not(:disabled),
+.developer-cheat-action-grid > button:focus-visible:not(:disabled),
+.developer-cheat-lesson-grid > button:hover,
+.developer-cheat-lesson-grid > button:focus-visible {
+  outline: none;
+  border-color: #7089dd;
+  background: #eef3ff;
+}
+
+.developer-cheat-action-grid > button.danger:hover:not(:disabled) {
+  border-color: #d87777;
+  background: #fff2f2;
+}
+
+.developer-cheat-action-grid > button:disabled {
+  cursor: not-allowed;
+  opacity: .48;
+}
+
+.developer-cheat-action-grid strong,
+.developer-cheat-lesson-grid strong {
+  font-size: 14px;
+}
+
+.developer-cheat-action-grid span,
+.developer-cheat-lesson-grid span {
+  color: #6d7890;
+  font-size: 11px;
+}
+
+.developer-cheat-message {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 11px 0 0;
+  padding: 10px 12px;
+  border-radius: 9px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.developer-cheat-message.success {
+  background: #e7f7ed;
+  color: #1f7045;
+}
+
+.developer-cheat-message.error {
+  background: #fff0f0;
+  color: #a23b3b;
+}
+
+.developer-cheat-message button {
+  padding: 6px 9px;
+  border: 0;
+  border-radius: 7px;
+  background: #26734a;
+  color: #fff;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.developer-cheat-shortcuts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.developer-cheat-shortcuts button {
+  padding: 9px 13px;
+  border: 1px solid #d3dae6;
+  border-radius: 9px;
+  background: #fff;
+  color: #33415b;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.developer-cheat-shortcuts button:hover {
+  border-color: #7188d2;
+  background: #eef3ff;
+}
+
+.developer-cheat-lesson-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(205px, 1fr));
+  gap: 9px;
+}
+
+@media (max-width: 760px) {
+  .developer-cheat-action-grid {
+    grid-template-columns: 1fr;
+  }
+}

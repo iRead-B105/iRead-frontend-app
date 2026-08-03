@@ -5,7 +5,7 @@
 // 본 화면은 발음 평가/STT 점수를 표시하지 않으며, "연습 기록만 저장된다"고 안내합니다.
 // 다음 레슨 이동은 상위가 처리합니다.
 
-import { computed, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, watch } from 'vue'
 import type { TrainingQuestion } from '@/types/training'
 import { useTrainingSession } from '@/composables/useTrainingSession'
 import { useAudioPlayer } from '@/composables/useAudioPlayer'
@@ -13,8 +13,6 @@ import { useVoiceRecorder } from '@/composables/useVoiceRecorder'
 import { mockVoiceSubmissionsEnabled } from '@/features/learner/training/mockDeviceSubmissions'
 import SoundButton from '../SoundButton.vue'
 import microphoneIcon from '@/assets/icons/microphone.svg'
-import stopIcon from '@/assets/icons/stop.svg'
-import checkIcon from '@/assets/icons/check.svg'
 
 const props = defineProps<{ question: TrainingQuestion }>()
 defineEmits<{ next: [] }>()
@@ -33,6 +31,35 @@ const isRecording = computed(() => status.value === 'recording')
 const hasRecording = computed(() => recorder.state.hasRecording)
 const isMock = computed(() => recorder.state.isMock)
 const isAnswered = computed(() => progressState.isCurrentCorrect === true)
+let automaticStartTimer: ReturnType<typeof setTimeout> | null = null
+let automaticStopTimer: ReturnType<typeof setTimeout> | null = null
+
+const clearAutomaticTimers = () => {
+  if (automaticStartTimer) clearTimeout(automaticStartTimer)
+  if (automaticStopTimer) clearTimeout(automaticStopTimer)
+  automaticStartTimer = null
+  automaticStopTimer = null
+}
+
+const startAutomaticRecording = async () => {
+  if (isAnswered.value || isRecording.value) return
+  if (mockVoiceSubmissionsEnabled) {
+    automaticStopTimer = setTimeout(
+      () => session.markRecordingComplete({ isMock: true, audioUrl: null }),
+      250,
+    )
+    return
+  }
+  await recorder.start()
+  if (recorder.state.status !== 'recording') return
+  const recordingMs = Math.min(12_000, Math.max(3_000, sentence.value.length * 650 + 1_800))
+  automaticStopTimer = setTimeout(() => recorder.stop(), recordingMs)
+}
+
+const scheduleAutomaticRecording = () => {
+  clearAutomaticTimers()
+  automaticStartTimer = setTimeout(() => void startAutomaticRecording(), 300)
+}
 
 // 녹음이 완료되면 세션에 목업 결과를 저장(정답 처리)하여 다음 버튼 활성화
 watch(
@@ -52,35 +79,18 @@ watch(
 watch(
   () => props.question.id,
   () => {
+    clearAutomaticTimers()
     recorder.reset()
     progressState.isCurrentCorrect = null
+    scheduleAutomaticRecording()
   },
 )
 
-const handleMicToggle = () => {
-  if (mockVoiceSubmissionsEnabled) {
-    session.markRecordingComplete({ isMock: true, audioUrl: null })
-    return
-  }
-  if (isRecording.value) {
-    recorder.stop()
-  } else {
-    void recorder.start()
-  }
-}
-
-const handleReRecord = () => {
-  recorder.reset()
-  progressState.isCurrentCorrect = null
-}
-
-const playMyRecording = () => {
-  // 실제 녹음이 있으면 재생(목업이면 재생 불가)
-  if (recorder.audioUrl.value) {
-    const audio = new Audio(recorder.audioUrl.value)
-    void audio.play()
-  }
-}
+onMounted(scheduleAutomaticRecording)
+onBeforeUnmount(() => {
+  clearAutomaticTimers()
+  recorder.stop()
+})
 
 const formatTime = (ms: number): string => {
   const total = Math.floor(ms / 1000)
@@ -92,17 +102,17 @@ const formatTime = (ms: number): string => {
 const micButtonLabel = computed(() => {
   switch (status.value) {
     case 'recording':
-      return '녹음 중… 누르면 멈춰요'
+      return '목소리를 듣고 있어요'
     case 'requesting':
       return '마이크 권한을 확인하고 있어…'
     case 'recorded':
-      return '녹음 완료! 다시 녹음하려면 눌러요'
+      return '목소리를 잘 들었어요'
     case 'denied':
-      return '마이크 권한이 필요해. 다시 눌러서 허용해 줘.'
+      return '마이크 권한이 필요해요'
     case 'unsupported':
       return '녹음 준비가 됐어.'
     default:
-      return '누르면 내 목소리를 녹음해'
+      return '자동으로 마이크를 켜고 있어요'
   }
 })
 </script>
@@ -146,19 +156,18 @@ const micButtonLabel = computed(() => {
           ></span>
         </div>
 
-        <button
+        <div
           class="mic-button"
           :class="{ recording: isRecording, recorded: hasRecording && !isRecording, denied: status === 'denied' }"
-          type="button"
+          role="status"
           :aria-label="micButtonLabel"
-          @click="handleMicToggle"
         >
           <img
-            :src="isRecording ? stopIcon : hasRecording ? checkIcon : microphoneIcon"
+            :src="microphoneIcon"
             alt=""
             aria-hidden="true"
           />
-        </button>
+        </div>
 
         <p class="record-status">
           <span v-if="isRecording" class="timer">{{ formatTime(recorder.state.elapsedMs) }}</span>
@@ -167,11 +176,6 @@ const micButtonLabel = computed(() => {
 
         <p v-if="status === 'denied'" class="denied-note">권한을 허용하면 녹음할 수 있어.</p>
 
-        <!-- 녹음 후 액션 -->
-          <div v-if="hasRecording && !isRecording" class="record-actions">
-            <button v-if="!isMock" class="chip" type="button" @click="playMyRecording">내 녹음 듣기</button>
-            <button class="chip" type="button" @click="handleReRecord">다시 녹음하기</button>
-          </div>
         </div>
       </div>
     </div>

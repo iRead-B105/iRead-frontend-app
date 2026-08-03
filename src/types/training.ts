@@ -16,15 +16,11 @@ export type TrainingActivityType =
   | 'gaze-trace' // 시선으로 획순을 따라가고 소리 내어 읽기
   | 'letter-build' // 소리를 듣고 자모 카드를 빈칸에 끌어 글자 만들기
   | 'sound-manipulation' // 소리 단위를 클릭해 탈락시키거나 다른 소리로 대치
-  | 'hangul-battle' // 캐릭터와 제한 시간 없이 먼저 낱말을 조합하는 배틀
-  | 'word-reading-grid' // 2×2 낱말을 시선과 음성으로 차례대로 읽기
-  | 'sentence-reading' // 한 문장을 어절 순서대로 시선과 음성으로 읽기
+  | 'word-reading-grid' // 낱말·문장·짧은 글을 시선과 음성으로 차례대로 읽기
   | 'sound-choice' // 대상 글자를 숨기고 소리만 듣고 선택
   | 'sound-omit' // 원래 낱말에서 한 음절을 빼 목표 낱말 만들기
   | 'sound-blend' // 나뉜 음절 소리 카드를 낱말로 합치기
-  | 'card-combine' // 자음 + 모음 카드 합치기
   | 'sentence-choice' // 그림에 맞는 문장 선택
-  | 'read-aloud' // 문장 따라 읽기(녹음)
   | 'card-match' // (준비 중) 그림-글자 카드 짝찾기
   | 'drag-and-drop' // (준비 중) 끌어다 놓기
   | 'sentence-order' // (준비 중) 문장 순서 맞추기
@@ -170,21 +166,17 @@ export interface TrainingQuestion {
   replacementChoices?: TrainingChoice[]
   replacementAnswerId?: string
   targetResult?: string
+  combined?: string // 글자 만들기·소리 합치기의 완성 글자 또는 낱말
   battleOpponent?: 'rabbit' | 'turtle' | 'ant'
   battleRounds?: HangulBattleRound[]
   readingWords?: WordReadingItem[]
   readingSentences?: ReadingSentence[]
   requiredInputs?: readonly string[]
 
-  // card-combine 전용
-  consonant?: string // 예: 'ㄱ'
-  vowel?: string // 예: 'ㅏ'
-  combined?: string // 예: '가'
-
   // sentence-choice 전용: 어려운 단어 음절 분리
   focusWord?: WordBreakdown
 
-  // read-aloud 전용: 끊어 읽기 단위
+  // 통합 읽기 전용: 끊어 읽기 단위
   phraseChunks?: string[]
 
   hint?: TrainingHint

@@ -3,41 +3,27 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { TracePoint, TrainingQuestion } from '@/types/training'
 import { useTrainingSession } from '@/composables/useTrainingSession'
 import { useAudioPlayer } from '@/composables/useAudioPlayer'
+import { useVoiceRecorder } from '@/composables/useVoiceRecorder'
 import SoundButton from '@/components/training/SoundButton.vue'
 import microphoneIcon from '@/assets/icons/microphone.svg'
 import type { LearnerTraceSubmissionResponse } from '@/features/learner/training'
 import { mockVoiceSubmissionsEnabled } from '@/features/learner/training/mockDeviceSubmissions'
 
 const props = defineProps<{ question: TrainingQuestion }>()
+type VoiceEvaluationControls = {
+  success: (message?: string) => void
+  retry: (message?: string) => void
+}
 const emit = defineEmits<{
   next: [response: LearnerTraceSubmissionResponse]
   guideMessage: [message: string]
+  voiceRecorded: [blob: Blob, controls: VoiceEvaluationControls]
 }>()
-
-interface SpeechRecognitionResultEventLike extends Event {
-  results: { [index: number]: { [index: number]: { transcript: string } } }
-}
-
-interface SpeechRecognitionErrorEventLike extends Event {
-  error?: string
-}
-
-interface SpeechRecognitionLike {
-  lang: string
-  interimResults: boolean
-  continuous: boolean
-  onresult: ((event: SpeechRecognitionResultEventLike) => void) | null
-  onerror: ((event: SpeechRecognitionErrorEventLike) => void) | null
-  onend: (() => void) | null
-  start: () => void
-  stop: () => void
-}
-
-type SpeechRecognitionConstructor = new () => SpeechRecognitionLike
-type SpeechState = 'waiting' | 'listening' | 'retry' | 'success'
+type SpeechState = 'waiting' | 'listening' | 'evaluating' | 'retry' | 'success'
 
 const session = useTrainingSession()
 const audio = useAudioPlayer()
+const recorder = useVoiceRecorder()
 const stage = ref<SVGSVGElement | null>(null)
 const progress = ref(0)
 const speechState = ref<SpeechState>('waiting')
@@ -48,8 +34,9 @@ const recordedStrokes = ref<Array<Array<{
   pressure?: number
 }>>>([])
 let traceStartedAt = 0
-let recognition: SpeechRecognitionLike | null = null
 let fallbackTimer: ReturnType<typeof setTimeout> | null = null
+let retryTimer: ReturnType<typeof setTimeout> | null = null
+let submittedBlob: Blob | null = null
 
 const strokes = computed(() => props.question.traceStrokes ?? [])
 const flatPoints = computed(() => strokes.value.flat())
@@ -97,6 +84,7 @@ const pronunciationText = computed(() => {
 })
 const speechStatusText = computed(() => {
   if (speechState.value === 'listening') return '말하는 중이에요!'
+  if (speechState.value === 'evaluating') return '목소리를 확인하고 있어요!'
   if (speechState.value === 'retry') return '한 번 더 말해봐요!'
   if (speechState.value === 'success') return '잘 들었어요!'
   return '글자를 따라 읽어요!'
@@ -123,41 +111,34 @@ const completedStroke = (strokeIndex: number): TracePoint[] => {
 const stopSpeech = () => {
   if (fallbackTimer) clearTimeout(fallbackTimer)
   fallbackTimer = null
-  if (recognition) {
-    recognition.onend = null
-    recognition.stop()
-  }
-  recognition = null
+  recorder.stop()
 }
 
-const normalizeSpeech = (value: string) => value.replace(/[\s.,!?]/g, '').toLowerCase()
-
-const speechMatches = (transcript: string) => {
-  const heard = normalizeSpeech(transcript)
-  const accepted = [
-    props.question.traceGlyph ?? '',
-    pronunciationText.value,
-    ...(props.question.speechAliases ?? []),
-  ].map(normalizeSpeech).filter(Boolean)
-  return accepted.some((answer) => heard === answer || heard.includes(answer))
-}
-
-const finishSpeech = (isMock: boolean) => {
+const finishSpeech = (isMock: boolean, blob: Blob | null = null, message?: string) => {
   if (speechState.value === 'success') return
   stopSpeech()
   speechState.value = 'success'
-  emit('guideMessage', '잘했어!\n또박또박 잘 읽었어!')
-  session.markRecordingComplete({ isMock, audioUrl: null })
+  emit('guideMessage', message || '잘했어!\n또박또박 잘 읽었어!')
+  session.markRecordingComplete({ isMock, audioUrl: null, blob })
 }
 
-const setRetry = () => {
+const setRetry = (message?: string) => {
   stopSpeech()
+  if (retryTimer) clearTimeout(retryTimer)
+  recorder.reset()
+  submittedBlob = null
   speechState.value = 'retry'
+  if (message) emit('guideMessage', message)
+  retryTimer = setTimeout(() => void startSpeech(), 1_100)
 }
 
-const startSpeech = () => {
+const startSpeech = async () => {
   if (!traceCompleted.value || speechState.value === 'listening' || speechState.value === 'success') return
   stopSpeech()
+  if (retryTimer) clearTimeout(retryTimer)
+  retryTimer = null
+  recorder.reset()
+  submittedBlob = null
   speechState.value = 'listening'
 
   if (mockVoiceSubmissionsEnabled) {
@@ -165,33 +146,25 @@ const startSpeech = () => {
     return
   }
 
-  const speechWindow = window as typeof window & {
-    SpeechRecognition?: SpeechRecognitionConstructor
-    webkitSpeechRecognition?: SpeechRecognitionConstructor
-  }
-  const Recognition = speechWindow.SpeechRecognition ?? speechWindow.webkitSpeechRecognition
-
-  if (!Recognition) {
-    fallbackTimer = setTimeout(() => finishSpeech(true), 1400)
+  await recorder.start()
+  if (recorder.state.status !== 'recording') {
+    setRetry(recorder.state.errorMessage ?? '마이크를 확인해 주세요.')
     return
   }
-
-  recognition = new Recognition()
-  recognition.lang = 'ko-KR'
-  recognition.interimResults = false
-  recognition.continuous = false
-  recognition.onresult = (event) => {
-    const transcript = event.results[0]?.[0]?.transcript ?? ''
-    if (speechMatches(transcript)) finishSpeech(false)
-    else setRetry()
-  }
-  recognition.onerror = () => setRetry()
-  recognition.onend = () => {
-    recognition = null
-    if (speechState.value === 'listening') speechState.value = 'retry'
-  }
-  recognition.start()
+  // 한 글자 발화에 충분한 시간을 준 뒤 자동으로 녹음을 끝낸다.
+  fallbackTimer = setTimeout(() => recorder.stop(), 5_000)
 }
+
+watch(() => recorder.state.status, (status) => {
+  const blob = recorder.audioBlob.value
+  if (status !== 'recorded' || !blob || blob === submittedBlob) return
+  submittedBlob = blob
+  speechState.value = 'evaluating'
+  emit('voiceRecorded', blob, {
+    success: (message) => finishSpeech(false, blob, message),
+    retry: (message) => setRetry(message),
+  })
+})
 
 const playPronunciation = () => audio.replay(pronunciationText.value, 0.72)
 
@@ -199,7 +172,7 @@ const completeTrace = async () => {
   const questionId = props.question.id
   await playPronunciation()
   if (props.question.id !== questionId || !traceCompleted.value) return
-  startSpeech()
+  await startSpeech()
 }
 
 const advanceFromClientPoint = (clientX: number, clientY: number) => {
@@ -250,11 +223,15 @@ const submitTrace = () => {
 
 const resetQuestion = () => {
   stopSpeech()
+  if (retryTimer) clearTimeout(retryTimer)
+  retryTimer = null
   audio.stop()
   progress.value = 0
   speechState.value = 'waiting'
   recordedStrokes.value = []
   traceStartedAt = 0
+  submittedBlob = null
+  recorder.reset()
   emit('guideMessage', '')
 }
 
@@ -267,6 +244,7 @@ onMounted(() => window.addEventListener('iread:gaze', onGaze))
 onBeforeUnmount(() => {
   window.removeEventListener('iread:gaze', onGaze)
   stopSpeech()
+  if (retryTimer) clearTimeout(retryTimer)
   audio.stop()
 })
 </script>
@@ -330,15 +308,13 @@ onBeforeUnmount(() => {
           :class="`speech-panel--${speechState}`"
           aria-live="polite"
         >
-          <button
+          <div
             class="mic-state"
-            type="button"
-            :disabled="speechState === 'waiting' || speechState === 'listening' || speechState === 'success'"
-            :aria-label="speechState === 'retry' ? '다시 말하기' : speechStatusText"
-            @click="startSpeech"
+            role="status"
+            :aria-label="speechStatusText"
           >
             <img :src="microphoneIcon" alt="" aria-hidden="true" />
-          </button>
+          </div>
           <div class="speech-wave" :class="{ active: speechState === 'listening' }" aria-hidden="true">
             <i v-for="index in 9" :key="index"></i>
           </div>

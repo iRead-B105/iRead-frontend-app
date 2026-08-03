@@ -20,7 +20,7 @@ const router = useRouter()
 const categories = getAllCategories()
 const showAllTrainings = ref(false)
 const isDeveloperMode = import.meta.env.DEV
-const debugPanelOpen = ref(isDeveloperMode && route.query.debugPanel === '1')
+const debugPanelOpen = ref(false)
 const dailyCurriculum = useDailyCurriculum()
 
 void dailyCurriculum.reloadCurrentCurriculum().catch(() => undefined)

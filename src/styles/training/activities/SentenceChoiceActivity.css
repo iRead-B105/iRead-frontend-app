@@ -141,7 +141,7 @@
 
 .sentence-card strong {
   font-family: var(--learner-font-display);
-  font-size: clamp(18px,1.7cqw,25px);
+  font-size: clamp(24px,2.1cqw,32px);
   font-weight: 900;
   text-align: center;
   line-height: 1.35;
@@ -299,7 +299,7 @@
   }
 
   .sentence-card strong {
-    font-size: 19px;
+    font-size: 23px;
   }
 
   .action-bar {

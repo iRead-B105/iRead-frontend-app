@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed, defineAsyncComponent, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import LearnerHeader from '../components/layout/LearnerHeader.vue'
 import GazeCalibrationModal from '../components/common/GazeCalibrationModal.vue'
@@ -11,6 +11,10 @@ import { useDeviceStatus } from '@/composables/useDeviceStatus'
 import { useLearnerCanvasScale } from '@/composables/useLearnerCanvasScale'
 
 const route = useRoute()
+const isDeveloperMode = import.meta.env.DEV
+const DeveloperCheatMenu = isDeveloperMode
+  ? defineAsyncComponent(() => import('@/components/developer/DeveloperCheatMenu.vue'))
+  : null
 const hideHeader = computed(() => route.meta.hideLearnerHeader === true)
 const activeStudent = computed(() => getCachedStudent())
 const { isOpen: isGazeCalibrationOpen, close: closeGazeCalibration } = useGazeCalibration()
@@ -51,6 +55,7 @@ onMounted(async () => {
 
     <GazeCalibrationModal v-if="isGazeCalibrationOpen" @close="closeGazeCalibration" />
     <GlobalGazeCursor />
+    <DeveloperCheatMenu v-if="isDeveloperMode" />
   </div>
 </template>
 

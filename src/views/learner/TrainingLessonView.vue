@@ -95,6 +95,7 @@ const submittingQuestion = ref(false)
 const voiceGateOpen = ref(false)
 const voiceSubmitting = ref(false)
 const voiceFeedback = ref('')
+const advanceAfterAutomaticVoice = ref(false)
 const pendingNextResponse = ref<LearnerTraceSubmissionResponse | undefined>()
 const recordedQuestionNumbers = new Set<number>()
 const gazeSessionId = ref<string | null>(null)
@@ -134,6 +135,8 @@ const deviceBlocker = ref<'eye-tracker' | 'microphone' | null>(null)
 const leaveConfirmationOpen = ref(false)
 const integrationError = ref('')
 let resolveLeaveConfirmation: ((allow: boolean) => void) | null = null
+let automaticVoiceStopTimer: ReturnType<typeof setTimeout> | null = null
+let automaticVoiceRetryTimer: ReturnType<typeof setTimeout> | null = null
 
 watch(integrationError, (error) => {
   if (!error) return
@@ -144,13 +147,10 @@ watch(integrationError, (error) => {
 const gazeRequiredActivities = new Set<TrainingActivityType>([
   'gaze-trace',
   'word-reading-grid',
-  'sentence-reading',
 ])
 const microphoneRequiredActivities = new Set<TrainingActivityType>([
   'gaze-trace',
   'word-reading-grid',
-  'sentence-reading',
-  'read-aloud',
 ])
 const gazeRequired = computed(() =>
   learnerDataSource === 'api'
@@ -181,13 +181,9 @@ const activityLayouts: Record<TrainingActivityType, ActivityLayout> = {
   'sound-manipulation': 'manipulation',
   'sound-omit': 'manipulation',
   'sound-blend': 'manipulation',
-  'card-combine': 'manipulation',
   'fill-blank': 'manipulation',
   'sentence-order': 'manipulation',
-  'hangul-battle': 'manipulation',
   'word-reading-grid': 'reading-speak',
-  'sentence-reading': 'reading-speak',
-  'read-aloud': 'reading-speak',
   'card-match': 'choice',
   'drag-and-drop': 'manipulation',
 }
@@ -199,19 +195,16 @@ const activityLayoutClass = computed(() =>
 const conciseInstructions: Partial<Record<TrainingActivityType, string>> = {
   'gaze-trace': '글자를 따라 읽어요!',
   'audio-letter-choice': '첫소리를 찾아봐!',
-  'listen-and-select': '같은 소리를 찾아봐!',
+  'listen-and-select': '비슷한 소리를 찾아봐!',
   'sound-choice': '소리를 찾아봐!',
   'letter-build': '소리 듣고 글자를 만들어봐!',
   'sound-manipulation': '낱말을 바꿔봐!',
   'sound-omit': '잘 듣고 글자를 잘라봐!',
   'sound-blend': '소리를 합쳐봐!',
-  'card-combine': '글자를 합쳐봐!',
   'word-reading-grid': '낱말을 읽어봐!',
-  'sentence-reading': '문장을 읽어봐!',
   'sentence-choice': '맞는 문장을 찾아봐!',
   'fill-blank': '빈칸을 채워봐!',
   'sentence-order': '문장을 만들어봐!',
-  'read-aloud': '소리 내어 읽어봐!',
 }
 const mockListeningPromptLessonIds = new Set([
   'repeat-sentence',
@@ -558,6 +551,7 @@ const finishLeaveConfirmation = (allow: boolean) => {
 }
 
 onBeforeUnmount(() => {
+  clearAutomaticVoiceTimers()
   window.removeEventListener('iread:gaze', onGazeSample)
   window.removeEventListener('iread:gaze-word-hit', onGazeWordHit)
   if (gazeSessionId.value && !gazeSessionCompleted.value) {
@@ -637,6 +631,66 @@ const submitMockVoice = async (
 }
 
 // 다음 문제로 이동. 마지막 문제면 결과 저장 흐름으로 진입.
+const clearAutomaticVoiceTimers = () => {
+  if (automaticVoiceStopTimer) clearTimeout(automaticVoiceStopTimer)
+  if (automaticVoiceRetryTimer) clearTimeout(automaticVoiceRetryTimer)
+  automaticVoiceStopTimer = null
+  automaticVoiceRetryTimer = null
+}
+
+const beginAutomaticVoiceCapture = async (
+  response?: LearnerTraceSubmissionResponse,
+  advanceAfterSubmit = true,
+) => {
+  if (
+    voiceSubmitting.value
+    || voiceRecorder.state.status === 'requesting'
+    || voiceRecorder.state.status === 'recording'
+  ) return
+
+  const mapped = serverQuestions.value[session.progressState.currentQuestionIndex]
+  if (!mapped?.expectedText) {
+    errorModal.show(
+      new Error('음성 평가에 필요한 읽기 문구가 없어요.'),
+      '음성 평가 오류',
+    )
+    return
+  }
+
+  clearAutomaticVoiceTimers()
+  pendingNextResponse.value = response
+  advanceAfterAutomaticVoice.value = advanceAfterSubmit
+  voiceFeedback.value = '준비되면 바로 말해요!'
+  voiceRecorder.reset()
+  voiceGateOpen.value = true
+  await voiceRecorder.start()
+
+  const recorderStatus = voiceRecorder.state.status as string
+  if (recorderStatus !== 'recording') {
+    voiceGateOpen.value = false
+    deviceBlocker.value = 'microphone'
+    return
+  }
+
+  voiceFeedback.value = '듣고 있어요!'
+  const recordingMs = Math.min(
+    12_000,
+    Math.max(3_000, mapped.expectedText.length * 650 + 1_800),
+  )
+  automaticVoiceStopTimer = setTimeout(() => voiceRecorder.stop(), recordingMs)
+}
+
+const retryAutomaticVoiceCapture = () => {
+  clearAutomaticVoiceTimers()
+  automaticVoiceRetryTimer = setTimeout(
+    () => void beginAutomaticVoiceCapture(
+      pendingNextResponse.value,
+      advanceAfterAutomaticVoice.value,
+    ),
+    1_100,
+  )
+}
+
 const goNext = async (response?: LearnerTraceSubmissionResponse) => {
   if (submittingQuestion.value) return
   if (learnerDataSource === 'api' && !debugMode.value) {
@@ -653,9 +707,7 @@ const goNext = async (response?: LearnerTraceSubmissionResponse) => {
         await submitRecordedVoice(mapped, captured)
         return
       }
-      voiceFeedback.value = ''
-      voiceRecorder.reset()
-      voiceGateOpen.value = true
+      await beginAutomaticVoiceCapture(response)
       return
     }
   }
@@ -704,9 +756,65 @@ const goNext = async (response?: LearnerTraceSubmissionResponse) => {
   }
 }
 
-const toggleVoiceRecording = () => {
-  if (voiceRecorder.state.status === 'recording') voiceRecorder.stop()
-  else void voiceRecorder.start()
+type ActivityVoiceEvaluationControls = {
+  success: (message?: string) => void
+  retry: (message?: string) => void
+}
+
+// 따라 읽기 액티비티에서 수음한 음성을 즉시 백엔드 발음 평가로 보낸다.
+// 성공한 문항 번호를 기록해 다음 버튼에서 같은 음성을 다시 요구하지 않는다.
+const evaluateActivityVoice = async (
+  blob: Blob,
+  controls: ActivityVoiceEvaluationControls,
+) => {
+  const mapped = serverQuestions.value[session.progressState.currentQuestionIndex]
+  const itemId = learningItemId.value
+
+  if (learnerDataSource !== 'api' || debugMode.value) {
+    controls.success()
+    return
+  }
+  if (!mapped?.expectedText || !/^\d+$/.test(itemId)) {
+    controls.retry('음성 평가 정보를 확인할 수 없어요. 다시 말해 주세요.')
+    return
+  }
+
+  voiceSubmitting.value = true
+  try {
+    const extension = blob.type.includes('mp4') ? 'm4a' : 'webm'
+    const result = await learningRepository.value.saveRecording(
+      getCachedStudent().studentId,
+      itemId,
+      mapped.questionNumber,
+      {
+        targetIndex: mapped.recordingTargetIndex ?? undefined,
+        expectedText: mapped.expectedText,
+        audioFile: new File([blob], `training-${mapped.questionNumber}.${extension}`, {
+          type: blob.type || 'audio/webm',
+        }),
+      },
+    )
+    const score = Math.round(result.pronunciationAccuracyScore)
+    if (result.canRetry) {
+      controls.retry(`${score}점이에요. 한 번 더 또박또박 읽어봐요!`)
+      return
+    }
+
+    recordedQuestionNumbers.add(mapped.questionNumber)
+    controls.success(
+      result.passed
+        ? `${score}점! 또박또박 잘 읽었어!`
+        : '끝까지 읽었어! 다음 글자도 연습해보자!',
+    )
+  } catch (error) {
+    controls.retry(
+      error instanceof Error
+        ? error.message
+        : '목소리를 확인하지 못했어요. 다시 말해 주세요.',
+    )
+  } finally {
+    voiceSubmitting.value = false
+  }
 }
 
 const submitVoiceRecording = async () => {
@@ -758,13 +866,14 @@ const submitRecordedVoice = async (
     if (result.canRetry) {
       voiceRecorder.reset()
       voiceGateOpen.value = true
+      retryAutomaticVoiceCapture()
       return
     }
     recordedQuestionNumbers.add(mapped.questionNumber)
     voiceGateOpen.value = false
     const pending = pendingNextResponse.value
     pendingNextResponse.value = undefined
-    await goNext(pending)
+    if (advanceAfterAutomaticVoice.value) await goNext(pending)
   } catch (error) {
     voiceFeedback.value = error instanceof Error ? error.message : '녹음을 저장하지 못했습니다.'
   } finally {
@@ -773,6 +882,43 @@ const submitRecordedVoice = async (
 }
 
 // 결과 저장 중에는 기술 용어 없이 마무리 로딩만 보여줍니다.
+watch(() => voiceRecorder.state.status, (status) => {
+  if (!voiceGateOpen.value || status !== 'recorded' || voiceSubmitting.value) return
+  clearAutomaticVoiceTimers()
+  void submitVoiceRecording()
+})
+
+watch(voiceSubmitting, (submitting, wasSubmitting) => {
+  if (
+    wasSubmitting
+    && !submitting
+    && voiceGateOpen.value
+    && voiceRecorder.state.status === 'recorded'
+  ) retryAutomaticVoiceCapture()
+})
+
+// 조작형 학습은 정답을 완성하는 즉시 화면 안에서 발음을 받는다.
+// 다음 버튼이 녹음 모달을 여는 흐름을 없애고, 녹음 완료 뒤에도 현재 문항을 유지한다.
+watch(
+  [sharedNextEnabled, () => session.progressState.currentQuestionIndex],
+  ([correct]) => {
+    if (!correct || learnerDataSource !== 'api' || debugMode.value || mockVoiceSubmissionsEnabled) return
+    const mapped = serverQuestions.value[session.progressState.currentQuestionIndex]
+    if (
+      !mapped?.requiredInputs.includes('VOICE')
+      || recordedQuestionNumbers.has(mapped.questionNumber)
+      || voiceGateOpen.value
+    ) return
+    const captured = session.storedRecordings[mapped.question.id]?.blob ?? null
+    if (captured) {
+      advanceAfterAutomaticVoice.value = false
+      void submitRecordedVoice(mapped, captured)
+      return
+    }
+    void beginAutomaticVoiceCapture(undefined, false)
+  },
+)
+
 const saveAndFinish = async () => {
   phase.value = 'saving'
   let ok = false
@@ -914,7 +1060,30 @@ const isSavingFailed = computed(() => session.savingState.status === 'failed')
           :key="displayQuestion.id"
           :question="displayQuestion"
           @next="goNext"
+          @voice-recorded="evaluateActivityVoice"
         />
+        <Transition name="fade">
+          <aside
+            v-if="voiceGateOpen"
+            class="inline-voice-panel"
+            aria-label="목소리 인식 중"
+            aria-live="polite"
+          >
+            <span class="inline-voice-icon" aria-hidden="true">
+              <img :src="microphoneIcon" alt="" />
+            </span>
+            <div
+              class="automatic-voice-wave"
+              :class="{
+                recording: voiceRecorder.state.status === 'recording',
+                evaluating: voiceSubmitting,
+              }"
+              role="status"
+            >
+              <span v-for="index in 7" :key="index" aria-hidden="true"></span>
+            </div>
+          </aside>
+        </Transition>
       </div>
     </div>
 
@@ -932,43 +1101,6 @@ const isSavingFailed = computed(() => session.savingState.status === 'failed')
             <button class="retry-button" type="button" @click="saveAndFinish">다시 시도할래요</button>
           </template>
         </div>
-      </div>
-    </Transition>
-
-    <Transition name="fade">
-      <div
-        v-if="voiceGateOpen"
-        class="device-blocker"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="voice-gate-title"
-      >
-        <section class="device-blocker-panel">
-          <span class="device-blocker-icon" aria-hidden="true">
-            <svg viewBox="0 0 48 48">
-              <rect x="17" y="6" width="14" height="25" rx="7" />
-              <path d="M11 23c0 8 5.8 14 13 14s13-6 13-14M24 37v7M17 44h14" />
-            </svg>
-          </span>
-          <h2 id="voice-gate-title">{{ serverQuestions[session.progressState.currentQuestionIndex]?.expectedText }}</h2>
-          <p>{{ voiceFeedback || '완성한 글자나 문장을 소리 내어 읽어 주세요.' }}</p>
-          <button
-            v-if="voiceRecorder.state.status !== 'recorded'"
-            type="button"
-            :disabled="voiceRecorder.state.status === 'requesting'"
-            @click="toggleVoiceRecording"
-          >
-            {{ voiceRecorder.state.status === 'recording' ? '녹음 끝내기' : '녹음 시작하기' }}
-          </button>
-          <button
-            v-else
-            type="button"
-            :disabled="voiceSubmitting"
-            @click="submitVoiceRecording"
-          >
-            {{ voiceSubmitting ? '점수를 확인하고 있어요…' : '발음 점수 확인하기' }}
-          </button>
-        </section>
       </div>
     </Transition>
 

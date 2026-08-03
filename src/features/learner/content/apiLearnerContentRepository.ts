@@ -29,6 +29,13 @@ interface StoryShelfDto {
 }
 
 interface StoryLinesDto {
+  readonly storyId: number
+  readonly storyStatus: 'UNREAD' | 'IN_PROGRESS' | 'COMPLETED'
+  readonly currentDay: number
+  readonly availableDay: number
+  readonly totalDays: number
+  readonly pagesPerDay: number
+  readonly dayComplete: boolean
   readonly storyLines: readonly {
     readonly lineId: number
     readonly storyId: number
@@ -103,11 +110,15 @@ export class ApiLearnerContentRepository implements LearnerContentRepository {
     const orderedTrainings = [...response.trainings].sort(
       (left, right) => left.sequenceNo - right.sequenceNo,
     )
-    const current = orderedTrainings.find((training) => (
+    const explicitlyCurrent = orderedTrainings.find((training) => (
       training.status === 'NOT_STARTED' || training.status === 'IN_PROGRESS'
     ))
     const allCompleted = orderedTrainings.length > 0
       && orderedTrainings.every((training) => training.status === 'COMPLETED')
+    const current = explicitlyCurrent
+      ?? (allCompleted
+        ? undefined
+        : orderedTrainings.find((training) => training.status !== 'COMPLETED'))
 
     return {
       curriculumId: String(response.curriculumId),
@@ -195,6 +206,12 @@ export class ApiLearnerContentRepository implements LearnerContentRepository {
       title: '나의 이야기',
       character: '이야기 친구',
       branchQuestion: '다음에는 어떤 일이 일어날까요?',
+      status: response.storyStatus,
+      currentDay: response.currentDay,
+      availableDay: response.availableDay,
+      totalDays: response.totalDays,
+      pagesPerDay: response.pagesPerDay,
+      dayComplete: response.dayComplete,
       pages: [...response.storyLines]
         .sort((left, right) => (
           (left.sceneOrder ?? 0) - (right.sceneOrder ?? 0)

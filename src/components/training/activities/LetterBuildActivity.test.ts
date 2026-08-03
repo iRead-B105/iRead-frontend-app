@@ -112,6 +112,8 @@ describe('LetterBuildActivity', () => {
     const wrapper = mount(LetterBuildActivity, { props: { question: compoundQuestion } })
     const finalSlots = wrapper.findAll('.build-slot--final')
 
+    expect(wrapper.get('.slot-row').classes()).toContain('slot-row--has-final')
+    expect(wrapper.get('.slot-row').classes()).toContain('slot-row--compound-final')
     expect(finalSlots).toHaveLength(2)
     expect(finalSlots[0]!.classes()).toContain('build-slot--part-0')
     expect(finalSlots[1]!.classes()).toContain('build-slot--part-1')
@@ -166,6 +168,7 @@ describe('LetterBuildActivity', () => {
     const wrapper = mount(LetterBuildActivity, { props: { question: verticalQuestion } })
 
     expect(wrapper.get('.slot-row').classes()).toContain('slot-row--vertical-stack')
+    expect(wrapper.get('.slot-row').classes()).toContain('slot-row--has-final')
     expect(wrapper.findAll('.build-slot')).toHaveLength(3)
     wrapper.unmount()
   })

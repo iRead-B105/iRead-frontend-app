@@ -76,6 +76,10 @@ const medialAnswerText = computed(() => {
   return medialSlot ? choiceText(sourceChoiceById(medialSlot.answerChoiceId)) : ''
 })
 const hasCompoundMedial = computed(() => splitJamo(medialAnswerText.value).length > 1)
+const hasFinal = computed(() => visualSlots.value.some((slot) => slot.role === 'final'))
+const hasCompoundFinal = computed(
+  () => visualSlots.value.filter((slot) => slot.role === 'final').length > 1,
+)
 const usesVerticalStack = computed(
   () => !hasCompoundMedial.value && ['ㅗ', 'ㅛ', 'ㅜ', 'ㅠ', 'ㅡ'].includes(medialAnswerText.value),
 )
@@ -242,6 +246,8 @@ watch(
             'slot-row--wrong': session.progressState.isCurrentCorrect === false,
             'slot-row--vertical-stack': usesVerticalStack,
             'slot-row--compound-medial': hasCompoundMedial,
+            'slot-row--has-final': hasFinal,
+            'slot-row--compound-final': hasCompoundFinal,
           }"
         >
           <template v-for="(buildSlot, index) in visualSlots" :key="buildSlot.id">

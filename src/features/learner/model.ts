@@ -89,6 +89,12 @@ export interface LearnerStoryDetail {
   readonly title: string
   readonly character: string
   readonly branchQuestion: string
+  readonly status: LearnerStoryStatus
+  readonly currentDay: number
+  readonly availableDay: number
+  readonly totalDays: number
+  readonly pagesPerDay: number
+  readonly dayComplete: boolean
   readonly pages: readonly LearnerStoryPage[]
 }
 

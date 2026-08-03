@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { TrainingQuestion, WordReadingItem } from '@/types/training'
 import { useAudioPlayer } from '@/composables/useAudioPlayer'
 import { useTrainingSession } from '@/composables/useTrainingSession'
@@ -311,6 +311,18 @@ onMounted(() => {
       dwellProgress.value = 0
     }
   }, 50)
+  void nextTick(startReading)
+})
+
+watch(() => props.question.id, () => {
+  stopRecognition()
+  started.value = false
+  activeIndex.value = 0
+  completedIds.value = []
+  failureCount.value = 0
+  assistIndex.value = null
+  messageState.value = 'ready'
+  void nextTick(startReading)
 })
 
 onBeforeUnmount(() => {
@@ -360,17 +372,7 @@ onBeforeUnmount(() => {
           {{ statusMessage }}
         </div>
         <footer class="action-bar">
-          <button
-            v-if="!started"
-            class="start-button start-button--icon-only"
-            type="button"
-            aria-label="마이크로 읽기 시작"
-            @click="startReading"
-          >
-            <img :src="readingActiveIcon" alt="" aria-hidden="true" />
-          </button>
-          <button v-else-if="messageState === 'denied'" class="start-button" type="button" @click="startReading">다시 시작</button>
-          <button v-else-if="allComplete" class="next-button shared-next-source" type="button" @click="$emit('next')">다음</button>
+          <button v-if="allComplete" class="next-button shared-next-source" type="button" @click="$emit('next')">다음</button>
         </footer>
       </aside>
     </div>

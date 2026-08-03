@@ -5,7 +5,7 @@ export const repeatSentenceLesson: TrainingLesson = {
   categoryId: 'short-text',
   title: '한 문장 따라 읽기',
   description: '짧은 문장을 듣고 따라 읽어요.',
-  activityType: 'read-aloud',
+  activityType: 'word-reading-grid',
   estimatedMinutes: 8,
   questions: [
     { id: 'q1', instruction: '듣고 따라 읽어봐요.', targetText: '강아지가 공을 굴려요.', phraseChunks: ['강아지가', '공을', '굴려요.'], answer: 'q1', feedback: { correct: '문장을 끝까지 읽었어요!', retry: '천천히 다시 읽어봐요.' } },
@@ -37,7 +37,7 @@ export const hardWordLesson: TrainingLesson = {
   categoryId: 'short-text',
   title: '어려운 단어 먼저 읽기',
   description: '긴 낱말을 음절로 나눠 읽어요.',
-  activityType: 'read-aloud',
+  activityType: 'word-reading-grid',
   estimatedMinutes: 8,
   questions: [
     { id: 'q1', instruction: '한 칸씩 천천히 읽어봐요.', targetText: '민들레', phraseChunks: ['민', '들', '레'], answer: 'q1', feedback: { correct: '민들레를 끝까지 읽었어요!', retry: '민, 들, 레로 나눠 읽어봐요.' } },

@@ -23,16 +23,19 @@ let loadPromise: Promise<void> | null = null
 let loadingStudentId: string | null = null
 let loadedStudentId: string | null = null
 
-const loadCurrentCurriculum = () => {
+const loadCurrentCurriculum = (preserveExisting = false) => {
   const studentId = getCachedStudent().studentId
   if (loadPromise && loadingStudentId === studentId) return loadPromise
   if (loadedStudentId === studentId && !curriculumError.value) return Promise.resolve()
 
-  curriculumItems.splice(0, curriculumItems.length)
-  curriculumId.value = ''
-  studyDate.value = null
-  currentIndex.value = 0
-  curriculumStatus.value = 'preparing'
+  const keepVisibleCurriculum = preserveExisting && curriculumItems.length > 0
+  if (!keepVisibleCurriculum) {
+    curriculumItems.splice(0, curriculumItems.length)
+    curriculumId.value = ''
+    studyDate.value = null
+    currentIndex.value = 0
+    curriculumStatus.value = 'preparing'
+  }
   curriculumError.value = null
   loadingStudentId = studentId
 
@@ -64,10 +67,10 @@ const loadCurrentCurriculum = () => {
     })
     .catch((error: unknown) => {
       if (getCachedStudent().studentId !== studentId) return
-      curriculumStatus.value = 'preparing'
+      if (!keepVisibleCurriculum) curriculumStatus.value = 'preparing'
       curriculumError.value =
         error instanceof Error ? error.message : '오늘 학습 정보를 불러오지 못했어요.'
-      loadedStudentId = null
+      loadedStudentId = keepVisibleCurriculum ? studentId : null
     })
     .finally(() => {
       if (loadPromise === task) {
@@ -87,8 +90,9 @@ const reloadCurrentCurriculum = async () => {
     if (curriculumError.value) throw new Error(curriculumError.value)
     return
   }
+  const preserveExisting = loadedStudentId === studentId && curriculumItems.length > 0
   loadedStudentId = null
-  await loadCurrentCurriculum()
+  await loadCurrentCurriculum(preserveExisting)
   if (curriculumError.value) {
     throw new Error(curriculumError.value)
   }

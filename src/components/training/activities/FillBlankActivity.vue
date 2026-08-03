@@ -1,9 +1,8 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { TrainingChoice, TrainingQuestion } from '@/types/training'
 import { useTrainingSession } from '@/composables/useTrainingSession'
 import dragHandleIcon from '@/assets/icons/drag-handle.svg'
-import readingActiveIcon from '@/assets/icons/reading-active.svg'
 
 const props = defineProps<{ question: TrainingQuestion }>()
 defineEmits<{ next: [] }>()
@@ -27,10 +26,10 @@ type SpeechState = 'waiting' | 'listening' | 'retry' | 'success' | 'denied'
 
 const session = useTrainingSession()
 const choices = computed<TrainingChoice[]>(() => props.question.choices ?? [])
-const sentenceParts = computed(() => (props.question.targetText ?? '').split('___'))
+const sentenceParts = computed(() => (props.question.targetText ?? '').split(/___|\{\{blank\}\}/))
 const correctChoice = computed(() => choices.value.find((choice) => choice.id === props.question.answer) ?? null)
 const completedSentence = computed(() =>
-  (props.question.targetText ?? '').replace('___', correctChoice.value?.text ?? ''),
+  (props.question.targetText ?? '').replace(/___|\{\{blank\}\}/, correctChoice.value?.text ?? ''),
 )
 
 const placedChoice = ref<TrainingChoice | null>(null)
@@ -44,6 +43,7 @@ const speechState = ref<SpeechState>('waiting')
 const speechMessage = ref('')
 let recognition: SpeechRecognitionLike | null = null
 let wrongTimer: ReturnType<typeof setTimeout> | null = null
+let speechRetryTimer: ReturnType<typeof setTimeout> | null = null
 
 const isFilled = computed(() => placedChoice.value?.id === props.question.answer)
 const showHint = computed(() => attempts.value >= 2 && !isFilled.value)
@@ -70,6 +70,7 @@ const handleTranscript = (transcript: string) => {
   else {
     speechState.value = 'retry'
     speechMessage.value = '한 번 더 읽어봐!'
+    speechRetryTimer = setTimeout(startSpeech, 900)
   }
 }
 
@@ -101,17 +102,25 @@ const startSpeech = () => {
     if (event.error !== 'aborted') {
       speechState.value = 'retry'
       speechMessage.value = '한 번 더 읽어봐!'
+      speechRetryTimer = setTimeout(startSpeech, 900)
     }
   }
   recognition.onend = () => {
     if (speechState.value === 'listening') {
       speechState.value = 'retry'
       speechMessage.value = '한 번 더 읽어봐!'
+      speechRetryTimer = setTimeout(startSpeech, 900)
     }
     recognition = null
   }
   recognition.start()
 }
+
+watch(isFilled, (filled) => {
+  if (!filled) return
+  if (speechRetryTimer) clearTimeout(speechRetryTimer)
+  speechRetryTimer = setTimeout(startSpeech, 450)
+})
 
 const evaluateChoice = (choiceId: string) => {
   if (isFilled.value) return
@@ -181,6 +190,7 @@ onBeforeUnmount(() => {
   window.removeEventListener('pointercancel', cancelPointerDrag)
   recognition?.stop()
   if (wrongTimer) clearTimeout(wrongTimer)
+  if (speechRetryTimer) clearTimeout(speechRetryTimer)
 })
 </script>
 
@@ -234,17 +244,7 @@ onBeforeUnmount(() => {
     </Teleport>
 
     <footer class="action-bar">
-      <button
-        v-if="isFilled && !isComplete"
-        class="speak-button"
-        type="button"
-        :disabled="speechState === 'listening'"
-        @click="startSpeech"
-      >
-        <img :src="readingActiveIcon" alt="" aria-hidden="true" />
-        {{ speechState === 'listening' ? '듣고 있어' : '문장 읽기' }}
-      </button>
-      <button v-else-if="isComplete" class="next-button shared-next-source" type="button" @click="$emit('next')">다음</button>
+      <button v-if="isComplete" class="next-button shared-next-source" type="button" @click="$emit('next')">다음</button>
     </footer>
   </section>
 </template>

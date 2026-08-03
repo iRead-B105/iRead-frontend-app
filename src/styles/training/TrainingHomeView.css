@@ -17,6 +17,12 @@
   background-repeat: no-repeat;
 }
 
+/* The launcher now lives in LearnerLayout so it is available on every learner screen. */
+.training-home > .debug-view-button,
+.training-home > .debug-launcher-backdrop {
+  display: none;
+}
+
 .debug-view-button {
   position: fixed;
   z-index: 31;

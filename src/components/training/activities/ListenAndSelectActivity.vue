@@ -5,7 +5,6 @@ import { useTrainingSession } from '@/composables/useTrainingSession'
 import SoundButton from '../SoundButton.vue'
 import LetterCard from '../LetterCard.vue'
 import ResourceRequired from '../ResourceRequired.vue'
-import soundIcon from '@/assets/icons/sound-listen.svg'
 
 const props = defineProps<{ question: TrainingQuestion }>()
 defineEmits<{ next: [] }>()
@@ -45,16 +44,9 @@ const handleSelect = (choice: TrainingChoice) => {
 
     <div class="activity-main">
       <div class="target-area">
-        <div class="target-visual">
+        <div v-if="question.targetImage || question.targetImageLabel" class="target-visual">
           <img v-if="question.targetImage" class="target-image" :src="question.targetImage" :alt="question.targetText || '낱말 그림'" />
           <ResourceRequired v-else-if="question.targetImageLabel" :label="question.targetImageLabel" size="medium" />
-          <div
-            v-else-if="question.audioPromptEnabled !== false"
-            class="target-sound-visual"
-            aria-hidden="true"
-          >
-            <img :src="soundIcon" alt="" />
-          </div>
         </div>
         <strong v-if="question.targetText" class="target-word">{{ question.targetText }}</strong>
         <SoundButton
@@ -76,13 +68,6 @@ const handleSelect = (choice: TrainingChoice) => {
                 { 'answer-hint': showAnswerHint(choice) },
               ]"
             >
-              <SoundButton
-                v-if="question.choiceAudioEnabled === true"
-                :text="choice.text"
-                size="medium"
-                variant="ghost"
-                :disabled="isAnswered"
-              />
               <button
                 class="word-select"
                 type="button"

@@ -223,7 +223,7 @@
 .word-choice strong {
   color: #263853;
   font-family: var(--learner-font-display);
-  font-size: 32px;
+  font-size: clamp(32px, 3.2cqw, 46px);
   font-weight: 900;
 }
 
@@ -455,7 +455,7 @@
   }
 
   .word-choice strong {
-    font-size: 24px;
+    font-size: 30px;
   }
 
   .learning-cue {
@@ -573,7 +573,7 @@
   }
 
   .word-choice strong {
-    font-size: 27px;
+    font-size: 30px;
   }
 
   .word-choice :deep(.sound-button) {

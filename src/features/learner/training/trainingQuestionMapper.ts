@@ -236,6 +236,8 @@ function mapChoice(number: number, source: StudentQuestionDto): {
   const activityType: TrainingActivityType =
     source.questionType === 'SIMILAR_SOUND_CHOICE'
       ? 'sound-choice'
+      : source.questionType === 'IMAGE_SENTENCE_MATCH'
+        ? 'sentence-choice'
       : audioLetterTypes.has(source.questionType)
         ? 'audio-letter-choice'
         : 'listen-and-select'
@@ -266,7 +268,7 @@ function mapOrdering(number: number, source: StudentQuestionDto): {
   const answer = order.map(choiceId).join('|')
   if (source.questionType === 'SENTENCE_ASSEMBLY') {
     return {
-      activityType: 'sound-blend',
+      activityType: 'sentence-order',
       question: {
         ...baseQuestion(number, '낱말 카드를 순서대로 놓아요', answer),
         soundParts: cards,
@@ -399,7 +401,7 @@ function mapAudio(number: number, source: StudentQuestionDto): {
         chunks: text.split(/\s+/),
       }))
     return {
-      activityType: 'sentence-reading',
+      activityType: 'word-reading-grid',
       expectedText,
       question: {
         ...baseQuestion(number, '처음부터 차례대로 읽어요', expectedText),
@@ -429,7 +431,7 @@ function mapAudio(number: number, source: StudentQuestionDto): {
     phraseChunks = [expectedText]
   }
   return {
-    activityType: 'read-aloud',
+    activityType: 'word-reading-grid',
     expectedText,
     question: {
       ...baseQuestion(number, '소리 내어 읽어요', expectedText),
@@ -468,7 +470,7 @@ export function mapTrainingQuestion(payload: LearnerTrainingQuestionPayload): Ma
     question = mapTrace(payload.questionNumber, source)
     expectedText = requiredString(source.content, 'soundText')
   } else if (source.questionType === 'FILL_IN_THE_BLANK') {
-    activityType = 'listen-and-select'
+    activityType = 'fill-blank'
     question = mapFillBlank(payload.questionNumber, source)
   } else if (source.responseType === 'SINGLE_CHOICE') {
     const mapped = source.questionType.endsWith('_DELETE') || source.questionType === 'SYLLABLE_REPLACE'

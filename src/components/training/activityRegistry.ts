@@ -21,13 +21,11 @@ export const trainingActivityComponents: Partial<
   'letter-build': LetterBuildActivity,
   'sound-manipulation': SoundManipulationActivity,
   'word-reading-grid': WordReadingGridActivity,
-  'sentence-reading': WordReadingGridActivity,
   'listen-and-select': ListenAndSelectActivity,
   'sound-choice': SoundChoiceActivity,
   'sound-omit': SoundOmitActivity,
   'sound-blend': SoundBuildActivity,
   'sentence-choice': SentenceChoiceActivity,
-  'read-aloud': WordReadingGridActivity,
   'fill-blank': FillBlankActivity,
   'sentence-order': SentenceOrderActivity,
 }

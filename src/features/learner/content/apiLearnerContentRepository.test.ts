@@ -48,6 +48,13 @@ describe('API learner content repository', () => {
 
   it('Spring line 단위를 아동 reader의 페이지 모델로 변환한다', async () => {
     vi.spyOn(learnerApiClient, 'request').mockResolvedValue({
+      storyId: 31,
+      storyStatus: 'IN_PROGRESS',
+      currentDay: 2,
+      availableDay: 2,
+      totalDays: 10,
+      pagesPerDay: 10,
+      dayComplete: false,
       storyLines: [
         {
           lineId: 9,
@@ -78,6 +85,14 @@ describe('API learner content repository', () => {
     expect(result.pages.map((page) => page.lineId)).toEqual(['8', '9'])
     expect(result.pages[1]?.lines).toEqual(['토끼가 숲길을 걸었어요.'])
     expect(result.pages[1]?.requiresBranchInput).toBe(true)
+    expect(result).toMatchObject({
+      status: 'IN_PROGRESS',
+      currentDay: 2,
+      availableDay: 2,
+      totalDays: 10,
+      pagesPerDay: 10,
+      dayComplete: false,
+    })
   })
 
   it('현재 커리큘럼과 성장 정보를 화면 모델로 변환한다', async () => {
@@ -184,5 +199,41 @@ describe('API learner content repository', () => {
       { signal: undefined },
     )
     expect(result.calibrationRequired).toBe(true)
+  })
+
+  it('marks the first incomplete lesson as current when only NOT_READY remains', async () => {
+    vi.spyOn(learnerApiClient, 'request').mockResolvedValue({
+      curriculumId: 72,
+      curriculumStatus: 'IN_PROGRESS',
+      trainings: [
+        {
+          trainingId: 201,
+          trainingTemplateId: 22,
+          trainingType: 'WORD_READING',
+          sequenceNo: 1,
+          unitName: 'unit',
+          trainingName: 'completed',
+          status: 'COMPLETED',
+        },
+        {
+          trainingId: 202,
+          trainingTemplateId: 2500,
+          trainingType: 'SENTENCE_READING',
+          sequenceNo: 2,
+          unitName: 'unit',
+          trainingName: 'next',
+          status: 'NOT_READY',
+        },
+      ],
+    })
+    const repository = new ApiLearnerContentRepository()
+
+    const curriculum = await repository.getCurrentCurriculum('101')
+
+    expect(curriculum.currentOrder).toBe(2)
+    expect(curriculum.trainings.map((training) => training.status)).toEqual([
+      'COMPLETED',
+      'CURRENT',
+    ])
   })
 })

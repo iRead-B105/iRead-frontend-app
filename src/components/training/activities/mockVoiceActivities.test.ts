@@ -53,9 +53,8 @@ describe('mock voice activities', () => {
     startQuestion('word-reading-grid', question)
     const wrapper = mount(WordReadingGridActivity, { props: { question } })
 
-    await wrapper.get('.start-button').trigger('click')
-
-    expect(session.progressState.isCurrentCorrect).toBe(true)
+    await vi.waitFor(() => expect(session.progressState.isCurrentCorrect).toBe(true))
+    expect(wrapper.find('.start-button').exists()).toBe(false)
     expect(wrapper.find('.next-button').exists()).toBe(true)
     wrapper.unmount()
   })
@@ -70,12 +69,11 @@ describe('mock voice activities', () => {
         chunks: ['아기는', '사과를', '먹는다'],
       }],
     }
-    startQuestion('sentence-reading', question)
+    startQuestion('word-reading-grid', question)
     const wrapper = mount(SentenceReadingActivity, { props: { question } })
 
-    await wrapper.get('.start-button').trigger('click')
-
-    expect(session.progressState.isCurrentCorrect).toBe(true)
+    await vi.waitFor(() => expect(session.progressState.isCurrentCorrect).toBe(true))
+    expect(wrapper.find('.start-button').exists()).toBe(false)
     expect(wrapper.find('.next-button').exists()).toBe(true)
     wrapper.unmount()
   })
@@ -88,12 +86,11 @@ describe('mock voice activities', () => {
       targetText: '아기는 사과를 먹는다.',
       phraseChunks: ['아기는', '사과를', '먹는다.'],
     }
-    startQuestion('read-aloud', question)
+    startQuestion('word-reading-grid', question)
     const wrapper = mount(ReadAloudActivity, { props: { question } })
 
-    await wrapper.get('.mic-button').trigger('click')
-
-    expect(session.progressState.isCurrentCorrect).toBe(true)
+    await vi.waitFor(() => expect(session.progressState.isCurrentCorrect).toBe(true))
+    expect(wrapper.get('.mic-button').element.tagName).toBe('DIV')
     expect(wrapper.get('.action--primary').attributes('disabled')).toBeUndefined()
     wrapper.unmount()
   })

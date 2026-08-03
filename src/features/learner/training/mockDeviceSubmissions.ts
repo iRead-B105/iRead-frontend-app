@@ -12,9 +12,8 @@ function parseBooleanEnv(value: string | undefined, defaultValue: boolean): bool
 
 export const mockDeviceSubmissionsEnabled = parseBooleanEnv(
   import.meta.env.VITE_MOCK_DEVICE_SUBMISSIONS,
-  // 프로덕션 빌드는 실제 장치 입력을 강제(가짜 gaze/음성 차단).
-  // dev/데모(장치 없음)는 true로 흐름이 완료되도록 둔다.
-  !import.meta.env.PROD,
+  // 개발 서버도 실제 장치 입력이 기본이다. 목 입력은 테스트나 명시적 환경 설정에서만 켠다.
+  false,
 )
 export const mockVoiceSubmissionsEnabled = parseBooleanEnv(
   import.meta.env.VITE_MOCK_VOICE_SUBMISSIONS,

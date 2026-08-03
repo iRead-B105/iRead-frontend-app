@@ -22,7 +22,20 @@ export const findLessonSummary = (
 ): TrainingLessonSummary | null => {
   const category = getCategoryById(categoryId)
   if (!category) return null
-  return category.lessons.find((l) => l.id === lessonId) ?? null
+  const listedLesson = category.lessons.find((lesson) => lesson.id === lessonId)
+  if (listedLesson) return listedLesson
+
+  const playableLesson = getLessonById(lessonId)
+  if (!playableLesson || playableLesson.categoryId !== categoryId) return null
+  return {
+    id: playableLesson.id,
+    categoryId: playableLesson.categoryId,
+    title: playableLesson.title,
+    description: playableLesson.description,
+    activityType: playableLesson.activityType,
+    estimatedMinutes: playableLesson.estimatedMinutes,
+    isReady: true,
+  }
 }
 
 // 해당 레슨이 (1) 존재하고 (2) 플레이 준비가 되었는지 검사

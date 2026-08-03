@@ -18,7 +18,7 @@ export const shortPassageReadingLesson: TrainingLesson = {
   categoryId: 'fluency',
   title: '짧은 글 읽기',
   description: '문장을 차례대로 이어 읽어요.',
-  activityType: 'sentence-reading',
+  activityType: 'word-reading-grid',
   estimatedMinutes: 10,
   questions: [
     passage('passage-1', [

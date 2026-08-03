@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { devPreviewLessons, getLessonById } from './trainingLessons'
+import {
+  devPreviewLessons,
+  devPreviewSourceLessonIds,
+  getLessonById,
+  lessonMap,
+} from './trainingLessons'
 
 describe('DEV 훈련 화면 미리보기', () => {
   it('같은 화면을 쓰는 훈련을 화면 유형별 대표 레슨으로 묶는다', () => {
@@ -28,7 +33,7 @@ describe('DEV 훈련 화면 미리보기', () => {
     ])
   })
 
-  it('읽기 훈련은 낱말, 겹받침, 의미 없는 말, 짧은 문장 순서로 통합한다', () => {
+  it('읽기 훈련의 모든 난이도와 의미 유형을 하나의 읽기 화면으로 통합한다', () => {
     const lesson = getLessonById('dev-preview-word-reading-grid')
 
     expect(lesson?.questions.map((question) => question.id)).toEqual([
@@ -36,6 +41,19 @@ describe('DEV 훈련 화면 미리보기', () => {
       'dev-word-reading-grid-read-batchim-words',
       'dev-word-reading-grid-read-nonwords',
       'dev-word-reading-grid-read-short-sentences',
+      'dev-word-reading-grid-hard-word',
+      'dev-word-reading-grid-read-sentences',
+      'dev-word-reading-grid-read-short-passage',
+      'dev-word-reading-grid-follow-sentence',
+      'dev-word-reading-grid-word-chain',
+      'dev-word-reading-grid-phrase-reading',
+      'dev-word-reading-grid-re-read',
+      'dev-word-reading-grid-short-story',
+      'dev-word-reading-grid-repeat-sentence',
     ])
+  })
+
+  it('치트 메뉴에서 목 학습 레슨을 빠짐없이 열 수 있다', () => {
+    expect(new Set(devPreviewSourceLessonIds)).toEqual(new Set(Object.keys(lessonMap)))
   })
 })

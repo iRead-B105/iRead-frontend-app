@@ -32,6 +32,9 @@ const currentStepNumber = computed(() => {
   const index = props.steps.findIndex((step) => step.status === 'current')
   return index < 0 ? props.steps.length : index + 1
 })
+const currentTrainingId = computed(() =>
+  props.steps.find((step) => step.status === 'current')?.trainingId ?? null,
+)
 
 const studyDateLabel = computed(() => formatCurriculumStudyDate(props.studyDate))
 
@@ -104,11 +107,11 @@ const movePath = (direction: -1 | 1) => {
 }
 
 watch(
-  () => [
-    props.steps.findIndex((step) => step.status === 'current'),
-    props.steps.length,
-  ] as const,
-  ([currentIndex]) => {
+  [currentTrainingId, () => props.steps.length],
+  ([currentId]) => {
+    const currentIndex = currentId
+      ? props.steps.findIndex((step) => step.trainingId === currentId)
+      : -1
     const fallbackIndex = Math.max(props.steps.length - 1, 0)
     const targetIndex = currentIndex < 0 ? fallbackIndex : currentIndex
     pathPage.value = Math.min(

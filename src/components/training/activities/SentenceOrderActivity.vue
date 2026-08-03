@@ -3,7 +3,6 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { TrainingChoice, TrainingQuestion } from '@/types/training'
 import { useTrainingSession } from '@/composables/useTrainingSession'
 import dragHandleIcon from '@/assets/icons/drag-handle.svg'
-import readingActiveIcon from '@/assets/icons/reading-active.svg'
 
 const props = defineProps<{ question: TrainingQuestion }>()
 defineEmits<{ next: [] }>()
@@ -41,6 +40,7 @@ const dragPoint = ref({ x: 0, y: 0 })
 const overSlotIndex = ref<number | null>(null)
 let wrongTimer: ReturnType<typeof setTimeout> | null = null
 let recognition: SpeechRecognitionLike | null = null
+let speechRetryTimer: ReturnType<typeof setTimeout> | null = null
 
 const placed = computed(() => slots.value.map((id) => choices.value.find((choice) => choice.id === id) ?? null))
 const remaining = computed(() => choices.value.filter((choice) => !slots.value.includes(choice.id)))
@@ -88,6 +88,7 @@ const handleTranscript = (transcript: string) => {
   else {
     speechState.value = 'retry'
     statusMessage.value = '한 번 더 읽어봐!'
+    speechRetryTimer = setTimeout(startSpeech, 900)
   }
 }
 const startSpeech = () => {
@@ -117,17 +118,25 @@ const startSpeech = () => {
     if (event.error !== 'aborted') {
       speechState.value = 'retry'
       statusMessage.value = '한 번 더 읽어봐!'
+      speechRetryTimer = setTimeout(startSpeech, 900)
     }
   }
   recognition.onend = () => {
     if (speechState.value === 'listening') {
       speechState.value = 'retry'
       statusMessage.value = '한 번 더 읽어봐!'
+      speechRetryTimer = setTimeout(startSpeech, 900)
     }
     recognition = null
   }
   recognition.start()
 }
+
+watch(assemblyCorrect, (correct) => {
+  if (!correct) return
+  if (speechRetryTimer) clearTimeout(speechRetryTimer)
+  speechRetryTimer = setTimeout(startSpeech, 450)
+})
 
 const evaluateSentence = () => {
   if (!allFilled.value || assemblyCorrect.value) return
@@ -221,6 +230,7 @@ onBeforeUnmount(() => {
   window.removeEventListener('iread:speech', onExternalSpeech)
   recognition?.stop()
   if (wrongTimer) clearTimeout(wrongTimer)
+  if (speechRetryTimer) clearTimeout(speechRetryTimer)
 })
 </script>
 
@@ -275,11 +285,7 @@ onBeforeUnmount(() => {
     </Teleport>
 
     <footer class="action-bar">
-      <button v-if="assemblyCorrect && !isComplete" class="speak-button" type="button" :disabled="speechState === 'listening'" @click="startSpeech">
-        <img :src="readingActiveIcon" alt="" aria-hidden="true" />
-        {{ speechState === 'listening' ? '듣고 있어' : '문장 읽기' }}
-      </button>
-      <button v-else-if="isComplete" class="next-button shared-next-source" type="button" @click="$emit('next')">다음</button>
+      <button v-if="isComplete" class="next-button shared-next-source" type="button" @click="$emit('next')">다음</button>
     </footer>
   </section>
 </template>

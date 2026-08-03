@@ -159,7 +159,7 @@
 
 .sentence-card strong {
   font-family: var(--learner-font-display);
-  font-size: clamp(20px,2cqw,29px);
+  font-size: clamp(24px,2.25cqw,34px);
   font-weight: 900;
 }
 

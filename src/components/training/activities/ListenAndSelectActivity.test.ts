@@ -49,7 +49,7 @@ describe('ListenAndSelectActivity', () => {
       answer: 'choice-0',
       targetText: '책상 위에 빈칸 그림이 있어.',
       audioPromptEnabled: false,
-      choiceAudioEnabled: false,
+      choiceAudioEnabled: true,
       choices: [
         { id: 'choice-0', text: '사과' },
         { id: 'choice-1', text: '기차' },

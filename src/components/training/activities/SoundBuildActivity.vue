@@ -4,7 +4,6 @@ import type { TrainingChoice, TrainingQuestion } from '@/types/training'
 import { useTrainingSession } from '@/composables/useTrainingSession'
 import { useAudioPlayer } from '@/composables/useAudioPlayer'
 import SoundButton from '../SoundButton.vue'
-import soundIcon from '@/assets/icons/sound-listen.svg'
 
 const props = defineProps<{ question: TrainingQuestion }>()
 defineEmits<{ next: [] }>()
@@ -130,14 +129,6 @@ const onDrop = (index: number) => {
       <div class="function-panel">
         <div v-if="question.audioPromptEnabled !== false" class="sound-panel">
           <strong v-if="isSplit" class="target-word">{{ question.targetText }}</strong>
-          <div v-else class="sound-pieces" aria-hidden="true">
-            <template v-for="(_, index) in question.soundParts" :key="index">
-              <span class="sound-piece">
-                <img :src="soundIcon" alt="" />
-              </span>
-              <span v-if="index < slotCount - 1" class="piece-plus">+</span>
-            </template>
-          </div>
           <SoundButton
             :text="question.targetText || question.soundParts?.join('') || ''"
             :parts="isSplit ? undefined : question.soundParts"

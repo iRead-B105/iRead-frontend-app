@@ -18,16 +18,19 @@ const makeSteps = (currentIndex: number): CurriculumPathStep[] =>
     lesson: {
       id: `lesson-${index + 1}`,
       categoryId: 'phonics',
-      title: `${index + 1}번 훈련`,
-      description: '페이지 배치 검증',
+      title: `lesson ${index + 1}`,
+      description: 'pagination test lesson',
       activityType: 'listen-and-select',
       estimatedMinutes: 3,
       isReady: true,
     },
   }))
 
-describe('TrainingCurriculumPath 페이지 배치', () => {
-  it('네 개씩 배치하고 마지막 페이지는 남은 발판만 표시한다', async () => {
+const visibleTitles = (wrapper: ReturnType<typeof mount>) =>
+  wrapper.findAll('.lesson-node strong').map((node) => node.text())
+
+describe('TrainingCurriculumPath pagination', () => {
+  it('renders four steps per page and only the remainder on the last page', async () => {
     const wrapper = mount(TrainingCurriculumPath, {
       props: { steps: makeSteps(0), studyDate: '2026-07-30' },
     })
@@ -46,39 +49,39 @@ describe('TrainingCurriculumPath 페이지 배치', () => {
     expectFourFixedPositions()
     await wrapper.find('.path-nav--right').trigger('click')
     expectFourFixedPositions()
-    expect(wrapper.findAll('.lesson-node').map((node) => node.attributes('aria-label'))).toEqual([
-      expect.stringContaining('5번'),
-      expect.stringContaining('6번'),
-      expect.stringContaining('7번'),
-      expect.stringContaining('8번'),
-    ])
+    expect(visibleTitles(wrapper)).toEqual(['lesson 5', 'lesson 6', 'lesson 7', 'lesson 8'])
 
     await wrapper.find('.path-nav--right').trigger('click')
     const lastPageNodes = wrapper.findAll('.lesson-node')
     expect(lastPageNodes).toHaveLength(2)
-    expect(lastPageNodes.map((node) => node.attributes('aria-label'))).toEqual([
-      expect.stringContaining('9번'),
-      expect.stringContaining('10번'),
-    ])
+    expect(visibleTitles(wrapper)).toEqual(['lesson 9', 'lesson 10'])
     expect(lastPageNodes.map((node) => node.attributes('style'))).toEqual([
       expect.stringContaining('left: 145px'),
       expect.stringContaining('left: 410px'),
     ])
   })
 
-  it('처음 열 때 현재 토끼가 있는 페이지로 이동한다', () => {
+  it('opens on the page containing the current lesson', () => {
     const wrapper = mount(TrainingCurriculumPath, {
       props: { steps: makeSteps(5), studyDate: '2026-07-30' },
     })
 
-    expect(wrapper.findAll('.lesson-node').map((node) => node.attributes('aria-label'))).toEqual([
-      expect.stringContaining('5번'),
-      expect.stringContaining('6번'),
-      expect.stringContaining('7번'),
-      expect.stringContaining('8번'),
-    ])
+    expect(visibleTitles(wrapper)).toEqual(['lesson 5', 'lesson 6', 'lesson 7', 'lesson 8'])
     expect(wrapper.find('.lesson-node--current .path-rabbit').exists()).toBe(true)
     expect(wrapper.find('.path-nav--left').attributes()).not.toHaveProperty('disabled')
     expect(wrapper.find('.path-nav--right').attributes()).not.toHaveProperty('disabled')
+  })
+
+  it('keeps the page selected by the user when background data retains the same current lesson', async () => {
+    const wrapper = mount(TrainingCurriculumPath, {
+      props: { steps: makeSteps(5), studyDate: '2026-07-30' },
+    })
+
+    await wrapper.find('.path-nav--left').trigger('click')
+    expect(visibleTitles(wrapper)).toEqual(['lesson 1', 'lesson 2', 'lesson 3', 'lesson 4'])
+
+    await wrapper.setProps({ steps: makeSteps(5) })
+
+    expect(visibleTitles(wrapper)).toEqual(['lesson 1', 'lesson 2', 'lesson 3', 'lesson 4'])
   })
 })

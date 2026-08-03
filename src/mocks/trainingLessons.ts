@@ -40,14 +40,14 @@ import {
 export const sameSoundLesson: TrainingLesson = {
   id: 'same-sound',
   categoryId: 'phonological-awareness',
-  title: '같은 소리 찾기',
+  title: '비슷한 소리 찾기',
   description: '두 낱말의 첫소리가 같은지 들어봐요.',
   activityType: 'listen-and-select',
   estimatedMinutes: 10,
   questions: [
     {
       id: 'q1',
-      instruction: '같은 소리를 찾아봐요.',
+      instruction: '비슷한 소리를 찾아봐!',
       subInstruction: "'가방'과 같은 소리로 시작하는 낱말은?",
       targetText: '가방',
       targetSound: 'ㄱ',
@@ -64,7 +64,7 @@ export const sameSoundLesson: TrainingLesson = {
     },
     {
       id: 'q2',
-      instruction: '같은 소리를 찾아봐요.',
+      instruction: '비슷한 소리를 찾아봐!',
       subInstruction: "'나비'와 같은 소리로 시작하는 낱말은?",
       targetText: '나비',
       targetSound: 'ㄴ',
@@ -81,7 +81,7 @@ export const sameSoundLesson: TrainingLesson = {
     },
     {
       id: 'q3',
-      instruction: '같은 소리를 찾아봐요.',
+      instruction: '비슷한 소리를 찾아봐!',
       subInstruction: "'모자'와 같은 소리로 시작하는 낱말은?",
       targetText: '모자',
       targetSound: 'ㅁ',
@@ -98,7 +98,7 @@ export const sameSoundLesson: TrainingLesson = {
     },
     {
       id: 'q4',
-      instruction: '같은 소리를 찾아봐요.',
+      instruction: '비슷한 소리를 찾아봐!',
       subInstruction: "'사과'와 같은 소리로 시작하는 낱말은?",
       targetText: '사과',
       targetSound: 'ㅅ',
@@ -115,7 +115,7 @@ export const sameSoundLesson: TrainingLesson = {
     },
     {
       id: 'q5',
-      instruction: '같은 소리를 찾아봐요.',
+      instruction: '비슷한 소리를 찾아봐!',
       subInstruction: "'토끼'와 같은 소리로 시작하는 낱말은?",
       targetText: '토끼',
       targetSound: 'ㅌ',
@@ -509,96 +509,13 @@ export const soundCombineLesson: TrainingLesson = {
   ],
 }
 
-// 파닉스 - 자음과 모음 합치기 (카드를 끌어다 놓거나 눌러서 음절 만들기)
-export const combineCVLesson: TrainingLesson = {
-  id: 'combine-cv',
-  categoryId: 'phonics',
-  title: '자음과 모음 합치기',
-  description: '자음 카드와 모음 카드를 모아 한 글자를 만들어요.',
-  activityType: 'card-combine',
-  estimatedMinutes: 12,
-  questions: [
-    {
-      id: 'q1',
-      instruction: '글자를 모아봐요.',
-      subInstruction: 'ㄱ과 ㅏ를 모으면 어떤 글자가 될까요?',
-      consonant: 'ㄱ',
-      vowel: 'ㅏ',
-      combined: '가',
-      answer: '가',
-      hint: { level1: 'ㄱ 소리와 ㅏ 소리를 차례로 들어봐요.', level2: 'ㄱ + ㅏ = 가' },
-      feedback: {
-        correct: '글자를 멋지게 모았어요! ㄱ과 ㅏ를 모으면 가가 돼요.',
-        retry: '다시 한번 모아볼까요?',
-      },
-    },
-    {
-      id: 'q2',
-      instruction: '글자를 모아봐요.',
-      subInstruction: 'ㄴ과 ㅗ를 모으면 어떤 글자가 될까요?',
-      consonant: 'ㄴ',
-      vowel: 'ㅗ',
-      combined: '노',
-      answer: '노',
-      hint: { level1: 'ㄴ 소리와 ㅗ 소리를 차례로 들어봐요.', level2: 'ㄴ + ㅗ = 노' },
-      feedback: {
-        correct: '잘 합쳤어요! ㄴ과 ㅗ를 모으면 노가 돼요.',
-        retry: '괜찮아요. 한 번 더 해봐요.',
-      },
-    },
-    {
-      id: 'q3',
-      instruction: '글자를 모아봐요.',
-      subInstruction: 'ㅁ과 ㅜ를 모으면 어떤 글자가 될까요?',
-      consonant: 'ㅁ',
-      vowel: 'ㅜ',
-      combined: '무',
-      answer: '무',
-      hint: { level1: 'ㅁ 소리와 ㅜ 소리를 차례로 들어봐요.', level2: 'ㅁ + ㅜ = 무' },
-      feedback: {
-        correct: '소리를 아주 잘 만들었어요! ㅁ과 ㅜ를 모으면 무가 돼요.',
-        retry: '천천히 다시 모아볼까요?',
-      },
-    },
-    {
-      id: 'q4',
-      instruction: '글자를 모아봐요.',
-      subInstruction: 'ㄷ과 ㅏ를 모으면 어떤 글자가 될까요?',
-      consonant: 'ㄷ',
-      vowel: 'ㅏ',
-      combined: '다',
-      answer: '다',
-      hint: { level1: 'ㄷ 소리와 ㅏ 소리를 차례로 들어봐요.', level2: 'ㄷ + ㅏ = 다' },
-      feedback: {
-        correct: '훌륭해요! ㄷ과 ㅏ를 모으면 다가 돼요.',
-        retry: '천천히 다시 모아봐요.',
-      },
-    },
-    {
-      id: 'q5',
-      instruction: '글자를 모아봐요.',
-      subInstruction: 'ㅂ과 ㅗ를 모으면 어떤 글자가 될까요?',
-      consonant: 'ㅂ',
-      vowel: 'ㅗ',
-      combined: '보',
-      answer: '보',
-      hint: { level1: 'ㅂ 소리와 ㅗ 소리를 차례로 들어봐요.', level2: 'ㅂ + ㅗ = 보' },
-      feedback: {
-        correct: '완성했어요! ㅂ과 ㅗ를 모으면 보가 돼요.',
-        retry: '다시 한번 해볼까요?',
-        completed: '자음과 모음 합치기를 모두 마쳤어요! 가, 노, 무, 다, 보를 연습했어요.',
-      },
-    },
-  ],
-}
-
 // 유창성 - 문장 따라 읽기 (모범 음성 듣기 + 녹음)
 export const followSentenceLesson: TrainingLesson = {
   id: 'follow-sentence',
   categoryId: 'fluency',
   title: '문장 따라 읽기',
   description: '모범 음성을 듣고 따라 읽어요.',
-  activityType: 'read-aloud',
+  activityType: 'word-reading-grid',
   estimatedMinutes: 10,
   questions: [
     {
@@ -752,6 +669,15 @@ const devPreviewDefinitions: DevPreviewDefinition[] = [
       'read-batchim-words',
       'read-nonwords',
       'read-short-sentences',
+      'hard-word',
+      'read-sentences',
+      'read-short-passage',
+      'follow-sentence',
+      'word-chain',
+      'phrase-reading',
+      're-read',
+      'short-story',
+      'repeat-sentence',
     ],
   },
   {
@@ -770,6 +696,10 @@ const devPreviewDefinitions: DevPreviewDefinition[] = [
     sourceLessonIds: ['sentence-order'],
   },
 ]
+
+export const devPreviewSourceLessonIds = devPreviewDefinitions.flatMap(
+  (definition) => definition.sourceLessonIds,
+)
 
 export const devPreviewLessons: TrainingLesson[] = devPreviewDefinitions.map((definition) => {
   const sourceLessons = definition.sourceLessonIds.map((lessonId) => {

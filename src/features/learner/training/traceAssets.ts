@@ -7,14 +7,14 @@ const line = (from: TracePoint, to: TracePoint, steps = 6): TracePoint[] =>
   }))
 
 const traceAssets: Readonly<Record<string, TracePoint[][]>> = {
-  vowel_a: [[
-    ...line({ x: 365, y: 105 }, { x: 365, y: 405 }, 8),
-    ...line({ x: 225, y: 255 }, { x: 365, y: 255 }, 5),
-  ]],
-  vowel_0: [[
-    ...line({ x: 365, y: 105 }, { x: 365, y: 405 }, 8),
-    ...line({ x: 225, y: 255 }, { x: 365, y: 255 }, 5),
-  ]],
+  vowel_a: [
+    line({ x: 290, y: 105 }, { x: 290, y: 405 }, 8),
+    line({ x: 290, y: 255 }, { x: 430, y: 255 }, 5),
+  ],
+  vowel_0: [
+    line({ x: 290, y: 105 }, { x: 290, y: 405 }, 8),
+    line({ x: 290, y: 255 }, { x: 430, y: 255 }, 5),
+  ],
   consonant_0: [
     line({ x: 210, y: 150 }, { x: 390, y: 150 }, 6),
     line({ x: 390, y: 150 }, { x: 390, y: 390 }, 8),
