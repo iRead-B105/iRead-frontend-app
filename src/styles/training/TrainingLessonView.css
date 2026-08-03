@@ -706,7 +706,7 @@
  * 상하/좌우 비대칭이 되기 때문. 실선은 border, 점선은 ::after의 균일한
  * inset으로 그려 카드가 어떤 크기로 늘어나도 간격이 같다. */
 .lesson-view :deep(.choices > .sentence-card) {
-  border: 6px solid var(--sentence-frame-border, #fde995) !important;
+  border: 5px solid var(--sentence-frame-border, #fde995) !important;
   border-radius: 24px !important;
   background: #fdf9ef !important;
   box-shadow: 0 8px 12px rgb(86 65 28 / 15%) !important;
