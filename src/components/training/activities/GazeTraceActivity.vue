@@ -8,6 +8,7 @@ import SoundButton from '@/components/training/SoundButton.vue'
 import microphoneIcon from '@/assets/icons/microphone.svg'
 import type { LearnerTraceSubmissionResponse } from '@/features/learner/training'
 import { mockVoiceSubmissionsEnabled } from '@/features/learner/training/mockDeviceSubmissions'
+import { consonantPronunciationText } from '@/lib/hangulPronunciation'
 
 const props = defineProps<{ question: TrainingQuestion }>()
 type VoiceEvaluationControls = {
@@ -44,20 +45,6 @@ const totalPoints = computed(() => flatPoints.value.length)
 const traceCompleted = computed(() => totalPoints.value > 0 && progress.value >= totalPoints.value)
 const currentPoint = computed<TracePoint | null>(() => flatPoints.value[progress.value] ?? null)
 const hangulPronunciations: Record<string, string> = {
-  'ㄱ': '기역',
-  'ㄴ': '니은',
-  'ㄷ': '디귿',
-  'ㄹ': '리을',
-  'ㅁ': '미음',
-  'ㅂ': '비읍',
-  'ㅅ': '시옷',
-  'ㅇ': '이응',
-  'ㅈ': '지읒',
-  'ㅊ': '치읓',
-  'ㅋ': '키읔',
-  'ㅌ': '티읕',
-  'ㅍ': '피읖',
-  'ㅎ': '히읗',
   'ㅏ': '아',
   'ㅑ': '야',
   'ㅓ': '어',
@@ -76,6 +63,8 @@ const hangulPronunciations: Record<string, string> = {
 }
 const pronunciationText = computed(() => {
   const glyph = props.question.traceGlyph ?? ''
+  const consonantText = consonantPronunciationText(glyph)
+  if (consonantText !== glyph) return consonantText
   return hangulPronunciations[glyph]
     ?? props.question.speechAliases?.find((alias) => alias && alias !== glyph)
     ?? props.question.audioText
