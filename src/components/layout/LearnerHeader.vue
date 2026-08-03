@@ -9,6 +9,7 @@ import { useGazeCalibration } from '../../composables/useGazeCalibration'
 import { useGazeCursorVisibility } from '../../composables/useGazeCursorVisibility'
 import { useTobiiGazeBridge } from '../../composables/useTobiiGazeBridge'
 import { mockGazeSubmissionsEnabled } from '@/features/learner/training'
+import { resolveMicrophoneErrorMessage } from '@/lib/media/microphoneErrorMessage'
 import { useLearnerSessionStore } from '@/stores/learnerSession'
 import { useLearnerErrorModalStore } from '@/stores/learnerErrorModal'
 import eyeTrackerIcon from '@/assets/icons/eye-tracker.svg'
@@ -71,6 +72,24 @@ watch(eyeTrackerStatus, (status) => {
   }
 }, { immediate: true })
 
+watch([microphoneAvailable, microphoneActive], ([available, active]) => {
+  if (active) {
+    microphoneStatus.value = 'recording'
+    return
+  }
+  if (!available) {
+    if (!microphoneStream.value) microphoneStatus.value = 'disconnected'
+    return
+  }
+  if (
+    microphoneStatus.value === 'disconnected'
+    || microphoneStatus.value === 'connecting'
+    || microphoneStatus.value === 'recording'
+  ) {
+    microphoneStatus.value = 'connected'
+  }
+}, { immediate: true })
+
 const microphoneStatusLabel = computed(() => ({
   disconnected: '마이크 연결 안 됨',
   connecting: '마이크 확인 중…',
@@ -122,7 +141,7 @@ const emitMicrophoneState = (available: boolean, active = false) => {
   }))
 }
 
-const connectMicrophone = async () => {
+const connectMicrophone = async (keepStream = false) => {
   if (!navigator.mediaDevices?.getUserMedia) {
     errorModal.show('마이크를 사용할 수 없는 환경이에요')
     return
@@ -131,13 +150,15 @@ const connectMicrophone = async () => {
   microphoneStatus.value = 'connecting'
   try {
     stopMicrophoneTracks()
-    microphoneStream.value = await navigator.mediaDevices.getUserMedia({ audio: true })
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+    if (keepStream) microphoneStream.value = stream
+    else stream.getTracks().forEach((track) => track.stop())
     microphoneStatus.value = 'connected'
     emitMicrophoneState(true)
   } catch (error) {
     microphoneStatus.value = 'disconnected'
     emitMicrophoneState(false)
-    errorModal.show(error, '마이크 연결 오류')
+    errorModal.show(resolveMicrophoneErrorMessage(error), '마이크 연결 오류')
   }
 }
 
@@ -154,7 +175,7 @@ const disconnectMicrophone = () => {
 }
 
 const recordMicrophoneTest = async () => {
-  if (!microphoneStream.value) await connectMicrophone()
+  if (!microphoneStream.value) await connectMicrophone(true)
   if (!microphoneStream.value || typeof MediaRecorder === 'undefined') {
     if (typeof MediaRecorder === 'undefined') errorModal.show('녹음 기능을 지원하지 않는 브라우저예요')
     return
@@ -406,7 +427,7 @@ const handleLogout = async () => {
                 type="button"
                 class="device-menu-button device-menu-button--primary"
                 :disabled="microphoneStatus === 'connecting'"
-                @click="connectMicrophone"
+                @click="connectMicrophone()"
               >
                 {{ microphoneStatus === 'connecting' ? '확인하고 있어요…' : '마이크 연결 확인' }}
               </button>

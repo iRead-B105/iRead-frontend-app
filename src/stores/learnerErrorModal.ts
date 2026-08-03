@@ -9,6 +9,11 @@ const FRIENDLY_ERROR_NAMES: Readonly<Record<string, string>> = {
   INVALID_RESPONSE: '서버 응답 오류',
 }
 
+const FRIENDLY_RUNTIME_ERROR_NAMES: Readonly<Record<string, string>> = {
+  NotAllowedError: '브라우저 사용 권한이 꺼져 있어요. 설정에서 필요한 권한을 허용한 뒤 다시 시도해 주세요.',
+  TypeError: '훈련을 처리하는 중 문제가 생겼어요.\n잠시 후 다시 시도해 주세요.',
+}
+
 export function resolveLearnerErrorName(error: unknown, fallback = '알 수 없는 오류'): string {
   if (error instanceof ApiError) {
     const message = error.message.trim()
@@ -18,7 +23,8 @@ export function resolveLearnerErrorName(error: unknown, fallback = '알 수 없�
   }
 
   if (error instanceof Error) {
-    return error.name && error.name !== 'Error' ? error.name : fallback
+    return FRIENDLY_RUNTIME_ERROR_NAMES[error.name]
+      || fallback
   }
 
   if (typeof error === 'string' && error.trim()) {

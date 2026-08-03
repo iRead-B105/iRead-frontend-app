@@ -35,7 +35,7 @@
 .brand {
   position: absolute;
   z-index: 3;
-  top: clamp(-37px,0cqw,-30px);
+  top: clamp(-10px,-.4cqw,-6px);
   left: 50%;
   width: clamp(190px,15.84cqw,290px);
   height: clamp(100px,11.23cqw,167px);
@@ -74,7 +74,7 @@
   align-items: center;
   gap: var(--learner-space-3);
   pointer-events: auto;
-  transform: translateY(-22px);
+  transform: translateY(-7px);
 }
 
 .profile {
@@ -163,7 +163,7 @@
   align-items: center;
   gap: clamp(8px,1cqw,14px);
   pointer-events: auto;
-  transform: translateY(-22px);
+  transform: translateY(-7px);
 }
 
 .device-button,.exit-button {

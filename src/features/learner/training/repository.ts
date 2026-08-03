@@ -9,6 +9,7 @@ export interface LearnerTrainingIntro {
   readonly status: string
   readonly trainingName: string
   readonly generatedData: unknown
+  readonly completedQuestionNumbers: readonly number[]
   readonly startedAt: string | null
   readonly finishedAt: string | null
 }

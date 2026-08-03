@@ -9,6 +9,7 @@
 
 import { onScopeDispose, reactive, ref, shallowRef } from 'vue'
 import type { RecordingState } from '@/types/training'
+import { resolveMicrophoneErrorMessage } from '@/lib/media/microphoneErrorMessage'
 import { useDeviceStatus } from './useDeviceStatus'
 
 const MAX_RECORDING_MS = 30_000 // 최대 녹음 시간(목업 안전장치)
@@ -34,10 +35,16 @@ export function useVoiceRecorder() {
   })
 
   const waveform = ref<number[]>(buildIdleWaveform())
+  const hasDetectedVoice = ref(false)
+  const voiceActivityDetectionAvailable = ref(false)
 
   // 실제 녹음 스트림/레코더/타이머
   let mediaStream: MediaStream | null = null
   let mediaRecorder: MediaRecorder | null = null
+  let audioContext: AudioContext | null = null
+  let analyser: AnalyserNode | null = null
+  let analyserData: Uint8Array<ArrayBuffer> | null = null
+  let detectedVoiceFrames = 0
   const chunks = shallowRef<Blob[]>([])
   const audioBlob = shallowRef<Blob | null>(null)
   const audioUrl = ref<string | null>(null)
@@ -58,6 +65,11 @@ export function useVoiceRecorder() {
   }
 
   const stopStream = (): void => {
+    analyser?.disconnect()
+    analyser = null
+    analyserData = null
+    if (audioContext) void audioContext.close()
+    audioContext = null
     if (mediaStream) {
       mediaStream.getTracks().forEach((t) => t.stop())
       mediaStream = null
@@ -70,6 +82,70 @@ export function useVoiceRecorder() {
     waveform.value = Array.from({ length: WAVEFORM_BARS }, () => 0.25 + Math.random() * 0.7)
   }
 
+  const startVoiceActivityDetection = (stream: MediaStream): void => {
+    if (typeof window.AudioContext === 'undefined') {
+      // 분석 API가 없는 환경에서는 기존 녹음 동작을 유지한다.
+      hasDetectedVoice.value = true
+      return
+    }
+
+    audioContext = new AudioContext()
+    analyser = audioContext.createAnalyser()
+    analyser.fftSize = 256
+    analyser.smoothingTimeConstant = 0.65
+    analyserData = new Uint8Array(analyser.fftSize)
+    audioContext.createMediaStreamSource(stream).connect(analyser)
+    voiceActivityDetectionAvailable.value = true
+  }
+
+  const updateVoiceActivity = (): void => {
+    if (!analyser || !analyserData) return
+    analyser.getByteTimeDomainData(analyserData)
+    let energy = 0
+    for (const sample of analyserData) {
+      const normalized = (sample - 128) / 128
+      energy += normalized * normalized
+    }
+    const rms = Math.sqrt(energy / analyserData.length)
+    const level = Math.min(1, rms * 8)
+    waveform.value = Array.from(
+      { length: WAVEFORM_BARS },
+      (_, index) => Math.max(0.08, level * (0.72 + (index % 4) * 0.09)),
+    )
+
+    detectedVoiceFrames = rms >= 0.015
+      ? detectedVoiceFrames + 1
+      : Math.max(0, detectedVoiceFrames - 1)
+    if (detectedVoiceFrames >= 2) hasDetectedVoice.value = true
+  }
+
+  const checkAccess = async (): Promise<boolean> => {
+    reset()
+    if (!isMediaRecorderSupported()) {
+      state.status = 'unsupported'
+      state.errorMessage = '이 브라우저에서는 음성 녹음 기능을 사용할 수 없어요.'
+      setMicrophoneState({ available: false, active: false })
+      return false
+    }
+
+    state.status = 'requesting'
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      stream.getTracks().forEach((track) => track.stop())
+      state.status = 'idle'
+      state.errorMessage = null
+      setMicrophoneState({ available: true, active: false })
+      return true
+    } catch (error) {
+      state.status = error instanceof DOMException && error.name === 'NotAllowedError'
+        ? 'denied'
+        : 'unsupported'
+      state.errorMessage = resolveMicrophoneErrorMessage(error)
+      setMicrophoneState({ available: false, active: false })
+      return false
+    }
+  }
+
   // 녹음 시작. 권한이 필요하면 요청하고, 미지원·권한 거부 시 학습을 차단합니다.
   const start = async (): Promise<void> => {
     if (state.status === 'recording' || state.status === 'requesting') return
@@ -79,7 +155,7 @@ export function useVoiceRecorder() {
 
     if (!isMediaRecorderSupported()) {
       state.status = 'unsupported'
-      state.errorMessage = '마이크를 연결하고 다시 시작해 주세요.'
+      state.errorMessage = '이 브라우저에서는 음성 녹음 기능을 사용할 수 없어요.'
       setMicrophoneState({ available: false, active: false })
       return
     }
@@ -89,6 +165,7 @@ export function useVoiceRecorder() {
 
     try {
       mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      startVoiceActivityDetection(mediaStream)
       setMicrophoneState({ available: true, active: true })
       state.isMock = false
       state.status = 'recording'
@@ -123,7 +200,7 @@ export function useVoiceRecorder() {
       }
     } catch (err) {
       state.status = err instanceof DOMException && err.name === 'NotAllowedError' ? 'denied' : 'unsupported'
-      state.errorMessage = '마이크 권한이 필요해요. 권한을 허용해 주세요.'
+      state.errorMessage = resolveMicrophoneErrorMessage(err)
       setMicrophoneState({ available: false, active: false })
       stopStream()
     }
@@ -135,7 +212,7 @@ export function useVoiceRecorder() {
     }, 200)
     waveTimer = setInterval(() => {
       if (isMock) animateMockWaveform()
-      else animateMockWaveform() // 목업 파형(실제 음량 미반영)
+      else updateVoiceActivity()
     }, 140)
   }
 
@@ -163,6 +240,9 @@ export function useVoiceRecorder() {
     audioBlob.value = null
     state.elapsedMs = 0
     state.hasRecording = false
+    hasDetectedVoice.value = false
+    voiceActivityDetectionAvailable.value = false
+    detectedVoiceFrames = 0
     waveform.value = buildIdleWaveform()
   }
 
@@ -187,6 +267,9 @@ export function useVoiceRecorder() {
     waveform,
     audioUrl,
     audioBlob,
+    hasDetectedVoice,
+    voiceActivityDetectionAvailable,
+    checkAccess,
     start,
     stop,
     reset,

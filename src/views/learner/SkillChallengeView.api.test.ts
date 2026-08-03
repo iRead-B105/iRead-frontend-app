@@ -59,7 +59,7 @@ describe('SkillChallengeView API 연속 진행', () => {
     )
     await flushPromises()
 
-    expect(wrapper.get('.challenge-action strong').text()).toContain('3 / 9문제')
+    expect(wrapper.find('.challenge-action strong').exists()).toBe(false)
     expect(wrapper.get('.challenge-action button').text()).toBe('이어하기')
 
     await wrapper.get('.challenge-action button').trigger('click')

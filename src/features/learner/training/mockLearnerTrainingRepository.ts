@@ -14,6 +14,7 @@ export class MockLearnerTrainingRepository implements LearnerTrainingRepository 
       status: 'NOT_STARTED',
       trainingName: '목업 훈련',
       generatedData: null,
+      completedQuestionNumbers: [],
       startedAt: null,
       finishedAt: null,
     }

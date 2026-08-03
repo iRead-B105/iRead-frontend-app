@@ -25,7 +25,6 @@ const loading = ref(isApiMode)
 const loadError = ref('')
 
 const progress = computed(() => plan.value?.completedQuestions ?? challenge.completedCount.value)
-const totalQuestions = computed(() => plan.value?.totalQuestions ?? 9)
 const actionLabel = computed(() => progress.value > 0 ? '이어하기' : '시작하기')
 
 const startChallenge = () => {
@@ -79,8 +78,7 @@ onMounted(loadPlan)
     <section class="challenge-panel">
       <header class="challenge-heading">
         <span class="challenge-kicker">실력 검증</span>
-        <h1>실력 도전을 시작해볼까요?</h1>
-        <p>세 가지 영역에서 모두 9문제를 차례대로 진행해요.</p>
+        <p>틀려도 괜찮아요, 편안하게 풀어봐요!</p>
       </header>
 
       <p v-if="loading" role="status">실력도전을 준비하고 있어요.</p>
@@ -100,14 +98,11 @@ onMounted(loadPlan)
           <img class="challenge-card__illustration" :src="trackImages[track.id]" alt="" aria-hidden="true" />
           <span class="challenge-card__content">
             <strong>{{ track.title }}</strong>
-            <small>{{ track.shortLabel }}</small>
           </span>
-            <span class="challenge-card__footer"><b>3문제</b></span>
           </article>
         </div>
 
         <div class="challenge-action">
-          <strong>{{ progress }} / {{ totalQuestions }}문제</strong>
           <button
             type="button"
             :disabled="isApiMode && !plan?.nextTestId"
@@ -117,10 +112,6 @@ onMounted(loadPlan)
           </button>
         </div>
       </template>
-
-      <p class="challenge-note">
-        점수는 화면에 보여주지 않아요. 편안하게 끝까지 해보면 돼요!
-      </p>
     </section>
   </main>
 </template>

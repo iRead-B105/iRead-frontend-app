@@ -22,8 +22,29 @@ describe('API learner training repository', () => {
     expect(request).toHaveBeenNthCalledWith(
       2,
       '/api/app/training/101/55/complete',
-      { method: 'POST' },
+      expect.objectContaining({ method: 'POST', signal: expect.any(AbortSignal) }),
     )
+  })
+
+  it('완료 저장이 오래 걸리면 중단하고 다시 시도할 수 있는 오류를 보여 준다', async () => {
+    vi.useFakeTimers()
+    vi.spyOn(learnerApiClient, 'request').mockImplementation((_endpoint, init) => (
+      new Promise((_resolve, reject) => {
+        init?.signal?.addEventListener('abort', () => {
+          reject(new DOMException('Aborted', 'AbortError'))
+        })
+      })
+    ))
+    const repository = new ApiLearnerTrainingRepository()
+
+    const completion = repository.complete('101', '55')
+    const rejectedCompletion = expect(completion).rejects.toThrow(
+      '저장이 조금 늦어지고 있어요. 잠시 후 다시 시도해 주세요.',
+    )
+    await vi.advanceTimersByTimeAsync(20_000)
+
+    await rejectedCompletion
+    vi.useRealTimers()
   })
 
   it('문항 응답을 submission 계약으로 전송한다', async () => {
