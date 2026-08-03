@@ -99,7 +99,10 @@ const syncAnswer = () => {
     progressState.isCurrentCorrect = null
     return
   }
-  session.selectAnswer(resultText.value)
+  const expectedResult = props.question.targetResult ?? props.question.answer
+  session.selectAnswer(
+    resultText.value === expectedResult ? props.question.answer : resultText.value,
+  )
 }
 
 const removePiece = (index: number) => {

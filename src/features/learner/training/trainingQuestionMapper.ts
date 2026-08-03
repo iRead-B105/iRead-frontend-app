@@ -365,6 +365,24 @@ function mapManipulation(number: number, source: StudentQuestionDto): TrainingQu
   }
 }
 
+function mapOmit(number: number, source: StudentQuestionDto): TrainingQuestion {
+  const targetResult = requiredString(source.answer, 'result')
+  const soundParts = source.questionType === 'SYLLABLE_DELETE'
+    ? stringArray(source.content, 'syllables')
+    : stringArray(source.content, 'removableUnits')
+  const deleteIndex = source.questionType === 'SYLLABLE_DELETE'
+    ? requiredInteger(source.answer, 'deleteIndex')
+    : requiredInteger(source.answer, 'answerIndex')
+  return {
+    ...baseQuestion(number, '잘 듣고 글자를 잘라봐!', unitId(deleteIndex)),
+    targetText: requiredString(source.content, 'source'),
+    audioText: requiredString(source.content, 'targetAudioText'),
+    audioPromptEnabled: true,
+    soundParts,
+    targetResult,
+  }
+}
+
 function readingWords(content: Readonly<Record<string, unknown>>): WordReadingItem[] {
   const values = content.words
   if (!Array.isArray(values) || values.length === 0) {
@@ -473,8 +491,10 @@ export function mapTrainingQuestion(payload: LearnerTrainingQuestionPayload): Ma
     activityType = 'fill-blank'
     question = mapFillBlank(payload.questionNumber, source)
   } else if (source.responseType === 'SINGLE_CHOICE') {
-    const mapped = source.questionType.endsWith('_DELETE') || source.questionType === 'SYLLABLE_REPLACE'
-      ? { activityType: 'sound-manipulation' as const, question: mapManipulation(payload.questionNumber, source) }
+    const mapped = source.questionType.endsWith('_DELETE')
+      ? { activityType: 'sound-omit' as const, question: mapOmit(payload.questionNumber, source) }
+      : source.questionType === 'SYLLABLE_REPLACE'
+        ? { activityType: 'sound-manipulation' as const, question: mapManipulation(payload.questionNumber, source) }
       : mapChoice(payload.questionNumber, source)
     activityType = mapped.activityType
     question = mapped.question

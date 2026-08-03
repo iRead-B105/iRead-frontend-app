@@ -90,6 +90,22 @@
     0 16px 28px rgb(126 94 34 / 18%);
 }
 
+.curtain-choice {
+  display: grid;
+  place-items: center;
+  gap: 10px;
+  color: #233d79;
+  cursor: pointer;
+  transition: transform .16s ease, filter .16s ease;
+}
+
+.curtain-choice:hover:not(:disabled) { transform: translateY(-5px); }
+.curtain-choice strong { font: 900 clamp(42px, 5cqw, 76px)/1 var(--learner-font-display); }
+.curtain-choice img { width: 44%; max-height: 92px; object-fit: contain; }
+.curtain-choice--wrong { filter: saturate(.65); animation: letterShake .4s ease-out; }
+.curtain-choice--correct { filter: drop-shadow(0 0 12px rgb(85 190 102 / 55%)); }
+.curtain-choice--disabled { filter: grayscale(1); opacity: .55; }
+
 .activity--first-sound .action-row {
   min-height: 48px;
 }

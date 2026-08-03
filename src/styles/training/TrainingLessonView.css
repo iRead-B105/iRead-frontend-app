@@ -524,7 +524,8 @@
   .letter-chip,
   .word-choice,
   .word-card,
-  .sentence-card
+  .sentence-card,
+  .curtain-choice
 )) {
   --choice-card-image: url('../../assets/training/choice-cards/choice-card-letter-awning-yellow.webp');
   --choice-card-word-image: url('../../assets/training/choice-cards/choice-card-word-yellow.png');
@@ -547,7 +548,8 @@
   .letter-chip,
   .word-choice,
   .word-card,
-  .sentence-card
+  .sentence-card,
+  .curtain-choice
 )::before) {
   position: absolute;
   z-index: -1;
@@ -592,7 +594,8 @@
   .sound-card,
   .part-card,
   .replacement-card,
-  .letter-chip
+  .letter-chip,
+  .curtain-choice
 )) {
   width: clamp(176px, 18cqw, 260px) !important;
   min-width: 0 !important;
