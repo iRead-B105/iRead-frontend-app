@@ -4,6 +4,7 @@ import type { TracePoint, TrainingQuestion } from '@/types/training'
 import { useTrainingSession } from '@/composables/useTrainingSession'
 import { useAudioPlayer } from '@/composables/useAudioPlayer'
 import { useVoiceRecorder } from '@/composables/useVoiceRecorder'
+import { useDeviceStatus } from '@/composables/useDeviceStatus'
 import SoundButton from '@/components/training/SoundButton.vue'
 import microphoneIcon from '@/assets/icons/microphone.svg'
 import type { LearnerTraceSubmissionResponse } from '@/features/learner/training'
@@ -25,6 +26,7 @@ type SpeechState = 'waiting' | 'listening' | 'evaluating' | 'retry' | 'success'
 const session = useTrainingSession()
 const audio = useAudioPlayer()
 const recorder = useVoiceRecorder()
+const { virtualEyeTrackerConnected } = useDeviceStatus()
 const stage = ref<SVGSVGElement | null>(null)
 const progress = ref(0)
 const speechState = ref<SpeechState>('waiting')
@@ -188,7 +190,11 @@ const advanceFromClientPoint = (clientX: number, clientY: number) => {
   progress.value += 1
 }
 
-const onPointerMove = (event: PointerEvent) => advanceFromClientPoint(event.clientX, event.clientY)
+const onPointerMove = (event: PointerEvent) => {
+  if (!virtualEyeTrackerConnected.value) {
+    advanceFromClientPoint(event.clientX, event.clientY)
+  }
+}
 const onGaze = (event: Event) => {
   const detail = (event as CustomEvent<{ clientX?: number; clientY?: number; headPoseStable?: boolean }>).detail
   if (

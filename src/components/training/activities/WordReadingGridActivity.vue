@@ -2,6 +2,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { TrainingQuestion, WordReadingItem } from '@/types/training'
 import { useAudioPlayer } from '@/composables/useAudioPlayer'
+import { useDeviceStatus } from '@/composables/useDeviceStatus'
 import { useTrainingSession } from '@/composables/useTrainingSession'
 import readingActiveIcon from '@/assets/icons/reading-active.svg'
 import checkIcon from '@/assets/icons/check.svg'
@@ -36,6 +37,7 @@ type MessageState = 'ready' | 'listening' | 'retry' | 'help' | 'complete' | 'den
 
 const session = useTrainingSession()
 const { replay, stop: stopAudio } = useAudioPlayer()
+const { virtualEyeTrackerConnected } = useDeviceStatus()
 const grid = ref<HTMLElement | null>(null)
 const started = ref(false)
 const activeIndex = ref(0)
@@ -242,7 +244,9 @@ const updateGaze = (clientX: number, clientY: number, emitWordHit = false) => {
   }
 }
 
-const onPointerMove = (event: PointerEvent) => updateGaze(event.clientX, event.clientY)
+const onPointerMove = (event: PointerEvent) => {
+  if (!virtualEyeTrackerConnected.value) updateGaze(event.clientX, event.clientY)
+}
 const onPointerLeave = () => {
   gazeVisible.value = false
   gazeIndex.value = null

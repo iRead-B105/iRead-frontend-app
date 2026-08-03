@@ -1,14 +1,22 @@
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { getInitialDeviceStatus } from '@/services/learnerDataRepository'
 
 const initialDeviceStatus = getInitialDeviceStatus()
-const eyeTrackerConnected = ref<boolean>(initialDeviceStatus.eyeTrackerConnected)
+const physicalEyeTrackerConnected = ref<boolean>(initialDeviceStatus.eyeTrackerConnected)
+const virtualEyeTrackerConnected = ref(false)
+const eyeTrackerConnected = computed(
+  () => physicalEyeTrackerConnected.value || virtualEyeTrackerConnected.value,
+)
 const microphoneAvailable = ref<boolean>(initialDeviceStatus.microphoneAvailable)
 const microphoneActive = ref<boolean>(initialDeviceStatus.microphoneActive)
 
 export function useDeviceStatus() {
   const setEyeTrackerConnected = (connected: boolean) => {
-    eyeTrackerConnected.value = connected
+    physicalEyeTrackerConnected.value = connected
+  }
+
+  const setVirtualEyeTrackerConnected = (connected: boolean) => {
+    virtualEyeTrackerConnected.value = connected
   }
 
   const setMicrophoneState = (state: { available?: boolean; active?: boolean }) => {
@@ -19,9 +27,12 @@ export function useDeviceStatus() {
 
   return {
     eyeTrackerConnected,
+    physicalEyeTrackerConnected,
+    virtualEyeTrackerConnected,
     microphoneAvailable,
     microphoneActive,
     setEyeTrackerConnected,
+    setVirtualEyeTrackerConnected,
     setMicrophoneState,
   }
 }

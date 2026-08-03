@@ -53,7 +53,7 @@ const session = useTrainingSession()
 const dailyCurriculum = useDailyCurriculum()
 const skillChallenge = useSkillChallenge()
 const errorModal = useLearnerErrorModalStore()
-const { eyeTrackerConnected, microphoneAvailable } = useDeviceStatus()
+const { eyeTrackerConnected, virtualEyeTrackerConnected, microphoneAvailable } = useDeviceStatus()
 const voiceRecorder = useVoiceRecorder()
 
 const debugMode = computed(() => import.meta.env.DEV && route.query.debug === '1')
@@ -511,7 +511,7 @@ const startPlaying = async () => {
           contentType: challengeTrackId.value ? 'TEST' : 'TRAINING',
           ...(challengeTrackId.value ? { testId: itemId } : { trainingId: itemId }),
           calibrationStatus:
-            mockGazeSubmissionsEnabled
+            mockGazeSubmissionsEnabled || virtualEyeTrackerConnected.value
               ? 'SKIPPED'
               : eyeTrackerConnected.value
                 ? 'SUCCESS'
@@ -573,10 +573,14 @@ watch(
       deviceBlocker.value = null
       return
     }
-    if (deviceBlocker.value === 'eye-tracker' && gazeDeviceFallbackEnabled) deviceBlocker.value = null
-    if (deviceBlocker.value === 'microphone' && voiceDeviceFallbackEnabled) deviceBlocker.value = null
-    if (deviceBlocker.value === 'eye-tracker' && eyeConnected) deviceBlocker.value = null
-    if (deviceBlocker.value === 'microphone' && micAvailable) deviceBlocker.value = null
+    const gazeBlockerResolved = deviceBlocker.value === 'eye-tracker'
+      && (gazeDeviceFallbackEnabled || eyeConnected)
+    const microphoneBlockerResolved = deviceBlocker.value === 'microphone'
+      && (voiceDeviceFallbackEnabled || micAvailable)
+    if (gazeBlockerResolved || microphoneBlockerResolved) {
+      deviceBlocker.value = null
+      if (phase.value === 'intro') void startPlaying()
+    }
 
     if (phase.value !== 'playing') return
     if (!gazeDeviceFallbackEnabled && gazeRequired.value && !eyeConnected) deviceBlocker.value = 'eye-tracker'
