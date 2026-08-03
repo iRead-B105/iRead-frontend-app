@@ -30,10 +30,6 @@ const speak = async (text: string, rate = 0.9): Promise<void> => {
   const normalizedText = text.trim()
   if (!normalizedText) return
   if (isPlaying.value && currentText.value === normalizedText) return
-  if (!typecastTtsClient.configured) {
-    console.warn('[useAudioPlayer] VITE_TYPECAST_API_KEY가 설정되지 않아 음성을 재생하지 않습니다.')
-    return
-  }
 
   stop()
   const sequence = playbackSequence
@@ -67,7 +63,7 @@ const speak = async (text: string, rate = 0.9): Promise<void> => {
     })
   } catch (error) {
     if (sequence === playbackSequence) clearPlayback()
-    console.warn('[useAudioPlayer] Typecast 음성 생성에 실패했습니다.', error)
+    console.warn('[useAudioPlayer] 백엔드 TTS 음성 생성에 실패했습니다.', error)
   }
 }
 

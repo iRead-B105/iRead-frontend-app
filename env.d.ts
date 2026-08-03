@@ -10,7 +10,4 @@ interface ImportMetaEnv {
   readonly VITE_GAZE_DEBUG_PANEL?: string
   readonly VITE_GAZE_WS_URL?: string
   readonly VITE_GAZE_MODE_URL?: string
-  readonly VITE_TYPECAST_API_KEY?: string
-  readonly VITE_TYPECAST_API_BASE_URL?: string
-  readonly VITE_TYPECAST_VOICE_ID?: string
 }
