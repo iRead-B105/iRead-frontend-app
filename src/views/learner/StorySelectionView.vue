@@ -173,6 +173,10 @@ function progressLabel(book: StorySession) {
 function sessionTitle(book: StorySession) {
   return `${book.title} ${book.sessionNumber}번째 이야기`
 }
+
+function sessionNumberLabel(book: StorySession) {
+  return `${book.sessionNumber}번`
+}
 </script>
 
 <template>
@@ -249,7 +253,10 @@ function sessionTitle(book: StorySession) {
         <div
           v-if="visibleLibraryBooks.length"
           class="book-grid"
-          :class="{ 'book-grid--partial': paginatedLibraryBooks.length < booksPerPage }"
+          :class="{
+            'book-grid--partial': paginatedLibraryBooks.length < booksPerPage,
+            'book-grid--new': mode === 'new',
+          }"
         >
           <button
             v-for="book in paginatedLibraryBooks"
@@ -273,13 +280,11 @@ function sessionTitle(book: StorySession) {
                 완독
               </span>
             </span>
-            <strong>{{ mode === 'other' ? sessionTitle(book as StorySession) : book.title }}</strong>
+            <strong>{{ mode === 'other' ? sessionNumberLabel(book as StorySession) : book.title }}</strong>
             <span v-if="mode === 'other'" class="mini-progress" aria-hidden="true">
               <i :style="{ width: `${(book as StorySession).progress}%` }" />
             </span>
-            <small>
-              {{ mode === 'new' ? '이 책으로 새 이야기 만들기' : progressLabel(book as StorySession) }}
-            </small>
+            <small v-if="mode === 'other'">{{ progressLabel(book as StorySession) }}</small>
           </button>
         </div>
 

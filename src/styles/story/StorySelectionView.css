@@ -518,6 +518,14 @@ button {
   border-radius: 18px;
 }
 
+.book-grid--new .book-card {
+  padding: 8px 8px 14px;
+}
+
+.book-grid--new .book-cover {
+  margin: -2px -2px 0;
+}
+
 .status-badge {
   position: absolute;
   top: 12px;
