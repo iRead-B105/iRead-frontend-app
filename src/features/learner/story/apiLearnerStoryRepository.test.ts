@@ -7,25 +7,32 @@ describe('API learner story repository', () => {
     vi.restoreAllMocks()
   })
 
-  it('이야기 분기 음성을 backend multipart 계약으로 전송한다', async () => {
+  it('이야기 분기 음성을 확인용 STT 계약으로 전송한다', async () => {
     const request = vi.spyOn(learnerApiClient, 'request').mockResolvedValue({
       transcript: '오른쪽 길로 갈래요',
-      nextLineId: 12,
-      generatedContent: '토끼가 오른쪽 길로 갔어요.',
-      imageUrl: '/uploads/scene.png',
-      progress: 70,
-      status: 'IN_PROGRESS',
+      confidence: 0.98,
+      accepted: true,
     })
     const repository = new ApiLearnerStoryRepository()
     const audioFile = new File(['voice'], 'branch.webm', { type: 'audio/webm' })
 
-    const result = await repository.chooseDirection('101', '31', '9', audioFile)
+    const result = await repository.transcribeBranchIntent('101', '31', '9', audioFile)
 
     const call = request.mock.calls[0]!
-    expect(call[0]).toBe('/api/app/story/101/31/lines/9/branches')
+    expect(call[0]).toBe('/api/app/story/101/31/lines/9/branches/transcribe')
     const body = (call[1] as RequestInit).body as FormData
     expect(body.get('audioFile')).toBe(audioFile)
-    expect(result.nextLineId).toBe('12')
+    expect(result.transcript).toBe('오른쪽 길로 갈래요')
+  })
+
+  it('확인된 자유 음성 선택을 backend JSON 계약으로 전송한다', async () => {
+    const request = vi.spyOn(learnerApiClient, 'request').mockResolvedValue({ nextLineId: 12 })
+    const repository = new ApiLearnerStoryRepository()
+    await repository.chooseDirection('101', '31', '9', '오른쪽 길로 갈래요')
+    expect(request).toHaveBeenCalledWith(
+      '/api/app/story/101/31/lines/9/branches',
+      { method: 'POST', body: JSON.stringify({ branchIntent: '오른쪽 길로 갈래요' }) },
+    )
   })
 
   it('AI 선택지 번호를 backend JSON 계약으로 전송한다', async () => {

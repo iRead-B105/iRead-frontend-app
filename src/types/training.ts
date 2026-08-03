@@ -108,6 +108,14 @@ export interface WordReadingItem {
   speechAliases?: string[]
 }
 
+// 끊어 읽기 단위(낱말/어절/구절) + 해당 단위의 백엔드 recordingTarget 인덱스.
+// 시선 주도 읽기에서 이 항목을 응시·녹음·평가하고 targetIndex로 Azure 채점한다.
+export interface ReadingItem {
+  id: string
+  text: string
+  targetIndex: number
+}
+
 export interface ReadingSentence {
   id: string
   chunks: string[]
@@ -178,6 +186,9 @@ export interface TrainingQuestion {
 
   // 통합 읽기 전용: 끊어 읽기 단위
   phraseChunks?: string[]
+  // 시선 주도 읽기용 통일 항목(낱말/청크) + 레이아웃(cards=카드, segments=문장 흐름)
+  readingItems?: ReadingItem[]
+  readingLayout?: 'cards' | 'segments'
 
   hint?: TrainingHint
   feedback?: TrainingFeedback

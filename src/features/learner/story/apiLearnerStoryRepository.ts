@@ -2,6 +2,7 @@ import { jsonBody } from '@/lib/api'
 import { learnerApiClient } from '../learnerApiClient'
 import type {
   LearnerStoryBranchResult,
+  LearnerStoryBranchTranscriptionResult,
   LearnerStoryRepository,
   LearnerStorySpeechResult,
   LearnerStoryTtsResult,
@@ -28,12 +29,11 @@ export class ApiLearnerStoryRepository implements LearnerStoryRepository {
     studentId: string,
     storyId: string,
     lineId: string,
-    answer: File | number,
+    answer: string | number,
   ): Promise<LearnerStoryBranchResult> {
-    const body = answer instanceof File
-      ? new FormData()
-      : jsonBody({ optionNo: answer })
-    if (body instanceof FormData) body.append('audioFile', answer as File)
+    const body = jsonBody(typeof answer === 'number'
+      ? { optionNo: answer }
+      : { branchIntent: answer })
     const response = await learnerApiClient.request<{
       transcript: string
       nextLineId: number
@@ -46,6 +46,20 @@ export class ApiLearnerStoryRepository implements LearnerStoryRepository {
       { method: 'POST', body },
     )
     return { ...response, nextLineId: String(response.nextLineId) }
+  }
+
+  async transcribeBranchIntent(
+    studentId: string,
+    storyId: string,
+    lineId: string,
+    audioFile: File,
+  ): Promise<LearnerStoryBranchTranscriptionResult> {
+    const body = new FormData()
+    body.append('audioFile', audioFile)
+    return learnerApiClient.request(
+      `${storyPath(studentId, storyId)}/lines/${encodeURIComponent(lineId)}/branches/transcribe`,
+      { method: 'POST', body },
+    )
   }
 
   async transcribeLine(

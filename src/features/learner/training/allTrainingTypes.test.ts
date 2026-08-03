@@ -36,8 +36,8 @@ const fixtures: readonly TrainingTypeFixture[] = [
   { templateId: 16, questionType: 'BASIC_SYLLABLE_BUILD', responseType: 'COMPONENT_BUILD', activityType: 'letter-build', content: { targetAudioText: '가', initialChoices: ['ㄱ', 'ㄴ'], medialChoices: ['ㅏ', 'ㅓ'] }, answer: { initialAnswerIndex: 0, medialAnswerIndex: 0, result: '가' } },
   { templateId: 17, questionType: 'FINAL_SYLLABLE_BUILD', responseType: 'COMPONENT_BUILD', activityType: 'letter-build', content: { targetAudioText: '각', initialChoices: ['ㄱ', 'ㄴ'], medialChoices: ['ㅏ', 'ㅓ'], finalChoices: ['ㄱ', 'ㄴ'] }, answer: { initialAnswerIndex: 0, medialAnswerIndex: 0, finalAnswerIndex: 0, result: '각' } },
   { templateId: 18, questionType: 'DOUBLE_FINAL_BUILD', responseType: 'COMPONENT_BUILD', activityType: 'letter-build', content: { targetAudioText: '닭', initialChoices: ['ㄷ', 'ㄱ'], medialChoices: ['ㅏ', 'ㅓ'], finalChoices: ['ㄺ', 'ㄱ'] }, answer: { initialAnswerIndex: 0, medialAnswerIndex: 0, finalAnswerIndex: 0, result: '닭' } },
-  { templateId: 19, questionType: 'FINAL_CONSONANT_DELETE', responseType: 'SINGLE_CHOICE', activityType: 'sound-manipulation', content: { source: '감', targetAudioText: '가', removableUnits: ['ㄱ', 'ㅏ', 'ㅁ'] }, answer: { answerIndex: 2, result: '가' } },
-  { templateId: 20, questionType: 'SYLLABLE_DELETE', responseType: 'SINGLE_CHOICE', activityType: 'sound-manipulation', content: { source: '사과', targetAudioText: '과', syllables: ['사', '과'] }, answer: { deleteIndex: 0, result: '과' } },
+  { templateId: 19, questionType: 'FINAL_CONSONANT_DELETE', responseType: 'SINGLE_CHOICE', activityType: 'sound-omit', content: { source: '감', targetAudioText: '가', removableUnits: ['ㄱ', 'ㅏ', 'ㅁ'] }, answer: { answerIndex: 2, result: '가' } },
+  { templateId: 20, questionType: 'SYLLABLE_DELETE', responseType: 'SINGLE_CHOICE', activityType: 'sound-omit', content: { source: '사과', targetAudioText: '과', syllables: ['사', '과'] }, answer: { deleteIndex: 0, result: '과' } },
   { templateId: 21, questionType: 'SYLLABLE_REPLACE', responseType: 'SINGLE_CHOICE', activityType: 'sound-manipulation', content: { source: '사과', targetAudioText: '나과', replaceIndex: 0, choices: ['나', '다'] }, answer: { replaceIndex: 0, answerIndex: 0, result: '나과' } },
   { templateId: 22, questionType: 'WORD_READING', responseType: 'AUDIO', activityType: 'word-reading-grid', content: { words: ['사과', '나무', '바다'] }, answer: { expectedText: '사과 나무 바다' } },
   { templateId: 23, questionType: 'NONWORD_READING', responseType: 'AUDIO', activityType: 'word-reading-grid', content: { words: [{ text: '나무' }, { text: '두미' }] }, answer: { expectedText: '나무 두미' } },
@@ -89,6 +89,13 @@ const audioPromptPolicyTypes = new Set([
 ])
 
 describe('all backend training types', () => {
+  it('DEV, training, and test choice screens share one Vue template', () => {
+    expect(trainingActivityComponents['listen-and-select'])
+      .toBe(trainingActivityComponents['audio-letter-choice'])
+    expect(trainingActivityComponents['sound-choice'])
+      .toBe(trainingActivityComponents['audio-letter-choice'])
+  })
+
   it('34개 템플릿을 빠짐없이 포함한다', () => {
     expect(fixtures.map((fixture) => fixture.templateId)).toEqual(
       Array.from({ length: 34 }, (_, index) => index + 1),

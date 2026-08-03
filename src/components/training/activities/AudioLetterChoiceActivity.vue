@@ -46,11 +46,7 @@ watch(
 </script>
 
 <template>
-  <section
-    class="activity"
-    :class="{ 'activity--first-sound': question.instruction.includes('첫소리') }"
-    :aria-label="question.instruction"
-  >
+  <section class="activity activity--first-sound" :aria-label="question.instruction">
     <h1>{{ question.instruction }}</h1>
 
     <div class="learning-area">
@@ -63,18 +59,30 @@ watch(
       </div>
 
       <div class="choices" aria-label="글자 선택지">
-        <LetterCard
-          v-for="choice in choices"
-          :key="choice.id"
-          :jamo="choice.letter?.jamo ?? ''"
-          :type="choice.letter?.type ?? 'consonant'"
-          :state="cardState(choice)"
-          :class="{ 'answer-hint': showAnswerHint(choice) }"
-          :selectable="!isCorrect"
-          size="large"
-          surface="choice"
-          @select="choose(choice)"
-        />
+        <template v-for="choice in choices" :key="choice.id">
+          <LetterCard
+            v-if="choice.letter"
+            :jamo="choice.letter.jamo"
+            :type="choice.letter.type"
+            :state="cardState(choice)"
+            :class="{ 'answer-hint': showAnswerHint(choice) }"
+            :selectable="!isCorrect"
+            size="large"
+            surface="choice"
+            @select="choose(choice)"
+          />
+          <button
+            v-else
+            class="curtain-choice"
+            :class="[`curtain-choice--${cardState(choice)}`, { 'answer-hint': showAnswerHint(choice) }]"
+            type="button"
+            :disabled="isCorrect"
+            @click="choose(choice)"
+          >
+            <img v-if="choice.imageUrl" :src="choice.imageUrl" :alt="choice.text ?? ''" />
+            <strong>{{ choice.text }}</strong>
+          </button>
+        </template>
       </div>
     </div>
 

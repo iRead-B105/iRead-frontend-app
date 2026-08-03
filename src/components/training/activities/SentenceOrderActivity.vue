@@ -2,7 +2,6 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { TrainingChoice, TrainingQuestion } from '@/types/training'
 import { useTrainingSession } from '@/composables/useTrainingSession'
-import dragHandleIcon from '@/assets/icons/drag-handle.svg'
 
 const props = defineProps<{ question: TrainingQuestion }>()
 defineEmits<{ next: [] }>()
@@ -37,6 +36,9 @@ const speechState = ref<SpeechState>('waiting')
 const draggingChoiceId = ref<string | null>(null)
 const draggingFromSlot = ref<number | null>(null)
 const dragPoint = ref({ x: 0, y: 0 })
+// 고스트가 원본 카드와 같은 크기·글자 모양을 유지하도록 드래그 시작 시 기억한다.
+const dragSize = ref({ width: 0, height: 0 })
+const dragTextStyle = ref<Record<string, string>>({})
 const overSlotIndex = ref<number | null>(null)
 let wrongTimer: ReturnType<typeof setTimeout> | null = null
 let recognition: SpeechRecognitionLike | null = null
@@ -44,6 +46,26 @@ let speechRetryTimer: ReturnType<typeof setTimeout> | null = null
 
 const placed = computed(() => slots.value.map((id) => choices.value.find((choice) => choice.id === id) ?? null))
 const remaining = computed(() => choices.value.filter((choice) => !slots.value.includes(choice.id)))
+// 카드마다 색을 고정한다(원래 제시 순서 기준 3색 순환).
+// 소스 줄 → 드래그 → 슬롯 장착까지 같은 카드는 항상 같은 색을 유지한다.
+// 색상은 공통 낱말 카드 PNG(choice-card-word-*)에서 추출한 값.
+const CARD_TONES = ['yellow', 'mint', 'purple'] as const
+const TONE_COLORS = {
+  yellow: { border: '#fde995', dash: '#f0d072' },
+  mint: { border: '#a8ead8', dash: '#8fdfc8' },
+  purple: { border: '#bfa8ea', dash: '#b296e6' },
+} as const
+const toneOf = (choiceId: string) => {
+  const index = choices.value.findIndex((choice) => choice.id === choiceId)
+  return CARD_TONES[Math.max(index, 0) % 3]!
+}
+const toneStyle = (choiceId: string) => {
+  const tone = TONE_COLORS[toneOf(choiceId)]
+  return { '--word-frame-border': tone.border, '--word-frame-dash': tone.dash }
+}
+const dragTone = computed(() =>
+  draggingChoiceId.value ? toneOf(draggingChoiceId.value) : null,
+)
 const allFilled = computed(() => slots.value.length > 0 && slots.value.every(Boolean))
 const isComplete = computed(() => speechState.value === 'success')
 const nextEmptyIndex = computed(() => slots.value.findIndex((value) => value === null))
@@ -175,6 +197,22 @@ const slotIndexAt = (clientX: number, clientY: number) => {
 const startPointerDrag = (event: PointerEvent, choiceId: string, fromSlot: number | null) => {
   if (assemblyCorrect.value || event.button !== 0 || wrongIndices.value.length > 0) return
   event.preventDefault()
+  const card = event.currentTarget as HTMLElement | null
+  const rect = card?.getBoundingClientRect()
+  dragSize.value = { width: rect?.width ?? 0, height: rect?.height ?? 0 }
+  const textElement = card?.querySelector('strong') ?? card
+  if (textElement) {
+    const computed = window.getComputedStyle(textElement)
+    dragTextStyle.value = {
+      fontSize: computed.fontSize,
+      fontWeight: computed.fontWeight,
+      fontFamily: computed.fontFamily,
+      letterSpacing: computed.letterSpacing,
+      color: computed.color,
+    }
+  } else {
+    dragTextStyle.value = {}
+  }
   draggingChoiceId.value = choiceId
   draggingFromSlot.value = fromSlot
   dragPoint.value = { x: event.clientX, y: event.clientY }
@@ -235,7 +273,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <section class="activity" :aria-label="question.instruction">
+  <section class="activity activity--sentence-order" :aria-label="question.instruction">
     <header class="activity-heading">
       <h1>{{ assemblyCorrect ? '완성한 문장을 읽어봐!' : '문장을 만들어봐!' }}</h1>
       <p v-if="statusMessage" class="status-message" :class="speechState" role="status" aria-live="polite">{{ statusMessage }}</p>
@@ -257,20 +295,25 @@ onBeforeUnmount(() => {
         <span
           v-if="choice"
           class="placed-card"
+          :class="{ dragging: draggingChoiceId === choice.id && draggingFromSlot === index }"
+          :style="toneStyle(choice.id)"
           @pointerdown="startPointerDrag($event, choice.id, index)"
         >{{ choice.text }}</span>
       </div>
     </div>
 
-    <div class="source-cards choices" :style="{ '--card-count': remaining.length || choices.length }" aria-label="문장 카드">
+    <div class="source-cards choices" :style="{ '--card-count': slots.length }" aria-label="문장 카드">
       <article
         v-for="choice in remaining"
         :key="choice.id"
-        class="sentence-card"
-        :class="{ hint: hintChoiceId === choice.id }"
+        class="word-card"
+        :class="{
+          hint: hintChoiceId === choice.id,
+          dragging: draggingChoiceId === choice.id && draggingFromSlot === null,
+        }"
+        :style="toneStyle(choice.id)"
         @pointerdown="startPointerDrag($event, choice.id, null)"
       >
-        <img class="grip" :src="dragHandleIcon" alt="" aria-hidden="true" />
         <strong>{{ choice.text }}</strong>
       </article>
     </div>
@@ -279,7 +322,15 @@ onBeforeUnmount(() => {
       <div
         v-if="draggingChoiceId"
         class="drag-ghost"
-        :style="{ left: `${dragPoint.x}px`, top: `${dragPoint.y}px` }"
+        :class="dragTone ? 'drag-ghost--card' : 'drag-ghost--chip'"
+        :style="{
+          ...(draggingChoiceId ? toneStyle(draggingChoiceId) : {}),
+          left: `${dragPoint.x}px`,
+          top: `${dragPoint.y}px`,
+          width: dragSize.width ? `${dragSize.width}px` : undefined,
+          height: dragSize.height ? `${dragSize.height}px` : undefined,
+          ...dragTextStyle,
+        }"
         aria-hidden="true"
       >{{ choices.find((choice) => choice.id === draggingChoiceId)?.text }}</div>
     </Teleport>

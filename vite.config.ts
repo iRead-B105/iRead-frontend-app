@@ -20,6 +20,8 @@ export default defineConfig(({ command, mode }) => {
       },
     },
     server: {
+      // Docker(Windows) 볼륨 마운트에서 inotify가 안 끊기게 폴링으로 변경 감지.
+      watch: { usePolling: true },
       proxy: environment.backendUrl
         ? {
             '/api': { target: environment.backendUrl, changeOrigin: true },

@@ -29,6 +29,7 @@ interface StorySession extends StoryTemplate {
   sessionNumber: number
   createdAt: string
   lastReadAt: string | null
+  latestBranchSubtitle: string
   status: StoryStatus
   progress: number
 }
@@ -67,6 +68,7 @@ onMounted(async () => {
     sessionNumber: story.sessionNumber,
     createdAt: story.createdAt,
     lastReadAt: story.lastReadAt,
+    latestBranchSubtitle: story.latestBranchSubtitle,
     title: story.title,
     coverImage: resolveStoryCover(story.title, story.coverImageUrl),
     status: story.status,
@@ -171,11 +173,7 @@ function progressLabel(book: StorySession) {
 }
 
 function sessionTitle(book: StorySession) {
-  return `${book.title} ${book.sessionNumber}번째 이야기`
-}
-
-function sessionNumberLabel(book: StorySession) {
-  return `${book.sessionNumber}번`
+  return book.latestBranchSubtitle || book.title
 }
 </script>
 
@@ -280,7 +278,7 @@ function sessionNumberLabel(book: StorySession) {
                 완독
               </span>
             </span>
-            <strong>{{ mode === 'other' ? sessionNumberLabel(book as StorySession) : book.title }}</strong>
+            <strong>{{ mode === 'other' ? sessionTitle(book as StorySession) : book.title }}</strong>
             <span v-if="mode === 'other'" class="mini-progress" aria-hidden="true">
               <i :style="{ width: `${(book as StorySession).progress}%` }" />
             </span>
