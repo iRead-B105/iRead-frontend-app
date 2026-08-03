@@ -886,7 +886,7 @@
   bottom: 12px;
   width: var(--activity-side-width, clamp(185px, 19cqw, 230px));
   display: grid;
-  grid-template-rows: auto 1fr;
+  grid-template-rows: auto 1fr auto;
   place-items: center;
   gap: clamp(12px, 2cqh, 22px);
   padding: clamp(18px, 2cqmin, 28px);
@@ -901,8 +901,40 @@
   place-items: center;
   width: clamp(66px, 7cqw, 88px);
   aspect-ratio: 1;
+  padding: 0;
+  border: 3px solid #d6e7f8;
   border-radius: 50%;
   background: #f6f9ff;
+  cursor: pointer;
+}
+
+.inline-voice-icon:disabled {
+  cursor: default;
+  opacity: .65;
+}
+
+/* 눌러야 할 때는 버튼을 흔들어 시선을 끌고, 녹음 중에는 빨간 테두리로 표시 */
+.inline-voice-icon:not(:disabled):not(.recording) {
+  animation: inline-voice-nudge 1s ease-in-out infinite alternate;
+}
+
+.inline-voice-icon.recording {
+  border-color: var(--learner-color-error, #ef6b6b);
+  background: #fff2f2;
+}
+
+@keyframes inline-voice-nudge {
+  from { transform: scale(1); }
+  to { transform: scale(1.1); }
+}
+
+.inline-voice-feedback {
+  font-family: var(--learner-font-display);
+  font-size: 15px;
+  font-weight: 900;
+  color: #697995;
+  text-align: center;
+  overflow-wrap: anywhere;
 }
 
 .inline-voice-icon img {

@@ -94,8 +94,15 @@ describe('글자 따라 읽기 백엔드 녹음 연결', () => {
     await Promise.resolve()
     await nextTick()
 
-    expect(StubMediaRecorder.latest?.state).toBe('recording')
-    StubMediaRecorder.latest?.stop()
+    // 자동으로 녹음이 시작되지 않고, 마이크 버튼을 눌러야 시작된다.
+    expect(StubMediaRecorder.latest).toBeNull()
+    expect(wrapper.get('.speech-panel').classes()).toContain('speech-panel--ready')
+
+    await wrapper.get('.mic-state').trigger('click')
+    await vi.waitFor(() => expect(StubMediaRecorder.latest?.state).toBe('recording'))
+
+    // 다시 누르면 녹음이 끝나고 평가로 넘어간다.
+    await wrapper.get('.mic-state').trigger('click')
     await nextTick()
 
     const emission = wrapper.emitted('voiceRecorded')?.[0]

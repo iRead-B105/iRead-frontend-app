@@ -1,8 +1,20 @@
 // @vitest-environment jsdom
 
-import { nextTick } from 'vue'
+import { nextTick, ref } from 'vue'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
+
+// 실제 useAudioPlayer는 백엔드 TTS fetch를 타므로 테스트에서는 즉시 완료로 대체한다.
+vi.mock('@/composables/useAudioPlayer', () => ({
+  useAudioPlayer: () => ({
+    isPlaying: ref(false),
+    currentText: ref(''),
+    replay: vi.fn(async () => {}),
+    playSequence: vi.fn(async () => {}),
+    playLetterSound: vi.fn(async () => {}),
+    stop: vi.fn(),
+  }),
+}))
 import { useTrainingSession } from '@/composables/useTrainingSession'
 import type { TrainingActivityType, TrainingQuestion } from '@/types/training'
 import SoundButton from '@/components/training/SoundButton.vue'
@@ -78,7 +90,7 @@ describe('mock voice activities', () => {
     wrapper.unmount()
   })
 
-  it('따라 읽기를 마이크 없이 완료한다', async () => {
+  it('따라 읽기는 마이크 버튼을 눌러 완료한다', async () => {
     const question: TrainingQuestion = {
       id: 'read-aloud',
       instruction: '소리 내어 읽어요',
@@ -89,13 +101,17 @@ describe('mock voice activities', () => {
     startQuestion('word-reading-grid', question)
     const wrapper = mount(ReadAloudActivity, { props: { question } })
 
+    // 자동 수음이 아니므로 버튼을 누르기 전에는 완료되지 않는다.
+    expect(session.progressState.isCurrentCorrect).toBe(null)
+    expect(wrapper.get('.mic-button').element.tagName).toBe('BUTTON')
+
+    await wrapper.get('.mic-button').trigger('click')
     await vi.waitFor(() => expect(session.progressState.isCurrentCorrect).toBe(true))
-    expect(wrapper.get('.mic-button').element.tagName).toBe('DIV')
     expect(wrapper.get('.action--primary').attributes('disabled')).toBeUndefined()
     wrapper.unmount()
   })
 
-  it('따라 보기를 마치면 발음을 재생한 뒤 아동 음성을 자동 수음한다', async () => {
+  it('따라 보기를 마치면 마이크 버튼을 눌러 발화를 시작한다', async () => {
     vi.useFakeTimers()
     const question: TrainingQuestion = {
       id: 'vowel-trace',
@@ -117,6 +133,10 @@ describe('mock voice activities', () => {
     await nextTick()
 
     expect(session.progressState.isCurrentCorrect).toBe(null)
+    expect(wrapper.get('.speech-panel').classes()).toContain('speech-panel--ready')
+    expect(wrapper.get('.speech-panel').text()).toContain('마이크를 눌러 읽어봐요!')
+
+    await wrapper.get('.mic-state').trigger('click')
     expect(wrapper.get('.speech-panel').classes()).toContain('speech-panel--listening')
     expect(wrapper.get('.speech-panel').text()).toContain('말하는 중이에요!')
     await vi.runAllTimersAsync()

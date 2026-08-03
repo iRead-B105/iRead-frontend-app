@@ -86,6 +86,9 @@ describe('따라 읽기 녹음 재사용', () => {
     enableMicrophone()
     const wrapper = mount(ReadAloudActivity, { props: { question } })
 
+    // 자동 수음이 아니므로 마이크 버튼을 눌러 녹음을 시작한다.
+    expect(StubMediaRecorder.latest).toBeNull()
+    await wrapper.get('.mic-button').trigger('click')
     await vi.waitFor(() => expect(StubMediaRecorder.latest).not.toBeNull())
     StubMediaRecorder.latest?.stop()
     await nextTick()

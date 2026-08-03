@@ -125,6 +125,11 @@
   transform: scale(1.05);
 }
 
+.mic-button:disabled {
+  cursor: default;
+  transform: none;
+}
+
 .mic-button:focus-visible {
   outline: none;
   box-shadow: var(--learner-shadow-focus);

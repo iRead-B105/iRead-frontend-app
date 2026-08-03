@@ -137,7 +137,6 @@ const leaveConfirmationOpen = ref(false)
 const integrationError = ref('')
 let resolveLeaveConfirmation: ((allow: boolean) => void) | null = null
 let automaticVoiceStopTimer: ReturnType<typeof setTimeout> | null = null
-let automaticVoiceRetryTimer: ReturnType<typeof setTimeout> | null = null
 
 watch(integrationError, (error) => {
   if (!error) return
@@ -661,12 +660,12 @@ const submitMockVoice = async (
 // 다음 문제로 이동. 마지막 문제면 결과 저장 흐름으로 진입.
 const clearAutomaticVoiceTimers = () => {
   if (automaticVoiceStopTimer) clearTimeout(automaticVoiceStopTimer)
-  if (automaticVoiceRetryTimer) clearTimeout(automaticVoiceRetryTimer)
   automaticVoiceStopTimer = null
-  automaticVoiceRetryTimer = null
 }
 
-const beginAutomaticVoiceCapture = async (
+// 음성 게이트를 연다. 녹음은 자동으로 시작하지 않고
+// 아동이 게이트의 마이크 버튼을 눌러 직접 시작/종료한다.
+const openVoiceGate = (
   response?: LearnerTraceSubmissionResponse,
   advanceAfterSubmit = true,
 ) => {
@@ -688,35 +687,32 @@ const beginAutomaticVoiceCapture = async (
   clearAutomaticVoiceTimers()
   pendingNextResponse.value = response
   advanceAfterAutomaticVoice.value = advanceAfterSubmit
-  voiceFeedback.value = '준비되면 바로 말해요!'
+  voiceFeedback.value = '마이크를 눌러 읽어봐요!'
   voiceRecorder.reset()
   voiceGateOpen.value = true
-  await voiceRecorder.start()
+}
 
+// 게이트 마이크 버튼 토글: 누르면 녹음 시작, 다시 누르면 종료 후 평가.
+const toggleVoiceRecording = async () => {
+  if (voiceSubmitting.value || voiceRecorder.state.status === 'requesting') return
+
+  if (voiceRecorder.state.status === 'recording') {
+    clearAutomaticVoiceTimers()
+    voiceRecorder.stop()
+    return
+  }
+
+  voiceRecorder.reset()
+  await voiceRecorder.start()
   const recorderStatus = voiceRecorder.state.status as string
   if (recorderStatus !== 'recording') {
     voiceGateOpen.value = false
     deviceBlocker.value = 'microphone'
     return
   }
-
-  voiceFeedback.value = '듣고 있어요!'
-  const recordingMs = Math.min(
-    12_000,
-    Math.max(3_000, mapped.expectedText.length * 650 + 1_800),
-  )
-  automaticVoiceStopTimer = setTimeout(() => voiceRecorder.stop(), recordingMs)
-}
-
-const retryAutomaticVoiceCapture = () => {
-  clearAutomaticVoiceTimers()
-  automaticVoiceRetryTimer = setTimeout(
-    () => void beginAutomaticVoiceCapture(
-      pendingNextResponse.value,
-      advanceAfterAutomaticVoice.value,
-    ),
-    1_100,
-  )
+  voiceFeedback.value = '듣고 있어요! 다 읽으면 눌러요'
+  // 수동 종료를 잊었을 때 업로드 한도를 넘지 않게 하는 안전 상한.
+  automaticVoiceStopTimer = setTimeout(() => voiceRecorder.stop(), 20_000)
 }
 
 const goNext = async (response?: LearnerTraceSubmissionResponse) => {
@@ -735,7 +731,7 @@ const goNext = async (response?: LearnerTraceSubmissionResponse) => {
         await submitRecordedVoice(mapped, captured)
         return
       }
-      await beginAutomaticVoiceCapture(response)
+      openVoiceGate(response)
       return
     }
   }
@@ -892,9 +888,9 @@ const submitRecordedVoice = async (
             : '힌트를 보고 연습을 마쳤어요.'
         }`
     if (result.canRetry) {
+      // 게이트를 연 채 유지한다. 재녹음은 아동이 마이크 버튼을 다시 눌러 시작한다.
       voiceRecorder.reset()
       voiceGateOpen.value = true
-      retryAutomaticVoiceCapture()
       return
     }
     recordedQuestionNumbers.add(mapped.questionNumber)
@@ -916,13 +912,15 @@ watch(() => voiceRecorder.state.status, (status) => {
   void submitVoiceRecording()
 })
 
+// 제출이 실패로 끝났으면 같은 녹음을 자동 재사용하지 않고
+// 아동이 마이크 버튼으로 다시 녹음하도록 안내만 남긴다.
 watch(voiceSubmitting, (submitting, wasSubmitting) => {
   if (
     wasSubmitting
     && !submitting
     && voiceGateOpen.value
     && voiceRecorder.state.status === 'recorded'
-  ) retryAutomaticVoiceCapture()
+  ) voiceRecorder.reset()
 })
 
 // 조작형 학습은 정답을 완성하는 즉시 화면 안에서 발음을 받는다.
@@ -943,7 +941,7 @@ watch(
       void submitRecordedVoice(mapped, captured)
       return
     }
-    void beginAutomaticVoiceCapture(undefined, false)
+    openVoiceGate(undefined, false)
   },
 )
 
@@ -1094,12 +1092,19 @@ const isSavingFailed = computed(() => session.savingState.status === 'failed')
           <aside
             v-if="voiceGateOpen"
             class="inline-voice-panel"
-            aria-label="목소리 인식 중"
+            aria-label="목소리 녹음"
             aria-live="polite"
           >
-            <span class="inline-voice-icon" aria-hidden="true">
+            <button
+              type="button"
+              class="inline-voice-icon"
+              :class="{ recording: voiceRecorder.state.status === 'recording' }"
+              :disabled="voiceSubmitting"
+              :aria-label="voiceFeedback || '마이크를 눌러 읽어봐요!'"
+              @click="toggleVoiceRecording"
+            >
               <img :src="microphoneIcon" alt="" />
-            </span>
+            </button>
             <div
               class="automatic-voice-wave"
               :class="{
@@ -1110,6 +1115,7 @@ const isSavingFailed = computed(() => session.savingState.status === 'failed')
             >
               <span v-for="index in 7" :key="index" aria-hidden="true"></span>
             </div>
+            <strong class="inline-voice-feedback">{{ voiceFeedback }}</strong>
           </aside>
         </Transition>
       </div>

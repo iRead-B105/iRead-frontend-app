@@ -21,7 +21,7 @@ const emit = defineEmits<{
   guideMessage: [message: string]
   voiceRecorded: [blob: Blob, controls: VoiceEvaluationControls]
 }>()
-type SpeechState = 'waiting' | 'listening' | 'evaluating' | 'retry' | 'success'
+type SpeechState = 'waiting' | 'ready' | 'listening' | 'evaluating' | 'retry' | 'success'
 
 const session = useTrainingSession()
 const audio = useAudioPlayer()
@@ -36,9 +36,10 @@ const recordedStrokes = ref<Array<Array<{
   elapsedMs: number
   pressure?: number
 }>>>([])
+// 수동 종료를 잊었을 때 업로드 한도를 넘지 않게 하는 안전 상한.
+const MAX_RECORDING_MS = 20_000
 let traceStartedAt = 0
 let fallbackTimer: ReturnType<typeof setTimeout> | null = null
-let retryTimer: ReturnType<typeof setTimeout> | null = null
 let submittedBlob: Blob | null = null
 
 const strokes = computed(() => props.question.traceStrokes ?? [])
@@ -74,12 +75,16 @@ const pronunciationText = computed(() => {
     ?? glyph
 })
 const speechStatusText = computed(() => {
-  if (speechState.value === 'listening') return '말하는 중이에요!'
+  if (speechState.value === 'ready') return '마이크를 눌러 읽어봐요!'
+  if (speechState.value === 'listening') return '말하는 중이에요! 다 읽으면 눌러요'
   if (speechState.value === 'evaluating') return '목소리를 확인하고 있어요!'
-  if (speechState.value === 'retry') return '한 번 더 말해봐요!'
+  if (speechState.value === 'retry') return '한 번 더! 마이크를 눌러요'
   if (speechState.value === 'success') return '잘 들었어요!'
   return '글자를 따라 읽어요!'
 })
+const micToggleEnabled = computed(() =>
+  speechState.value === 'ready' || speechState.value === 'retry' || speechState.value === 'listening',
+)
 
 const pointString = (points: TracePoint[]) => points.map((point) => `${point.x},${point.y}`).join(' ')
 
@@ -113,21 +118,18 @@ const finishSpeech = (isMock: boolean, blob: Blob | null = null, message?: strin
   session.markRecordingComplete({ isMock, audioUrl: null, blob })
 }
 
+// 재시도 상태로만 전환한다. 재녹음은 아동이 마이크 버튼을 다시 눌러 시작한다.
 const setRetry = (message?: string) => {
   stopSpeech()
-  if (retryTimer) clearTimeout(retryTimer)
   recorder.reset()
   submittedBlob = null
   speechState.value = 'retry'
   if (message) emit('guideMessage', message)
-  retryTimer = setTimeout(() => void startSpeech(), 1_100)
 }
 
 const startSpeech = async () => {
   if (!traceCompleted.value || speechState.value === 'listening' || speechState.value === 'success') return
   stopSpeech()
-  if (retryTimer) clearTimeout(retryTimer)
-  retryTimer = null
   recorder.reset()
   submittedBlob = null
   speechState.value = 'listening'
@@ -142,8 +144,21 @@ const startSpeech = async () => {
     setRetry(recorder.state.errorMessage ?? '마이크를 확인해 주세요.')
     return
   }
-  // 한 글자 발화에 충분한 시간을 준 뒤 자동으로 녹음을 끝낸다.
-  fallbackTimer = setTimeout(() => recorder.stop(), 5_000)
+  // 종료는 버튼 클릭이 기본. 업로드 한도를 넘지 않도록 안전 상한만 둔다.
+  fallbackTimer = setTimeout(() => recorder.stop(), MAX_RECORDING_MS)
+}
+
+// 마이크 버튼 토글: 대기/재시도 상태면 녹음 시작, 녹음 중이면 종료.
+const toggleSpeech = () => {
+  if (speechState.value === 'listening') {
+    if (mockVoiceSubmissionsEnabled) {
+      finishSpeech(true)
+      return
+    }
+    stopSpeech()
+    return
+  }
+  if (speechState.value === 'ready' || speechState.value === 'retry') void startSpeech()
 }
 
 watch(() => recorder.state.status, (status) => {
@@ -180,7 +195,8 @@ const completeTrace = async () => {
   const questionId = props.question.id
   await playPronunciation()
   if (props.question.id !== questionId || !traceCompleted.value) return
-  await startSpeech()
+  // 발음을 들려준 뒤 아동이 마이크 버튼을 눌러 직접 녹음을 시작한다.
+  speechState.value = 'ready'
 }
 
 const advanceFromClientPoint = (clientX: number, clientY: number) => {
@@ -236,8 +252,6 @@ const submitTrace = () => {
 
 const resetQuestion = () => {
   stopSpeech()
-  if (retryTimer) clearTimeout(retryTimer)
-  retryTimer = null
   audio.stop()
   progress.value = 0
   speechState.value = 'waiting'
@@ -257,7 +271,6 @@ onMounted(() => window.addEventListener('iread:gaze', onGaze))
 onBeforeUnmount(() => {
   window.removeEventListener('iread:gaze', onGaze)
   stopSpeech()
-  if (retryTimer) clearTimeout(retryTimer)
   audio.stop()
 })
 </script>
@@ -321,13 +334,15 @@ onBeforeUnmount(() => {
           :class="`speech-panel--${speechState}`"
           aria-live="polite"
         >
-          <div
+          <button
+            type="button"
             class="mic-state"
-            role="status"
+            :disabled="!micToggleEnabled"
             :aria-label="speechStatusText"
+            @click="toggleSpeech"
           >
             <img :src="microphoneIcon" alt="" aria-hidden="true" />
-          </div>
+          </button>
           <div class="speech-wave" :class="{ active: speechState === 'listening' }" aria-hidden="true">
             <i v-for="index in 9" :key="index"></i>
           </div>
