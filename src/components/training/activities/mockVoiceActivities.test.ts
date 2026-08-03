@@ -1,20 +1,8 @@
 // @vitest-environment jsdom
 
-import { nextTick, ref } from 'vue'
+import { nextTick } from 'vue'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
-
-// 실제 useAudioPlayer는 백엔드 TTS fetch를 타므로 테스트에서는 즉시 완료로 대체한다.
-vi.mock('@/composables/useAudioPlayer', () => ({
-  useAudioPlayer: () => ({
-    isPlaying: ref(false),
-    currentText: ref(''),
-    replay: vi.fn(async () => {}),
-    playSequence: vi.fn(async () => {}),
-    playLetterSound: vi.fn(async () => {}),
-    stop: vi.fn(),
-  }),
-}))
 import { useTrainingSession } from '@/composables/useTrainingSession'
 import type { TrainingActivityType, TrainingQuestion } from '@/types/training'
 import SoundButton from '@/components/training/SoundButton.vue'
