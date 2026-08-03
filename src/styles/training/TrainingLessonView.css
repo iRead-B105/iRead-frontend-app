@@ -630,6 +630,43 @@
   padding: clamp(22px, 2.5cqw, 36px) !important;
 }
 
+/* 문장 조립: 공통 낱말 카드가 위 슬롯 셀과 같은 크기를 갖는다.
+   카드 줄이 슬롯과 같은 그리드라 width 100%면 폭이 일치하고,
+   min-height는 슬롯(.sentence-slot)과 같은 값을 쓴다. */
+.lesson-view :deep(.activity--sentence-order .choices > .word-card) {
+  width: 96% !important;
+  justify-self: center;
+  min-height: 118px !important;
+  aspect-ratio: auto;
+  padding: clamp(10px, 1.4cqw, 20px) !important;
+  /* PNG 프레임 대신 CSS 프레임: 카드가 어떤 비율로 늘어나도
+     실선-점선 간격이 상하/좌우 동일하다. 색은 카드별 인라인 변수. */
+  border: 5px solid var(--word-frame-border, #fde995) !important;
+  border-radius: 22px !important;
+  background: #fdf9ef !important;
+  box-shadow: 0 8px 12px rgb(86 65 28 / 15%) !important;
+}
+
+.lesson-view :deep(.activity--sentence-order .choices > .word-card::before) {
+  content: none !important;
+}
+
+.lesson-view :deep(.activity--sentence-order .choices > .word-card::after) {
+  content: '' !important;
+  position: absolute;
+  inset: 5px;
+  display: block !important;
+  border: 1.5px dashed var(--word-frame-dash, #f0d072);
+  border-radius: 12px;
+  pointer-events: none;
+}
+
+@container learner-canvas (max-height: 800px) {
+  .lesson-view :deep(.activity--sentence-order .choices > .word-card) {
+    min-height: 92px !important;
+  }
+}
+
 .lesson-view :deep(.choices--words > .word-choice) {
   display: grid !important;
   grid-template-columns: var(--learner-sound-control-width) minmax(0, 1fr) !important;
