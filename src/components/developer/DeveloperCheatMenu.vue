@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useDeviceStatus } from '@/composables/useDeviceStatus'
 import { learnerDataSource } from '@/config/learnerDataSource'
 import { devPreviewLessons } from '@/mocks/trainingLessons'
 import { getCachedStudent } from '@/services/learnerDataRepository'
@@ -18,6 +19,53 @@ const message = ref('')
 const errorMessage = ref('')
 const activeStudent = computed(() => getCachedStudent())
 const apiCheatsAvailable = learnerDataSource === 'api'
+const {
+  physicalEyeTrackerConnected,
+  virtualEyeTrackerConnected,
+  setVirtualEyeTrackerConnected,
+} = useDeviceStatus()
+let pendingGazePoint: { clientX: number; clientY: number } | null = null
+let gazeAnimationFrame = 0
+
+const emitVirtualGaze = () => {
+  gazeAnimationFrame = 0
+  const point = pendingGazePoint
+  pendingGazePoint = null
+  if (!virtualEyeTrackerConnected.value || !point) return
+  window.dispatchEvent(new CustomEvent('iread:gaze', {
+    detail: {
+      ...point,
+      x: point.clientX,
+      y: point.clientY,
+      rawClientX: point.clientX,
+      rawClientY: point.clientY,
+      source: 'mouse',
+      valid: true,
+      headPoseStable: true,
+    },
+  }))
+}
+
+const handleVirtualGazePointer = (event: PointerEvent) => {
+  if (!virtualEyeTrackerConnected.value) return
+  pendingGazePoint = { clientX: event.clientX, clientY: event.clientY }
+  if (!gazeAnimationFrame) gazeAnimationFrame = window.requestAnimationFrame(emitVirtualGaze)
+}
+
+const toggleVirtualEyeTracker = () => {
+  setVirtualEyeTrackerConnected(!virtualEyeTrackerConnected.value)
+}
+
+onMounted(() => {
+  window.addEventListener('pointermove', handleVirtualGazePointer, { passive: true })
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('pointermove', handleVirtualGazePointer)
+  if (gazeAnimationFrame) window.cancelAnimationFrame(gazeAnimationFrame)
+  pendingGazePoint = null
+  setVirtualEyeTrackerConnected(false)
+})
 
 watch(
   () => route.query.debugPanel,
@@ -83,6 +131,21 @@ const reloadPage = () => window.location.reload()
 </script>
 
 <template>
+  <button
+    class="virtual-eye-tracker-trigger"
+    :class="{ connected: virtualEyeTrackerConnected }"
+    type="button"
+    :disabled="physicalEyeTrackerConnected"
+    :aria-pressed="virtualEyeTrackerConnected"
+    @click="toggleVirtualEyeTracker"
+  >
+    {{ physicalEyeTrackerConnected
+      ? '실제 아이트래커 연결됨'
+      : virtualEyeTrackerConnected
+        ? '가상 아이트래커 해제'
+        : '가상 아이트래커 연결' }}
+  </button>
+
   <button
     class="developer-cheat-trigger"
     type="button"

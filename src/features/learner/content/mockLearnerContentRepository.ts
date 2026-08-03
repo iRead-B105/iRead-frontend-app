@@ -36,7 +36,19 @@ export class MockLearnerContentRepository implements LearnerContentRepository {
       learnerRuntimeMock.storyDetails.alice
     return {
       ...detail,
-      pages: detail.pages.map((page) => ({ ...page, lines: [...page.lines] })),
+      pages: detail.pages.map((page) => ({
+        ...page,
+        lines: [...page.lines],
+        branchPrompt: page.requiresBranchInput
+          ? {
+              options: [
+                { optionNo: 1 as const, label: '친구와 함께 길을 찾아요' },
+                { optionNo: 2 as const, label: '용기를 내어 앞으로 가요' },
+                { optionNo: 3 as const, label: '잠시 쉬며 생각해요' },
+              ],
+            }
+          : null,
+      })),
     }
   }
 

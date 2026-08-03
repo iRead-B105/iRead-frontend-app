@@ -4,10 +4,12 @@ import type { TracePoint, TrainingQuestion } from '@/types/training'
 import { useTrainingSession } from '@/composables/useTrainingSession'
 import { useAudioPlayer } from '@/composables/useAudioPlayer'
 import { useVoiceRecorder } from '@/composables/useVoiceRecorder'
+import { useDeviceStatus } from '@/composables/useDeviceStatus'
 import SoundButton from '@/components/training/SoundButton.vue'
 import microphoneIcon from '@/assets/icons/microphone.svg'
 import type { LearnerTraceSubmissionResponse } from '@/features/learner/training'
 import { mockVoiceSubmissionsEnabled } from '@/features/learner/training/mockDeviceSubmissions'
+import { consonantPronunciationText } from '@/lib/hangulPronunciation'
 
 const props = defineProps<{ question: TrainingQuestion }>()
 type VoiceEvaluationControls = {
@@ -24,6 +26,7 @@ type SpeechState = 'waiting' | 'listening' | 'evaluating' | 'retry' | 'success'
 const session = useTrainingSession()
 const audio = useAudioPlayer()
 const recorder = useVoiceRecorder()
+const { virtualEyeTrackerConnected } = useDeviceStatus()
 const stage = ref<SVGSVGElement | null>(null)
 const progress = ref(0)
 const speechState = ref<SpeechState>('waiting')
@@ -44,20 +47,6 @@ const totalPoints = computed(() => flatPoints.value.length)
 const traceCompleted = computed(() => totalPoints.value > 0 && progress.value >= totalPoints.value)
 const currentPoint = computed<TracePoint | null>(() => flatPoints.value[progress.value] ?? null)
 const hangulPronunciations: Record<string, string> = {
-  'ㄱ': '기역',
-  'ㄴ': '니은',
-  'ㄷ': '디귿',
-  'ㄹ': '리을',
-  'ㅁ': '미음',
-  'ㅂ': '비읍',
-  'ㅅ': '시옷',
-  'ㅇ': '이응',
-  'ㅈ': '지읒',
-  'ㅊ': '치읓',
-  'ㅋ': '키읔',
-  'ㅌ': '티읕',
-  'ㅍ': '피읖',
-  'ㅎ': '히읗',
   'ㅏ': '아',
   'ㅑ': '야',
   'ㅓ': '어',
@@ -76,6 +65,8 @@ const hangulPronunciations: Record<string, string> = {
 }
 const pronunciationText = computed(() => {
   const glyph = props.question.traceGlyph ?? ''
+  const consonantText = consonantPronunciationText(glyph)
+  if (consonantText !== glyph) return consonantText
   return hangulPronunciations[glyph]
     ?? props.question.speechAliases?.find((alias) => alias && alias !== glyph)
     ?? props.question.audioText
@@ -199,7 +190,11 @@ const advanceFromClientPoint = (clientX: number, clientY: number) => {
   progress.value += 1
 }
 
-const onPointerMove = (event: PointerEvent) => advanceFromClientPoint(event.clientX, event.clientY)
+const onPointerMove = (event: PointerEvent) => {
+  if (!virtualEyeTrackerConnected.value) {
+    advanceFromClientPoint(event.clientX, event.clientY)
+  }
+}
 const onGaze = (event: Event) => {
   const detail = (event as CustomEvent<{ clientX?: number; clientY?: number; headPoseStable?: boolean }>).detail
   if (

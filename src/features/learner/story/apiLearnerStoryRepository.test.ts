@@ -28,6 +28,25 @@ describe('API learner story repository', () => {
     expect(result.nextLineId).toBe('12')
   })
 
+  it('AI 선택지 번호를 backend JSON 계약으로 전송한다', async () => {
+    const request = vi.spyOn(learnerApiClient, 'request').mockResolvedValue({
+      transcript: '용기를 내어 앞으로 가요',
+      nextLineId: 12,
+      generatedContent: '토끼가 앞으로 걸어갔어요.',
+      imageUrl: null,
+      progress: 70,
+      status: 'IN_PROGRESS',
+    })
+    const repository = new ApiLearnerStoryRepository()
+
+    await repository.chooseDirection('101', '31', '9', 2)
+
+    expect(request).toHaveBeenCalledWith(
+      '/api/app/story/101/31/lines/9/branches',
+      { method: 'POST', body: JSON.stringify({ optionNo: 2 }) },
+    )
+  })
+
   it('읽은 대사를 backend에 반영한다', async () => {
     const request = vi.spyOn(learnerApiClient, 'request').mockResolvedValue(undefined)
     const repository = new ApiLearnerStoryRepository()

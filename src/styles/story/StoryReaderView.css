@@ -324,6 +324,48 @@
   text-shadow: 0 3px 0 #fff;
 }
 
+.branch-options {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(3,minmax(0,1fr));
+  gap: clamp(8px,1.2vw,14px);
+}
+
+.branch-options button {
+  min-height: 58px;
+  padding: 10px 14px;
+  border: 3px solid #d8dff4;
+  border-radius: var(--learner-radius-control);
+  background: #fff;
+  color: #27468d;
+  font-family: var(--learner-font-display);
+  font-size: clamp(17px,1.5vw,22px);
+  font-weight: var(--learner-font-weight-heavy);
+  line-height: 1.25;
+  box-shadow: var(--learner-shadow-small);
+  cursor: pointer;
+  transition: transform .18s ease,box-shadow .18s ease,border-color .18s ease;
+}
+
+.branch-options button:hover,
+.branch-options button:focus-visible {
+  border-color: var(--learner-color-story);
+  box-shadow: var(--learner-shadow-control);
+  transform: translateY(-2px);
+}
+
+.branch-options button:disabled {
+  cursor: wait;
+  opacity: .62;
+  transform: none;
+}
+
+.branch-or {
+  margin: 8px 0;
+  color: #687697;
+  font-size: clamp(15px,1.3vw,19px);
+  font-weight: var(--learner-font-weight-bold);
+}
 /* 자동 음성 인식 상태와 아동의 답을 보여주는 영역 */
 .voice-answer {
   width: 100%;

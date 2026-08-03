@@ -11,12 +11,12 @@ export class MockLearnerStoryRepository implements LearnerStoryRepository {
     lineId: string,
   ) {
     return {
-      transcript: '',
+      transcript: '용기를 내어 앞으로 가요',
       nextLineId: lineId,
-      generatedContent: '',
+      generatedContent: '친구와 함께 새로운 길을 찾아갔어요.',
       imageUrl: null,
-      progress: 0,
-      status: 'IN_PROGRESS',
+      progress: 100,
+      status: 'COMPLETED',
     }
   }
 
