@@ -142,7 +142,7 @@
   align-items: center;
   justify-content: center;
   min-height: 84px;
-  padding: 14px 48px 14px 26px;
+  padding: 14px 26px;
   border: var(--learner-border-width) solid transparent;
   border-radius: var(--learner-radius-selection-card);
   background: var(--learner-color-surface);
@@ -172,16 +172,6 @@
   text-align: center;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.grip {
-  position: absolute;
-  right: 16px;
-  top: 50%;
-  width: 20px;
-  height: 20px;
-  object-fit: contain;
-  transform: translateY(-50%);
 }
 
 .sentence-card.wrong {
