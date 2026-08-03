@@ -64,6 +64,7 @@ export interface LearnerStorySession {
   readonly createdAt: string
   readonly lastReadAt: string | null
   readonly title: string
+  readonly latestBranchSubtitle: string
   readonly coverImageUrl: string
   readonly status: LearnerStoryStatus
   readonly progress: number
@@ -80,6 +81,7 @@ export interface LearnerStoryBranchOption {
 }
 
 export interface LearnerStoryBranchPrompt {
+  readonly subtitle: string
   readonly options: readonly LearnerStoryBranchOption[]
 }
 

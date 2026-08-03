@@ -14,6 +14,7 @@ describe('API learner content repository', () => {
           storyId: 31,
           storyTemplateId: 4,
           createdAt: '2026-07-29T10:00:00',
+          latestBranchSubtitle: '달빛 문을 찾아서',
           storyStatus: 'IN_PROGRESS',
           progress: 65,
         },
@@ -35,6 +36,7 @@ describe('API learner content repository', () => {
       storyId: '31',
       templateId: '4',
       title: '용감한 토끼',
+      latestBranchSubtitle: '달빛 문을 찾아서',
       status: 'IN_PROGRESS',
       progress: 65,
       coverImageUrl: '/images/brave-rabbit.png',
@@ -66,6 +68,7 @@ describe('API learner content repository', () => {
           lineOrder: 1,
           readAt: null,
           branchPrompt: {
+            subtitle: '숲길의 세 가지 약속',
             options: [
               { optionNo: 1, label: '숲으로 가요' },
               { optionNo: 2, label: '친구를 찾아요' },
@@ -94,6 +97,7 @@ describe('API learner content repository', () => {
     expect(result.pages[1]?.lines).toEqual(['토끼가 숲길을 걸었어요.'])
     expect(result.pages[1]?.requiresBranchInput).toBe(true)
     expect(result.pages[1]?.branchPrompt?.options).toHaveLength(3)
+    expect(result.pages[1]?.branchPrompt?.subtitle).toBe('숲길의 세 가지 약속')
     expect(result).toMatchObject({
       status: 'IN_PROGRESS',
       currentDay: 2,
