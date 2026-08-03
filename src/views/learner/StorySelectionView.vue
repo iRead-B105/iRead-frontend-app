@@ -5,6 +5,12 @@ import storyLandBackground from '../../assets/backgrounds/story-section-backgrou
 import otherBooksIcon from '../../assets/story/ui/other-books-icon.png'
 import newBookIcon from '../../assets/story/ui/new-book-icon.png'
 import continueStoryIcon from '../../assets/story/ui/continue-story-icon.png'
+import antAndGrasshopperCover from '../../assets/story/covers/ant-and-grasshopper.png'
+import byeoljubujeonCover from '../../assets/story/covers/byeoljubujeon.png'
+import cinderellaCover from '../../assets/story/covers/cinderella.png'
+import oldManAndSeaCover from '../../assets/story/covers/old-man-and-sea.png'
+import rabbitAndTurtleCover from '../../assets/story/covers/rabbit-and-turtle.png'
+import threeLittlePigsCover from '../../assets/story/covers/three-little-pigs.png'
 import { fetchStoryLibrary, startStorySession } from '@/services/learnerDataRepository'
 import PageBackButton from '@/components/common/PageBackButton.vue'
 import progressStar from '@/assets/training/ui/progress-star.png'
@@ -36,6 +42,21 @@ const requestError = ref('')
 const openingBookId = ref<string | null>(null)
 const currentPage = ref(1)
 const booksPerPage = 3
+const storyCoverByTitle: Record<string, string> = {
+  별주부전: byeoljubujeonCover,
+  신데렐라: cinderellaCover,
+  '토끼와 거북이': rabbitAndTurtleCover,
+  '개미와 배짱이': antAndGrasshopperCover,
+  '아기돼지 삼형제': threeLittlePigsCover,
+  '노인과 바다': oldManAndSeaCover,
+}
+
+function resolveStoryCover(title: string, fallbackCover: string) {
+  for (const [storyTitle, coverImage] of Object.entries(storyCoverByTitle)) {
+    if (title.includes(storyTitle)) return coverImage
+  }
+  return fallbackCover
+}
 
 onMounted(async () => {
   try {
@@ -47,14 +68,14 @@ onMounted(async () => {
     createdAt: story.createdAt,
     lastReadAt: story.lastReadAt,
     title: story.title,
-    coverImage: story.coverImageUrl,
+    coverImage: resolveStoryCover(story.title, story.coverImageUrl),
     status: story.status,
     progress: story.progress,
     }))
     storyTemplates.value = library.templates.map((template) => ({
     id: template.templateId,
     title: template.title,
-    coverImage: template.coverImageUrl,
+    coverImage: resolveStoryCover(template.title, template.coverImageUrl),
     }))
   } catch {
     requestError.value = '이야기 목록을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.'
@@ -246,16 +267,10 @@ function sessionTitle(book: StorySession) {
                 decoding="async"
               />
               <span
-                class="status-badge"
-                :class="mode === 'new' ? 'status-badge--new' : `status-badge--${(book as StorySession).status.toLowerCase()}`"
+                v-if="mode === 'other' && (book as StorySession).status === 'COMPLETED'"
+                class="status-badge status-badge--completed"
               >
-                {{
-                  mode === 'new'
-                    ? '새 이야기'
-                    : (book as StorySession).status === 'COMPLETED'
-                      ? '완독'
-                      : '읽는 중'
-                }}
+                완독
               </span>
             </span>
             <strong>{{ mode === 'other' ? sessionTitle(book as StorySession) : book.title }}</strong>

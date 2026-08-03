@@ -536,14 +536,6 @@ button {
   background: #8f63d8;
 }
 
-.status-badge--unread {
-  background: #54b845;
-}
-
-.status-badge--new {
-  background: #54b845;
-}
-
 .book-card > strong {
   overflow: hidden;
   flex: 0 0 auto;
