@@ -130,7 +130,7 @@
   box-shadow: var(--learner-shadow-focus);
 }
 
-.mic-button svg {
+.mic-button img {
   width: 60px;
   height: 60px;
 }
@@ -344,7 +344,7 @@
   height: 100px;
 }
 
-.mic-button svg {
+.mic-button img {
   width: 50px;
   height: 50px;
 }
@@ -363,7 +363,7 @@
   min-height: 60px;
 }
 
-@media (max-width: 760px) {
+@container learner-canvas (max-width: 760px) {
   .activity {
     overflow-y: auto;
   }
@@ -374,7 +374,7 @@
   }
 }
 
-@media (max-height: 800px) and (min-width: 761px) {
+@container learner-canvas (max-height: 800px) and (min-width: 761px) {
   .activity {
     gap: 10px;
     padding: 14px 20px;
@@ -421,7 +421,7 @@
     height: 82px;
   }
 
-  .mic-button svg {
+  .mic-button img {
     width: 42px;
     height: 42px;
   }

@@ -33,7 +33,7 @@
   margin: 0;
   color: #193b79;
   font-family: var(--learner-font-display);
-  font-size: clamp(28px,2.4vw,38px);
+  font-size: clamp(28px,2.4cqw,38px);
   font-weight: 900;
 }
 
@@ -120,7 +120,7 @@
   border-radius: 16px;
   color: #263853;
   font-family: var(--learner-font-display);
-  font-size: clamp(19px,2vw,29px);
+  font-size: clamp(19px,2cqw,29px);
   font-weight: 900;
   cursor: grab;
   touch-action: none;
@@ -159,7 +159,7 @@
 
 .sentence-card strong {
   font-family: var(--learner-font-display);
-  font-size: clamp(20px,2vw,29px);
+  font-size: clamp(24px,2.25cqw,34px);
   font-weight: 900;
 }
 
@@ -167,8 +167,9 @@
   position: absolute;
   right: 12px;
   top: 8px;
-  color: #a8b2c1;
-  font-size: 21px;
+  width: 21px;
+  height: 21px;
+  object-fit: contain;
 }
 
 .sentence-card.hint {
@@ -205,14 +206,10 @@
   box-shadow: 0 8px 18px rgba(50,81,155,.25);
 }
 
-.speak-button span {
-  display: grid;
-  place-items: center;
-  width: 34px;
-  height: 34px;
-  border: 3px solid rgba(255,255,255,.82);
-  border-radius: 50%;
-  font-size: 14px;
+.speak-button img {
+  width: 26px;
+  height: 26px;
+  object-fit: contain;
 }
 
 .speak-button:disabled {
@@ -272,7 +269,7 @@
   }
 }
 
-@media (max-height:800px) {
+@container learner-canvas (max-height:800px) {
   .activity {
     gap: 14px;
     padding: 13px 22px;
@@ -315,7 +312,7 @@
   }
 }
 
-@media (max-width:800px) {
+@container learner-canvas (max-width:800px) {
   .activity {
     padding: 14px;
   }

@@ -24,6 +24,7 @@ const progressState = reactive<TrainingProgressState>({
   attemptCount: 0,
   hintLevel: 0,
   completedQuestionIds: [],
+  incorrectQuestionIds: [],
   isCurrentCorrect: null,
   isCompleted: false,
   completedAt: null,
@@ -85,6 +86,11 @@ const hasNextQuestion = computed(() =>
   progressState.currentQuestionIndex < totalQuestions.value - 1,
 )
 const isSaving = computed(() => savingState.status === 'saving')
+const isPerfectLesson = computed(() =>
+  totalQuestions.value === 5
+  && progressState.completedQuestionIds.length === totalQuestions.value
+  && progressState.incorrectQuestionIds.length === 0,
+)
 
 const correctAnswerHint = (question: TrainingQuestion): string => {
   const answerIds = Array.isArray(question.answer)
@@ -119,6 +125,7 @@ const startLesson = (lesson: TrainingLesson): void => {
   progressState.attemptCount = 0
   progressState.hintLevel = 0
   progressState.completedQuestionIds = []
+  progressState.incorrectQuestionIds = []
   progressState.isCurrentCorrect = null
   progressState.isCompleted = false
   progressState.completedAt = null
@@ -166,6 +173,9 @@ const submitAnswer = async (): Promise<boolean> => {
         storedAnswers[question.id] = answer
       } else {
         progressState.isCurrentCorrect = false
+        if (!progressState.incorrectQuestionIds.includes(question.id)) {
+          progressState.incorrectQuestionIds.push(question.id)
+        }
         progressState.hintLevel = shouldRevealCorrectAnswer
           ? 2
           : Math.max(progressState.hintLevel, 1)
@@ -194,6 +204,9 @@ const submitAnswer = async (): Promise<boolean> => {
     storedAnswers[question.id] = answer
   } else {
     progressState.isCurrentCorrect = false
+    if (!progressState.incorrectQuestionIds.includes(question.id)) {
+      progressState.incorrectQuestionIds.push(question.id)
+    }
     currentHint.value = '힌트를 보고 한 번 더 생각해 봐요.'
     if (progressState.attemptCount >= 2) {
       progressState.hintLevel = 2
@@ -282,6 +295,7 @@ const resetSession = (): void => {
   progressState.attemptCount = 0
   progressState.hintLevel = 0
   progressState.completedQuestionIds = []
+  progressState.incorrectQuestionIds = []
   progressState.isCurrentCorrect = null
   currentHint.value = null
   progressState.isCompleted = false
@@ -314,6 +328,7 @@ export function useTrainingSession() {
     progressPercent,
     savingState,
     isSaving,
+    isPerfectLesson,
     isSubmittingAnswer,
     currentHint,
     storedAnswers,

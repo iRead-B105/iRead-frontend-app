@@ -4,6 +4,10 @@ import type { SoundManipulationUnit, TrainingChoice, TrainingQuestion } from '@/
 import { useAudioPlayer } from '@/composables/useAudioPlayer'
 import { useTrainingSession } from '@/composables/useTrainingSession'
 import SoundButton from '../SoundButton.vue'
+import soundControlPanel from '@/assets/training/sound-puzzle/sound-control-panel.svg'
+import completeButtonDisabled from '@/assets/training/sound-puzzle/complete-button-disabled.png'
+import completeButtonActive from '@/assets/training/sound-puzzle/complete-button-active.png'
+import completeButtonSuccess from '@/assets/training/sound-puzzle/complete-button-success.png'
 
 const props = defineProps<{ question: TrainingQuestion }>()
 defineEmits<{ next: [] }>()
@@ -23,6 +27,10 @@ const canSubmit = computed(() =>
     ? selectedUnitIds.value.length === 1 && Boolean(selectedReplacementId.value)
     : selectedUnitIds.value.length > 0,
 )
+const completeButtonImage = computed(() => {
+  if (isCorrect.value) return completeButtonSuccess
+  return canSubmit.value ? completeButtonActive : completeButtonDisabled
+})
 
 const playQuestion = () => {
   if (props.question.audioText) void audio.replay(props.question.audioText, 0.82)
@@ -98,9 +106,7 @@ watch(
   <section class="activity" :aria-label="question.instruction">
     <h1>{{ question.instruction }}</h1>
 
-    <div class="task-row">
-      <SoundButton :text="question.audioText ?? ''" size="large" variant="primary" />
-
+    <div class="play-area">
       <div class="manipulation-panel">
         <div class="word-flow">
           <div class="source-group" :aria-label="`${question.targetText} 소리 조각`">
@@ -122,14 +128,9 @@ watch(
               <span v-if="showDirectHint(soundUnit.id)" class="scissors" aria-hidden="true">✂</span>
             </button>
           </div>
-
-          <span class="arrow" aria-hidden="true">→</span>
-          <div class="target-card" :class="{ 'target-card--complete': isCorrect }">
-            {{ question.targetResult }}
-          </div>
         </div>
 
-        <div v-if="isReplace" class="replacement-area" aria-label="바꿀 소리 카드">
+        <div v-if="isReplace" class="replacement-area choices" aria-label="바꿀 소리 카드">
           <button
             v-for="replacement in replacements"
             :key="replacement.id"
@@ -145,19 +146,43 @@ watch(
             {{ replacement.text }}
           </button>
         </div>
+        <p v-if="session.progressState.isCurrentCorrect === false" class="build-feedback" role="status">
+          소리를 다시 골라봐!
+        </p>
+      </div>
+
+      <div class="function-panel">
+        <div class="sound-control-card">
+          <img :src="soundControlPanel" alt="" aria-hidden="true" />
+          <SoundButton
+            :text="question.audioText ?? ''"
+            size="large"
+            variant="primary"
+            label="만들 소리 듣기"
+          />
+        </div>
+
+        <button
+          class="complete-button"
+          :class="{ 'complete-button--success': isCorrect }"
+          type="button"
+          :disabled="!canSubmit || isCorrect"
+          @click="submit"
+        >
+          <img :src="completeButtonImage" alt="" aria-hidden="true" />
+          <span>완성!</span>
+        </button>
       </div>
     </div>
 
-    <div class="action-row">
-      <p v-if="session.progressState.isCurrentCorrect === false" role="status">소리를 다시 눌러봐요.</p>
-      <span v-else></span>
-      <button v-if="!isCorrect" class="action action--check" type="button" :disabled="!canSubmit" @click="submit">
-        완성하기
-      </button>
-      <button v-else class="action action--next" type="button" @click="$emit('next')">
-        다음 문제
-      </button>
-    </div>
+    <button
+      v-if="isCorrect"
+      class="shared-next-source"
+      type="button"
+      tabindex="-1"
+      aria-hidden="true"
+      @click="$emit('next')"
+    ></button>
   </section>
 </template>
 

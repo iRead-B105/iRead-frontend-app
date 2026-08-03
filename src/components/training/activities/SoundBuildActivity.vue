@@ -3,20 +3,20 @@ import { computed, ref, watch } from 'vue'
 import type { TrainingChoice, TrainingQuestion } from '@/types/training'
 import { useTrainingSession } from '@/composables/useTrainingSession'
 import { useAudioPlayer } from '@/composables/useAudioPlayer'
+import SoundButton from '../SoundButton.vue'
 
 const props = defineProps<{ question: TrainingQuestion }>()
 defineEmits<{ next: [] }>()
 
 const session = useTrainingSession()
 const { progressState } = session
-const { isPlaying, playSequence, replay } = useAudioPlayer()
+const { isPlaying } = useAudioPlayer()
 
 const isSplit = computed(() => Boolean(props.question.targetText))
 const choices = computed<TrainingChoice[]>(() => props.question.choices ?? [])
 const slotCount = computed(() => props.question.soundParts?.length ?? 2)
 const slots = ref<(string | null)[]>([])
 const draggedChoiceId = ref<string | null>(null)
-const hasPlayedPrompt = ref(false)
 
 const resetSlots = () => {
   slots.value = Array.from({ length: slotCount.value }, () => null)
@@ -71,16 +71,6 @@ const onDrop = (index: number) => {
   draggedChoiceId.value = null
 }
 
-const playPrompt = async () => {
-  if (isPlaying.value) return
-  if (isSplit.value && props.question.targetText) {
-    await replay(props.question.targetText, 0.75)
-    hasPlayedPrompt.value = true
-    return
-  }
-  await playSequence(props.question.soundParts ?? [], 0.68)
-  hasPlayedPrompt.value = true
-}
 </script>
 
 <template>
@@ -91,28 +81,6 @@ const playPrompt = async () => {
     </header>
 
     <div class="activity-main">
-      <div class="sound-panel">
-        <strong v-if="isSplit" class="target-word">{{ question.targetText }}</strong>
-        <div v-else class="sound-pieces" aria-hidden="true">
-          <template v-for="(_, index) in question.soundParts" :key="index">
-            <span class="sound-piece">
-              <svg viewBox="0 0 32 32">
-                <path d="M7 12h6l8-6v20l-8-6H7z" fill="currentColor" />
-                <path d="M24 11c3 3 3 7 0 10" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" />
-              </svg>
-            </span>
-            <span v-if="index < slotCount - 1" class="piece-plus">+</span>
-          </template>
-        </div>
-        <button class="listen-button" type="button" :disabled="isPlaying" @click="playPrompt">
-          <svg viewBox="0 0 32 32" aria-hidden="true">
-            <path d="M7 12h6l8-6v20l-8-6H7z" fill="currentColor" />
-            <path d="M24 11c3 3 3 7 0 10" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" />
-          </svg>
-          <span>{{ isPlaying ? '재생 중' : hasPlayedPrompt ? '다시 듣기' : '소리 듣기' }}</span>
-        </button>
-      </div>
-
       <div class="build-panel">
         <div class="slot-row" :class="{ 'slot-row--wrong': isWrong }">
           <template v-for="(choice, index) in placedChoices" :key="index">
@@ -140,7 +108,7 @@ const playPrompt = async () => {
           </template>
         </div>
 
-        <div class="source-cards" aria-label="소리 카드">
+        <div class="source-cards choices" aria-label="소리 카드">
           <button
             v-for="choice in remainingChoices"
             :key="choice.id"
@@ -157,21 +125,34 @@ const playPrompt = async () => {
           </button>
         </div>
       </div>
-    </div>
 
-    <div class="action-bar">
-      <button
-        v-if="!isAnswered"
-        class="action action--primary"
-        type="button"
-        :disabled="!allFilled"
-        @click="session.submitAnswer()"
-      >
-        확인
-      </button>
-      <button v-else class="action action--next" type="button" @click="$emit('next')">
-        다음 문제
-      </button>
+      <div class="function-panel">
+        <div v-if="question.audioPromptEnabled !== false" class="sound-panel">
+          <strong v-if="isSplit" class="target-word">{{ question.targetText }}</strong>
+          <SoundButton
+            :text="question.targetText || question.soundParts?.join('') || ''"
+            :parts="isSplit ? undefined : question.soundParts"
+            :rate="isSplit ? 0.75 : 0.68"
+            :disabled="isPlaying"
+            label="문제 소리"
+          />
+        </div>
+
+        <div class="action-bar">
+          <button
+            v-if="!isAnswered"
+            class="action action--primary"
+            type="button"
+            :disabled="!allFilled"
+            @click="session.submitAnswer()"
+          >
+            확인
+          </button>
+          <button v-else class="action action--next shared-next-source" type="button" @click="$emit('next')">
+            다음 문제
+          </button>
+        </div>
+      </div>
     </div>
   </section>
 </template>

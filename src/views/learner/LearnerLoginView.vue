@@ -2,16 +2,20 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import iReadMainLogo from '@/assets/header/iread-main.png'
+import { learnerDataSource } from '@/config/learnerDataSource'
 import type { LearnerStudent } from '@/features/learner/model'
 import { useLearnerSessionStore } from '@/stores/learnerSession'
 import { useLearnerErrorModalStore } from '@/stores/learnerErrorModal'
+import userIcon from '@/assets/icons/user.svg'
+import lockIcon from '@/assets/icons/lock.svg'
 
 const router = useRouter()
 const learnerSession = useLearnerSessionStore()
 const errorModal = useLearnerErrorModalStore()
+const isMockMode = learnerDataSource === 'mock'
 const loginStep = ref<'teacher' | 'student'>('teacher')
-const loginId = ref('')
-const password = ref('')
+const loginId = ref(isMockMode ? 'demo' : '')
+const password = ref(isMockMode ? 'demo' : '')
 const linkedStudents = ref<LearnerStudent[]>([])
 const selectedStudentId = ref('')
 const errorMessage = ref('')
@@ -103,6 +107,9 @@ const returnToTeacherLogin = () => {
         <h1 id="login-title" class="login-title">
           {{ loginStep === 'teacher' ? '선생님이 먼저 로그인해 주세요' : '학습할 친구를 골라 주세요' }}
         </h1>
+        <p v-if="loginStep === 'teacher' && isMockMode" class="login-demo-notice">
+          데모 화면이에요. 바로 다음을 눌러 주세요.
+        </p>
 
         <section v-if="learnerSession.authenticated" class="student-empty" aria-live="polite">
           <span aria-hidden="true">🌱</span>
@@ -120,10 +127,7 @@ const returnToTeacherLogin = () => {
         >
           <label class="login-input-wrapper">
             <span class="sr-only">아이디</span>
-            <svg class="user-icon" viewBox="0 0 48 48" aria-hidden="true">
-              <circle cx="24" cy="16" r="9" />
-              <path d="M8 42c1.4-10 7-15 16-15s14.6 5 16 15" />
-            </svg>
+            <img class="user-icon" :src="userIcon" alt="" aria-hidden="true" />
             <input
               v-model="loginId"
               type="text"
@@ -136,11 +140,7 @@ const returnToTeacherLogin = () => {
 
           <label class="login-input-wrapper">
             <span class="sr-only">비밀번호</span>
-            <svg class="lock-icon" viewBox="0 0 48 48" aria-hidden="true">
-              <rect x="10" y="21" width="28" height="21" rx="6" />
-              <path d="M16 21v-6a8 8 0 0 1 16 0v6" />
-              <circle cx="24" cy="31" r="2.5" />
-            </svg>
+            <img class="lock-icon" :src="lockIcon" alt="" aria-hidden="true" />
             <input
               v-model="password"
               type="password"

@@ -84,6 +84,12 @@ export interface MockStoryDetail {
   title: string
   character: string
   branchQuestion: string
+  status: 'UNREAD' | 'IN_PROGRESS' | 'COMPLETED'
+  currentDay: number
+  availableDay: number
+  totalDays: number
+  pagesPerDay: number
+  dayComplete: boolean
   pages: MockStoryPage[]
 }
 
@@ -201,6 +207,12 @@ export const learnerRuntimeMock = {
       title: '개미와 베짱이',
       character: '개미와 베짱이',
       branchQuestion: '개미와 베짱이는 이제 무엇을 할까요?',
+      status: 'COMPLETED',
+      currentDay: 10,
+      availableDay: 10,
+      totalDays: 10,
+      pagesPerDay: 10,
+      dayComplete: false,
       pages: [
         ['개미는 부지런히 먹이를 옮겼어요.', '작은 곡식도 차곡차곡 쌓았지요.', '베짱이는 나무 아래에서 노래했어요.'],
         ['개미는 겨울을 생각하며 일했어요.', '창고에는 곡식이 가득 모였지요.', '베짱이는 여름 내내 노래를 불렀어요.'],
@@ -219,6 +231,12 @@ export const learnerRuntimeMock = {
       title: '노인과 바다',
       character: '노인',
       branchQuestion: '노인은 다음에 어디로 가게 될까요?',
+      status: 'IN_PROGRESS',
+      currentDay: 1,
+      availableDay: 1,
+      totalDays: 10,
+      pagesPerDay: 10,
+      dayComplete: false,
       pages: [
         ['노인은 오늘도 작은 배를 띄웠어요.', '푸른 바다에는 잔잔한 파도가 일었지요.', '반짝이는 물고기 떼가 지나갔어요.'],
         ['노인은 바다의 소리에 귀 기울였어요.', '멀리서 하얀 새 한 마리가 날아왔지요.', '노인은 용기를 내어 노를 저었답니다.'],
@@ -237,6 +255,12 @@ export const learnerRuntimeMock = {
       title: '이상한 나라의 앨리스',
       character: '앨리스',
       branchQuestion: '앨리스는 다음에 어떻게 될까요?',
+      status: 'IN_PROGRESS',
+      currentDay: 1,
+      availableDay: 1,
+      totalDays: 10,
+      pagesPerDay: 10,
+      dayComplete: false,
       pages: [
         ['앨리스는 하얀 토끼를 보고 놀랐어요.', '토끼는 시계를 보며 늦었다고 외쳤지요.', '그리고 알록달록한 숲길로 달려갔어요.'],
         ['커다란 악어가 책을 읽고 있었어요.', '앨리스는 악어에게 길을 물어보았지요.', '악어는 이상한 나라의 길을 알려 주었어요.'],
@@ -253,9 +277,9 @@ export const learnerRuntimeMock = {
   } satisfies Record<string, MockStoryDetail>,
 
   growthAreas: [
-    { areaId: 1, name: '파닉스', learningCount: 0, stage: 1, updatedAt: '2026-07-24T10:00:00+09:00' },
-    { areaId: 2, name: '읽기', learningCount: 0, stage: 1, updatedAt: '2026-07-24T10:00:00+09:00' },
-    { areaId: 3, name: '유창성', learningCount: 0, stage: 1, updatedAt: '2026-07-24T10:00:00+09:00' },
+    { areaId: 1, name: '파닉스', learningCount: 5, stage: 1, updatedAt: '2026-07-24T10:00:00+09:00' },
+    { areaId: 2, name: '읽기', learningCount: 4, stage: 1, updatedAt: '2026-07-24T10:00:00+09:00' },
+    { areaId: 3, name: '유창성', learningCount: 2, stage: 1, updatedAt: '2026-07-24T10:00:00+09:00' },
   ] satisfies MockGrowthArea[],
 
   storyFriends: [

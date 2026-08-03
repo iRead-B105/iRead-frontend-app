@@ -1,117 +1,135 @@
-/** 대상 컴포넌트: components/training/SoundButton.vue
- * Vue 연결: <style scoped src="@/styles/training/SoundButton.css">
- * 숫자를 수정할 때는 바로 위 한국어 주석과 styles/README.md의 공통 토큰 표를 먼저 확인하세요.*/
-
 .sound-button {
   position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--learner-space-3);
-  border: none;
-  border-radius: var(--learner-radius-pill);
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: var(--learner-sound-control-width) !important;
+  min-width: var(--learner-sound-control-width) !important;
+  max-width: var(--learner-sound-control-width) !important;
+  height: var(--learner-sound-control-height) !important;
+  min-height: var(--learner-sound-control-height) !important;
+  padding: 0 !important;
+  border: 4px solid rgb(255 255 255 / 82%) !important;
+  border-radius: clamp(26px, 2.4cqw, 38px) !important;
+  background: var(--learner-sound-control-background) !important;
+  color: var(--learner-color-text-inverse) !important;
+  box-shadow:
+    0 7px 0 #dc5045,
+    var(--learner-shadow-card) !important;
   cursor: pointer;
-  color: var(--learner-color-text-inverse);
-  font-family: var(--learner-font-display);
-  font-weight: var(--learner-font-weight-heavy);
-  transition: transform var(--learner-duration-fast) var(--learner-easing-standard),
-    box-shadow var(--learner-duration-fast);
+  isolation: isolate;
+  transition:
+    transform var(--learner-duration-fast) var(--learner-easing-standard),
+    box-shadow var(--learner-duration-fast) var(--learner-easing-standard),
+    background var(--learner-duration-fast);
 }
 
-.sound-button--primary {
-  background: var(--learner-flow-accent, var(--learner-color-learning));
-  box-shadow: var(--learner-shadow-card);
-}
-
+.sound-button--primary,
 .sound-button--ghost {
-  background: rgb(255 255 255 / 60%);
-  color: var(--learner-color-text);
-  box-shadow: var(--learner-shadow-small);
+  background: var(--learner-sound-control-background) !important;
+  color: var(--learner-color-text-inverse) !important;
 }
 
-.sound-button--medium {
-  min-width: 64px;
-  height: 64px;
-  padding: 0 var(--learner-space-4);
-  font-size: var(--learner-type-body);
-}
-
-.sound-button--medium .sound-icon {
-  width: 28px;
-  height: 28px;
-}
-
-.sound-button--large {
-  min-width: 132px;
-  height: 96px;
-  padding: 0 var(--learner-space-6);
-  font-size: var(--learner-font-size-body-large);
-}
-
-.sound-button--large .sound-icon {
-  width: 40px;
-  height: 40px;
+.sound-icon {
+  width: clamp(54px, 4.8cqw, 70px) !important;
+  height: clamp(54px, 4.8cqw, 70px) !important;
+  object-fit: contain;
+  filter: drop-shadow(0 3px 0 rgb(173 66 54 / 28%));
+  transition: transform var(--learner-duration-fast) var(--learner-easing-bounce);
 }
 
 .sound-button:hover:not(:disabled) {
-  transform: translateY(-3px);
-  box-shadow: var(--learner-shadow-floating);
+  transform: translateY(-4px) scale(1.025);
+  background: var(--learner-sound-control-background-hover) !important;
+  box-shadow:
+    0 9px 0 #d9483e,
+    var(--learner-shadow-floating) !important;
 }
 
 .sound-button:active:not(:disabled) {
-  transform: translateY(-1px);
-}
-
-.sound-button:disabled {
-  background: #d8dde4;
-  color: #8b95a4;
-  box-shadow: none;
-  cursor: not-allowed;
-  opacity: 1;
+  transform: translateY(2px) scale(.985);
+  box-shadow:
+    0 3px 0 #d9483e,
+    var(--learner-shadow-small) !important;
 }
 
 .sound-button:focus-visible {
   outline: none;
-  box-shadow: var(--learner-shadow-focus);
+  box-shadow:
+    0 7px 0 #dc5045,
+    var(--learner-shadow-focus) !important;
 }
 
-.sound-button.playing .sound-pulse {
-  opacity: 1;
+.sound-button:disabled:not(.sound-button--playing) {
+  border-color: rgb(255 255 255 / 60%) !important;
+  background: #d8dde4 !important;
+  color: #8b95a4 !important;
+  box-shadow: 0 5px 0 #b9c0ca !important;
+  cursor: not-allowed;
+  opacity: .72;
+}
+
+.sound-button--playing {
+  background: var(--learner-sound-control-background-playing) !important;
+  color: #fff;
+  box-shadow:
+    0 7px 0 #cd443c,
+    0 12px 30px rgb(244 95 84 / 36%) !important;
+  cursor: wait;
+  opacity: 1 !important;
 }
 
 .sound-pulse {
   position: absolute;
-  inset: -6px;
+  z-index: -1;
+  inset: -7px;
+  border: 4px solid rgb(255 181 72 / 78%);
   border-radius: inherit;
-  border: 3px solid rgb(255 255 255 / 70%);
   opacity: 0;
-  animation: soundPulse 1.2s ease-out infinite;
   pointer-events: none;
+}
+
+.sound-button--playing .sound-pulse {
+  animation: soundPulse 1.15s ease-out infinite;
+}
+
+.sound-button--playing .sound-icon {
+  animation: soundPlaying 0.72s ease-in-out infinite alternate;
+}
+
+.sound-button--replay:hover:not(:disabled) .sound-icon {
+  transform: rotate(-4deg) scale(1.06);
 }
 
 @keyframes soundPulse {
   0% {
-    transform: scale(0.96);
-    opacity: 0.7;
+    transform: scale(.96);
+    opacity: .8;
   }
 
   100% {
-    transform: scale(1.12);
+    transform: scale(1.16);
     opacity: 0;
   }
 }
 
-.sound-label {
-  line-height: 1.1;
+@keyframes soundPlaying {
+  from {
+    transform: scale(.96);
+  }
+
+  to {
+    transform: scale(1.05);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .sound-pulse {
-    animation: none;
-    opacity: 0;
+  .sound-pulse,
+  .sound-button--playing .sound-icon {
+    animation: none !important;
   }
 
-  .sound-button:hover {
+  .sound-button:hover:not(:disabled) {
     transform: none;
   }
 }

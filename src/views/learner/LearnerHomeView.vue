@@ -41,7 +41,7 @@ const handleSelect = (id: MainMapMenuItem['id']) => {
   <main class="learner-home" :style="{ backgroundImage: `url(${seaBackground})` }">
     <IslandMap @select="handleSelect" />
     <Transition name="toast">
-      <p v-if="selected" class="toast">{{ selected }} 메뉴로 이동할게요!</p>
+      <p v-if="selected" class="toast">{{ selected }} 메뉴로 갈게!</p>
     </Transition>
   </main>
 </template>

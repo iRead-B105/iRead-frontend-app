@@ -5,7 +5,7 @@ export const wordChainLesson: TrainingLesson = {
   categoryId: 'fluency',
   title: '단어 이어 읽기',
   description: '낱말을 멈추지 않고 차례로 읽어요.',
-  activityType: 'read-aloud',
+  activityType: 'word-reading-grid',
   estimatedMinutes: 8,
   questions: [
     { id: 'q1', instruction: '단어를 차례로 읽어봐요.', targetText: '사과 나비 기차', phraseChunks: ['사과', '나비', '기차'], answer: 'q1', feedback: { correct: '세 단어를 잘 이어 읽었어요!', retry: '단어마다 천천히 이어봐요.' } },
@@ -21,7 +21,7 @@ export const phraseReadingLesson: TrainingLesson = {
   categoryId: 'fluency',
   title: '끊어 읽기',
   description: '뜻이 이어지는 말끼리 묶어 읽어요.',
-  activityType: 'read-aloud',
+  activityType: 'word-reading-grid',
   estimatedMinutes: 10,
   questions: [
     { id: 'q1', instruction: '묶음마다 잠깐 쉬어 읽어봐요.', targetText: '작은 새가 하늘을 날아요.', phraseChunks: ['작은 새가', '하늘을', '날아요.'], answer: 'q1', feedback: { correct: '뜻에 맞게 잘 끊어 읽었어요!', retry: '보이는 묶음마다 잠깐 쉬어봐요.' } },
@@ -37,7 +37,7 @@ export const reReadLesson: TrainingLesson = {
   categoryId: 'fluency',
   title: '같은 문장 다시 읽기',
   description: '같은 문장을 반복해 편안하게 읽어요.',
-  activityType: 'read-aloud',
+  activityType: 'word-reading-grid',
   estimatedMinutes: 8,
   questions: [
     { id: 'q1', instruction: '첫 번째로 읽어봐요.', targetText: '토끼가 풀밭을 달려요.', phraseChunks: ['토끼가', '풀밭을', '달려요.'], answer: 'q1', feedback: { correct: '첫 번째 읽기를 마쳤어요!', retry: '천천히 시작해봐요.' } },
@@ -53,7 +53,7 @@ export const shortStoryLesson: TrainingLesson = {
   categoryId: 'fluency',
   title: '짧은 이야기 읽기',
   description: '두 문장을 이어 짧은 이야기를 읽어요.',
-  activityType: 'read-aloud',
+  activityType: 'word-reading-grid',
   estimatedMinutes: 12,
   questions: [
     { id: 'q1', instruction: '두 문장을 이어 읽어봐요.', targetText: '봄이 왔어요. 따뜻한 햇살이 비쳐요.', phraseChunks: ['봄이 왔어요.', '따뜻한 햇살이 비쳐요.'], answer: 'q1', feedback: { correct: '봄 이야기를 잘 읽었어요!', retry: '한 문장씩 이어 읽어봐요.' } },

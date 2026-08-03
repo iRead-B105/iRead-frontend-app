@@ -6,6 +6,7 @@
 
 import { computed } from 'vue'
 import type { TrainingLesson } from '@/types/training'
+import arrowRightIcon from '@/assets/icons/arrow-right.svg'
 
 const props = defineProps<{
   lesson: TrainingLesson
@@ -27,10 +28,8 @@ const questionCount = computed(() => props.lesson.questions.length)
       </div>
 
       <button class="start-button" type="button" @click="$emit('start')">
-        <span>시작할까요?</span>
-        <svg class="start-arrow" viewBox="0 0 32 32" aria-hidden="true">
-          <path d="M12 8l10 8-10 8" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" />
-        </svg>
+        <span>시작해 볼까?</span>
+        <img class="start-arrow" :src="arrowRightIcon" alt="" aria-hidden="true" />
       </button>
     </div>
   </div>

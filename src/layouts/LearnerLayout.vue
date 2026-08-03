@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed, defineAsyncComponent, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import LearnerHeader from '../components/layout/LearnerHeader.vue'
 import GazeCalibrationModal from '../components/common/GazeCalibrationModal.vue'
@@ -8,12 +8,18 @@ import { useGazeCalibration } from '../composables/useGazeCalibration'
 import { getCachedStudent } from '@/services/learnerDataRepository'
 import { fetchDeviceStatus } from '@/services/learnerDataRepository'
 import { useDeviceStatus } from '@/composables/useDeviceStatus'
+import { useLearnerCanvasScale } from '@/composables/useLearnerCanvasScale'
 
 const route = useRoute()
+const isDeveloperMode = import.meta.env.DEV
+const DeveloperCheatMenu = isDeveloperMode
+  ? defineAsyncComponent(() => import('@/components/developer/DeveloperCheatMenu.vue'))
+  : null
 const hideHeader = computed(() => route.meta.hideLearnerHeader === true)
 const activeStudent = computed(() => getCachedStudent())
 const { isOpen: isGazeCalibrationOpen, close: closeGazeCalibration } = useGazeCalibration()
 const { setEyeTrackerConnected, setMicrophoneState } = useDeviceStatus()
+const { canvasStyle } = useLearnerCanvasScale()
 
 onMounted(async () => {
   try {
@@ -30,23 +36,26 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="learner-layout">
-    <LearnerHeader
-      v-if="!hideHeader"
-      :user-name="activeStudent.name"
-    />
-    <div class="learner-page" :class="{ 'learner-page--full': hideHeader }">
-      <RouterView v-slot="{ Component }">
-        <component
-          :is="Component"
-          :key="route.fullPath"
-          :class="{ 'learner-screen-with-header': !hideHeader }"
-        />
-      </RouterView>
+  <div class="learner-viewport">
+    <div class="learner-layout" :style="canvasStyle">
+      <LearnerHeader
+        v-if="!hideHeader"
+        :user-name="activeStudent.name"
+      />
+      <div class="learner-page" :class="{ 'learner-page--full': hideHeader }">
+        <RouterView v-slot="{ Component }">
+          <component
+            :is="Component"
+            :key="route.fullPath"
+            :class="{ 'learner-screen-with-header': !hideHeader }"
+          />
+        </RouterView>
+      </div>
     </div>
 
     <GazeCalibrationModal v-if="isGazeCalibrationOpen" @close="closeGazeCalibration" />
     <GlobalGazeCursor />
+    <DeveloperCheatMenu v-if="isDeveloperMode" />
   </div>
 </template>
 

@@ -13,7 +13,7 @@ const router = useRouter()
       </div>
       <p>오늘의 학습 완료</p>
       <h1>오늘도 끝까지 해냈어!</h1>
-      <span>모든 훈련을 마쳤어요.</span>
+      <span>모든 훈련을 마쳤어.</span>
       <button type="button" @click="router.push({ name: 'learner-home' })">
         홈으로 가기
       </button>

@@ -12,7 +12,7 @@
   height: 100%;
   min-height: 0;
   overflow: hidden;
-  padding: clamp(10px, 1.5vh, 20px) var(--learner-page-padding);
+  padding: clamp(10px, 1.5cqh, 20px) var(--learner-page-padding);
   background-color: #55bdf1;
   background-position: center;
   background-size: cover;
@@ -20,27 +20,39 @@
   font-family: var(--learner-font-reading);
 }
 
-/* 이야기 선택 연노란색 공통 블록: width와 height가 전체 크기입니다. */
+/* 이야기 선택 책·달 패턴 공통 블록: width와 height가 전체 크기입니다. */
 .library-panel {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: clamp(14px, 2vh, 24px);
-  width: min(95%, 1178px);
-  height: min(95%, 722px);
+  gap: clamp(14px, 2cqh, 24px);
+  width: min(95%, var(--learner-selection-frame-width));
+  height: min(95%, var(--learner-selection-frame-height));
   min-height: 0;
-  padding: clamp(18px, 2.4vh, 30px) clamp(24px, 4vw, 64px);
+  padding: clamp(18px, 2.4cqh, 30px) clamp(24px, 4cqw, 64px);
   border: var(--learner-frame-border);
   border-radius: var(--learner-frame-radius);
-  background: var(--learner-frame-background);
+  background-color: #fffaf2;
+  background-image: url('../../assets/backgrounds/story-inner-background-books.webp');
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
   box-shadow: var(--learner-frame-shadow);
+  transform: scale(var(--learner-main-selection-scale));
+  transform-origin: center;
 }
 
 /* 이야기 나라 제목 크기와 별 장식 간격 */
 .library-heading {
   display: flex;
   align-items: center;
-  gap: clamp(18px, 2.4vw, 34px);
+  gap: clamp(18px, 2.4cqw, 34px);
+}
+
+.library-heading-star {
+  width: clamp(34px, 3cqw, 52px);
+  height: auto;
+  object-fit: contain;
 }
 
 .library-heading h1,
@@ -53,12 +65,12 @@
 }
 
 .library-heading h1 {
-  font-size: clamp(40px, 4.8vw, 68px);
+  font-size: clamp(40px, 4.8cqw, 68px);
 }
 
 .library-heading span {
   color: #ffc928;
-  font-size: clamp(24px, 2.4vw, 36px);
+  font-size: clamp(24px, 2.4cqw, 36px);
 }
 
 button {
@@ -71,7 +83,7 @@ button {
   display: block;
   overflow: hidden;
   width: min(100%, 1080px);
-  min-height: clamp(300px, 45vh, 410px);
+  min-height: clamp(300px, 45cqh, 410px);
   padding: 0;
   border: var(--learner-card-border);
   border-radius: var(--learner-inner-radius);
@@ -90,7 +102,7 @@ button {
 
 .continue-card > .continue-scene {
   width: 100%;
-  height: clamp(300px, 45vh, 410px);
+  height: clamp(300px, 45cqh, 410px);
   object-fit: cover;
   border: 0;
   border-radius: calc(var(--learner-inner-radius) - 4px);
@@ -107,7 +119,7 @@ button {
   background: #6e4fd1;
   color: #fff;
   font-family: var(--learner-font-display);
-  font-size: clamp(20px, 2vw, 30px);
+  font-size: clamp(20px, 2cqw, 30px);
   font-weight: 900;
   box-shadow: 0 6px 12px rgb(55 43 110 / 20%);
 }
@@ -149,7 +161,7 @@ button {
 .continue-overlay strong {
   overflow: hidden;
   font-family: var(--learner-font-display);
-  font-size: clamp(30px, 3.3vw, 48px);
+  font-size: clamp(30px, 3.3cqw, 48px);
   font-weight: 900;
   text-overflow: ellipsis;
   text-shadow: 0 3px 8px rgb(0 0 0 / 35%);
@@ -173,7 +185,7 @@ button {
 .continue-copy small {
   margin-bottom: 6px;
   color: #e0912f;
-  font-size: clamp(20px, 2vw, 30px);
+  font-size: clamp(20px, 2cqw, 30px);
   font-weight: var(--learner-font-weight-heavy);
 }
 
@@ -182,7 +194,7 @@ button {
   max-width: 100%;
   color: #20366f;
   font-family: var(--learner-font-display);
-  font-size: clamp(38px, 4.2vw, 62px);
+  font-size: clamp(38px, 4.2cqw, 62px);
   font-weight: var(--learner-font-weight-heavy);
   line-height: 1.16;
   text-overflow: ellipsis;
@@ -191,7 +203,7 @@ button {
 
 .continue-copy b {
   color: #52658c;
-  font-size: clamp(18px, 1.6vw, 24px);
+  font-size: clamp(18px, 1.6cqw, 24px);
 }
 
 .progress-track,
@@ -231,9 +243,9 @@ button {
   display: grid;
   grid-template-columns: minmax(170px, .7fr) minmax(320px, 1.5fr) minmax(150px, .65fr);
   align-items: center;
-  gap: clamp(18px, 3vw, 44px);
-  min-height: clamp(270px, 38vh, 350px);
-  padding: clamp(24px, 3.5vw, 46px);
+  gap: clamp(18px, 3cqw, 44px);
+  min-height: clamp(270px, 38cqh, 350px);
+  padding: clamp(24px, 3.5cqw, 46px);
   border-color: #eadcf8;
   background:
     radial-gradient(circle at 12% 15%, rgb(255 255 255 / 90%) 0 7px, transparent 8px),
@@ -269,7 +281,7 @@ button {
 .empty-story-art {
   position: relative;
   display: grid;
-  width: clamp(150px, 16vw, 220px);
+  width: clamp(150px, 16cqw, 220px);
   aspect-ratio: 1;
   place-items: center;
   justify-self: center;
@@ -302,14 +314,14 @@ button {
 .empty-story-spark--one {
   top: 16%;
   left: 13%;
-  font-size: clamp(22px, 2.2vw, 34px);
+  font-size: clamp(22px, 2.2cqw, 34px);
   transform: rotate(-12deg);
 }
 
 .empty-story-spark--two {
   right: 16%;
   bottom: 18%;
-  font-size: clamp(14px, 1.4vw, 22px);
+  font-size: clamp(14px, 1.4cqw, 22px);
 }
 
 .empty-story-copy {
@@ -322,14 +334,14 @@ button {
 .empty-story-copy small {
   margin-bottom: 8px;
   color: #926db7;
-  font-size: clamp(17px, 1.7vw, 23px);
+  font-size: clamp(17px, 1.7cqw, 23px);
   font-weight: 900;
 }
 
 .empty-story-copy strong {
   color: #263c75;
   font-family: var(--learner-font-display);
-  font-size: clamp(30px, 3vw, 44px);
+  font-size: clamp(30px, 3cqw, 44px);
   font-weight: var(--learner-font-weight-heavy);
   line-height: 1.12;
   letter-spacing: -.035em;
@@ -339,7 +351,7 @@ button {
 .empty-story-copy b {
   margin-top: 12px;
   color: #667494;
-  font-size: clamp(17px, 1.6vw, 23px);
+  font-size: clamp(17px, 1.6cqw, 23px);
   font-weight: 800;
 }
 
@@ -358,13 +370,13 @@ button {
   box-shadow: 0 8px 0 #5638b4, var(--learner-shadow-control);
   color: #fff;
   font-family: var(--learner-font-display);
-  font-size: clamp(21px, 2vw, 28px);
+  font-size: clamp(21px, 2cqw, 28px);
   font-weight: 900;
 }
 
 .empty-story-action img {
-  width: clamp(52px, 5vw, 72px);
-  height: clamp(52px, 5vw, 72px);
+  width: clamp(52px, 5cqw, 72px);
+  height: clamp(52px, 5cqw, 72px);
   object-fit: contain;
 }
 
@@ -372,7 +384,7 @@ button {
 .library-actions {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: clamp(16px, 2.4vw, 32px);
+  gap: clamp(16px, 2.4cqw, 32px);
   width: min(100%, 1080px);
 }
 
@@ -402,22 +414,13 @@ button {
   color: var(--learner-color-text-inverse);
 }
 
-.library-actions button:last-child small {
-  color: rgb(255 255 255 / 82%);
-}
-
 .library-actions strong {
   display: block;
   font-family: var(--learner-font-display);
-  font-size: clamp(24px, 2.2vw, 32px);
-}
-
-.library-actions small {
-  display: block;
-  margin-top: 3px;
-  color: #6b7895;
-  font-size: clamp(14px, 1.3vw, 18px);
-  font-weight: 700;
+  font-size: clamp(32px, 2.8cqw, 42px);
+  font-weight: var(--learner-font-weight-heavy);
+  line-height: 1.15;
+  letter-spacing: -.035em;
 }
 
 .action-icon {
@@ -443,7 +446,7 @@ button {
 }
 
 .catalog-heading h1 {
-  font-size: clamp(34px, 4vw, 56px);
+  font-size: clamp(34px, 4cqw, 56px);
   line-height: 1;
 }
 
@@ -452,7 +455,7 @@ button {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   align-items: stretch;
-  gap: clamp(24px, 3.4vw, 50px);
+  gap: clamp(24px, 3.4cqw, 50px);
   width: min(100%, 1160px);
   min-height: 0;
 }
@@ -481,7 +484,7 @@ button {
 .book-cover {
   position: relative;
   display: block;
-  height: clamp(240px, 38vh, 390px);
+  height: clamp(240px, 38cqh, 390px);
 }
 
 .book-cover img {
@@ -521,7 +524,7 @@ button {
   overflow: hidden;
   margin: 16px 4px 4px;
   font-family: var(--learner-font-display);
-  font-size: clamp(22px, 2vw, 30px);
+  font-size: clamp(22px, 2cqw, 30px);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -548,8 +551,8 @@ button {
 }
 
 .catalog-empty > img {
-  width: clamp(90px, 9vw, 132px);
-  height: clamp(90px, 9vw, 132px);
+  width: clamp(90px, 9cqw, 132px);
+  height: clamp(90px, 9cqw, 132px);
   object-fit: contain;
 }
 
@@ -569,7 +572,7 @@ button {
   cursor: pointer;
 }
 
-@media (max-width: 980px) {
+@container learner-canvas (max-width: 980px) {
   .continue-card {
     grid-template-columns: 180px minmax(0, 1fr) 58px;
   }
@@ -598,7 +601,7 @@ button {
   }
 }
 
-@media (max-height: 760px) {
+@container learner-canvas (max-height: 760px) {
   .story-library {
     padding-block: 5px;
   }
@@ -639,7 +642,7 @@ button {
   }
 
   .book-cover {
-    height: min(37vh, 310px);
+    height: min(37cqh, 310px);
   }
 }
 

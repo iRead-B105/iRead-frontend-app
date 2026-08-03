@@ -17,7 +17,7 @@ export const sentenceReadingLesson: TrainingLesson = {
   categoryId: 'fluency',
   title: '문장 읽기',
   description: '한 문장을 왼쪽부터 또박또박 읽어요.',
-  activityType: 'sentence-reading',
+  activityType: 'word-reading-grid',
   estimatedMinutes: 9,
   questions: [
     sentence('sentence-1', ['토끼가', '풀밭을', '달려요.']),

@@ -19,7 +19,7 @@ export class MockLearnerAuthRepository implements LearnerAuthRepository {
       teacherId: 'mock-teacher',
       bootstrapToken: learnerRuntimeMock.auth.teacherSessionToken,
       linkedStudents: learnerRuntimeMock.auth.linkedStudents.map(toStudent),
-      expiresIn: 3_600,
+      expiresIn: 10_800,
     }
   }
 
@@ -27,7 +27,7 @@ export class MockLearnerAuthRepository implements LearnerAuthRepository {
     return {
       studentId: student.studentId,
       accessToken: learnerRuntimeMock.auth.learningAccessToken,
-      expiresIn: 3_600,
+      expiresIn: 10_800,
     }
   }
 
@@ -35,7 +35,7 @@ export class MockLearnerAuthRepository implements LearnerAuthRepository {
     return {
       studentId: '',
       accessToken: learnerRuntimeMock.auth.learningAccessToken,
-      expiresIn: 3_600,
+      expiresIn: 10_800,
     }
   }
 

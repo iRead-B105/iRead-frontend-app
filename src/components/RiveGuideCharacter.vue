@@ -4,6 +4,7 @@ import { Alignment, Fit, Layout, Rive } from '@rive-app/canvas'
 import bunnyUrl from '../assets/24876-46460-interactive-bunny-character.riv?url'
 import type { MainMapMenuItem } from '../data/mainMapMenu'
 import { getCachedStudent } from '@/services/learnerDataRepository'
+import { useAudioPlayer } from '@/composables/useAudioPlayer'
 
 const props = withDefaults(
   defineProps<{
@@ -14,13 +15,16 @@ const props = withDefaults(
     message?: string
     // 컴패니언 모드 동작. reading은 책 읽는 자세, cheer는 손을 흔드는 환호 동작입니다.
     mood?: 'idle' | 'reading' | 'cheer'
+    showBubble?: boolean
+    speakMessage?: boolean
   }>(),
-  { activeMenu: null, mood: 'idle' },
+  { activeMenu: null, mood: 'idle', showBubble: true, speakMessage: false },
 )
 
 // message 를 넘긴 경우 = 학습 화면 컴패니언 모드. 아니면 메인 섬 화면 모드.
 const isCompanion = computed(() => props.message !== undefined)
 const studentName = getCachedStudent().name
+const audio = useAudioPlayer()
 
 const source = ref<HTMLCanvasElement | null>(null)
 const output = ref<HTMLCanvasElement | null>(null)
@@ -199,6 +203,15 @@ const leave = () => {
 
 watch(() => props.activeMenu, playMenuMotion)
 
+watch(
+  () => props.message,
+  (message) => {
+    if (!props.speakMessage || !message?.trim()) return
+    void audio.replay(message.replace(/\n/g, ' '), 0.84)
+  },
+  { immediate: true },
+)
+
 // 컴패니언 상태에 따라 책 읽기, 대기, 환호 모션을 전환합니다.
 watch(
   () => props.mood,
@@ -223,6 +236,7 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  if (props.speakMessage) audio.stop()
   cancelAnimationFrame(renderFrame)
   clearInterval(waveTimer)
   clearTimeout(waveResetTimer)
@@ -234,6 +248,7 @@ onBeforeUnmount(() => {
 <template>
   <div class="guide" :class="{ ready }">
     <div
+      v-if="showBubble"
       class="bubble"
       :role="isCompanion ? 'status' : undefined"
       :aria-live="isCompanion ? 'polite' : undefined"

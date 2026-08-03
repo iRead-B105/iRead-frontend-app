@@ -1,43 +1,32 @@
-/** 대상 컴포넌트: components/training/activities/GazeTraceActivity.vue
- * Vue 연결: <style scoped src="@/styles/training/activities/GazeTraceActivity.css">
- * 숫자를 수정할 때는 바로 위 한국어 주석과 styles/README.md의 공통 토큰 표를 먼저 확인하세요.*/
+/** 대상 컴포넌트: components/training/activities/GazeTraceActivity.vue */
 
 .activity {
+  position: relative;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 10px;
   width: 100%;
   max-width: 1180px;
   height: 100%;
   min-height: 0;
-  padding: 18px 22px;
-  border: 0;
-  border-radius: 26px;
-  background: transparent;
+  padding: 12px 18px;
   overflow: hidden;
-}
-
-.activity-heading {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 20px;
-}
-
-.activity-heading h1 {
-  margin: 0;
-  color: #193b79;
-  font-family: var(--learner-font-display);
-  font-size: clamp(34px,3vw,48px);
-  font-weight: 900;
 }
 
 .trace-layout {
   display: grid;
-  grid-template-columns: minmax(0,1fr) 285px;
-  gap: 20px;
+  grid-template-columns: minmax(0, 1fr) clamp(185px, 19cqw, 230px);
   flex: 1;
+  gap: 20px;
   min-height: 0;
+}
+
+.trace-stage,
+.listen-panel,
+.speech-panel {
+  border: 2px solid rgb(224 217 205 / 78%);
+  background: #fff;
+  box-shadow: 0 8px 20px rgb(70 63 50 / 9%);
 }
 
 .trace-stage {
@@ -46,297 +35,353 @@
   place-items: center;
   min-height: 0;
   overflow: hidden;
-  border: 4px solid rgba(255,255,255,.95);
   border-radius: 28px;
-  background: #f9df73;
-  box-shadow: inset 0 6px 18px rgba(45,81,143,.16);
   touch-action: none;
 }
 
 .trace-stage.complete {
-  filter: saturate(.85) brightness(1.06);
+  border-color: #b7d9f7;
 }
 
 .trace-svg {
-  position: relative;
-  z-index: 1;
-  width: 100%;
-  height: 100%;
-  min-height: 350px;
+  width: 88%;
+  height: 88%;
+  min-height: 330px;
 }
 
-.stroke-outline,.stroke-guide,.stroke-filled {
+.stroke-outline,
+.stroke-guide,
+.stroke-filled,
+.preview-outline,
+.preview-inner {
   fill: none;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
 
 .stroke-outline {
-  stroke: #fff;
-  stroke-width: 42;
+  stroke: #5f9df1;
+  stroke-width: 44;
 }
 
 .stroke-guide {
-  stroke: #9db2d0;
-  stroke-width: 11;
-  stroke-dasharray: 2 22;
+  stroke: #fff;
+  stroke-width: 27;
 }
 
 .stroke-filled {
-  stroke: #ffd84f;
-  stroke-width: 18;
-  filter: drop-shadow(0 4px 3px rgba(80,95,130,.2));
+  stroke: #9bc7ff;
+  stroke-width: 10;
 }
 
-.resume-point {
-  fill: #fff6ac;
-  stroke: #ffcc32;
-  stroke-width: 7;
+.trace-stage.complete .stroke-filled {
+  animation: trace-fill-complete .46s ease-out both;
 }
 
-.resume-point.stalled {
-  animation: resume-pulse .8s ease-in-out infinite;
-}
-
-.complete-ring {
-  fill: none;
-  stroke: rgba(255,255,255,.48);
-  stroke-width: 7;
-  stroke-dasharray: 8 18;
-  animation: spin 10s linear infinite;
-}
-
-.gaze-cursor {
+.completion-wave {
   position: absolute;
-  width: 62px;
-  height: 62px;
-  border: 5px solid rgba(255,255,255,.62);
+  top: 50%;
+  left: 50%;
+  z-index: 2;
+  width: min(42cqw, 390px);
+  aspect-ratio: 1;
+  border: 12px solid rgb(112 180 248 / 42%);
   border-radius: 50%;
-  background: rgba(91,191,255,.28);
-  box-shadow: 0 0 0 4px rgba(29,108,185,.24),0 6px 18px rgba(29,91,145,.22);
-  transform: translate(-50%,-50%);
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(.24);
   pointer-events: none;
-  transition: left .045s linear,top .045s linear;
+  animation: completion-wave .72s ease-out both;
 }
 
-.resume-message {
-  position: absolute;
-  bottom: 14px;
-  margin: 0;
-  padding: 10px 18px;
+.stroke-start circle {
+  fill: #ffd966;
+  stroke: #fff;
+  stroke-width: 7;
+  filter: drop-shadow(0 3px 3px rgb(86 72 38 / 20%));
+}
+
+.stroke-start text {
+  fill: #20345e;
+  font-family: var(--learner-font-display);
+  font-size: 24px;
+  font-weight: 900;
+  text-anchor: middle;
+  dominant-baseline: middle;
+}
+
+.trace-side {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 20px;
+  min-height: 0;
+}
+
+.listen-panel,
+.speech-panel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  border-radius: 25px;
+}
+
+.listen-panel {
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 16px;
+}
+
+.panel-label {
+  min-width: 132px;
+  padding: 8px 18px;
   border-radius: 999px;
-  background: rgba(31,62,110,.88);
+  background: #9564df;
   color: #fff;
   font-family: var(--learner-font-display);
-  font-size: 17px;
+  font-size: 18px;
   font-weight: 900;
+  line-height: 1;
+  text-align: center;
+}
+
+.listen-panel :deep(.sound-button) {
+  width: 42px;
+  min-width: 42px;
+  height: 42px;
+  min-height: 42px;
 }
 
 .speech-panel {
-  display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 16px;
-  padding: 22px;
-  border: 3px solid rgba(255,255,255,.94);
-  border-radius: 27px;
-  background: linear-gradient(rgb(255 253 244 / 92%),rgb(255 253 244 / 92%)),url('../../../assets/training/ui/consonant-trace-background.png') center/cover no-repeat;
-  color: #6d7f98;
-  text-align: center;
-  box-shadow: 0 6px 16px rgba(62,91,120,.1);
+  gap: 14px;
+  padding: 18px 12px;
+  color: #ea5c67;
 }
 
-.speech-panel.active {
-  color: #263853;
-}
-
-.eye-icon {
+.mic-state {
   display: grid;
   place-items: center;
-  width: 90px;
-  height: 90px;
-  border: 8px solid #8fb0eb;
+  width: 58px;
+  height: 58px;
+  padding: 12px;
+  border: 3px solid #d6e7f8;
   border-radius: 50%;
-  background: #d8efff;
-  color: #426fc4;
-  font-size: 58px;
-  line-height: 1;
+  background: #fff;
+  box-shadow: 0 4px 10px rgb(66 90 120 / 12%);
+}
+
+.mic-state:not(:disabled) {
+  cursor: pointer;
+}
+
+.mic-state img {
+  width: 100%;
+  height: 100%;
+}
+
+.speech-wave {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  height: 68px;
+}
+
+.speech-wave i {
+  width: 7px;
+  height: 24px;
+  border-radius: 999px;
+  background: #5fbaf3;
+}
+
+.speech-wave i:nth-child(2),
+.speech-wave i:nth-child(8) {
+  height: 38px;
+  background: #578df0;
+}
+
+.speech-wave i:nth-child(3),
+.speech-wave i:nth-child(7) {
+  height: 54px;
+  background: #9b61e9;
+}
+
+.speech-wave i:nth-child(4),
+.speech-wave i:nth-child(6) {
+  height: 34px;
+  background: #e95ca5;
+}
+
+.speech-wave i:nth-child(5) {
+  height: 62px;
+  background: #f26773;
+}
+
+.speech-wave.active i {
+  animation: speech-wave .65s ease-in-out infinite alternate;
+}
+
+.speech-wave.active i:nth-child(2n) {
+  animation-delay: -.32s;
+}
+
+.speech-wave.active i:nth-child(3n) {
+  animation-delay: -.5s;
 }
 
 .speech-panel strong {
   font-family: var(--learner-font-display);
-  font-size: 23px;
+  font-size: 18px;
   font-weight: 900;
+  text-align: center;
 }
 
-.speech-glyph {
-  display: grid;
-  place-items: center;
-  width: 125px;
-  height: 125px;
-  border: 5px solid #fff;
-  border-radius: 30px;
-  background: linear-gradient(145deg,#ffda65,#f4ae38);
-  color: #fff;
-  font-family: var(--learner-font-display);
-  font-size: 64px;
-  font-weight: 900;
-  box-shadow: 0 10px 22px rgba(174,121,29,.24);
+.speech-panel--waiting {
+  color: #697995;
+  opacity: .82;
 }
 
-.mic-button {
+.speech-panel--success {
+  color: #55a758;
+  border-color: #b9dcae;
+}
+
+.speech-panel--listening {
+  border-color: #f08a91;
+  box-shadow:
+    0 8px 20px rgb(70 63 50 / 9%),
+    0 0 0 6px rgb(240 138 145 / 14%);
+  animation: speech-panel-ready .45s ease-out both;
+}
+
+.action-bar {
+  position: absolute;
+  right: 18px;
+  bottom: 8px;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  min-width: 175px;
-  min-height: 60px;
+  justify-content: flex-end;
+  width: calc(100% - 36px);
+  height: 52px;
+  pointer-events: none;
+}
+
+.next-button {
+  min-width: 180px;
+  min-height: 52px;
   border: 0;
-  border-radius: 999px;
-  background: linear-gradient(180deg,#7797f5,#4f72e1);
+  border-radius: 19px;
+  background: #e68135;
   color: #fff;
   font-family: var(--learner-font-display);
   font-size: 20px;
   font-weight: 900;
-  box-shadow: 0 7px 16px rgba(49,80,150,.24);
+  box-shadow: 0 7px 0 #c76524;
   cursor: pointer;
+  pointer-events: auto;
 }
 
-.mic-button span {
-  display: grid;
-  place-items: center;
-  width: 33px;
-  height: 33px;
-  border: 3px solid rgba(255,255,255,.8);
-  border-radius: 50%;
-  color: #fff;
-  font-size: 15px;
-}
-
-.mic-button:disabled {
-  opacity: .65;
-}
-
-.speech-message {
-  margin: 0;
-  color: #42617d;
-  font-weight: 800;
-  line-height: 1.35;
-}
-
-.action-bar {
-  display: flex;
-  justify-content: flex-end;
-  min-height: 56px;
-}
-
-.next-button {
-  min-width: 190px;
-  min-height: 56px;
-  border: 0;
-  border-radius: 20px;
-  background: linear-gradient(180deg,#ffc657,#f2a92e);
-  color: #fff;
-  font-family: var(--learner-font-display);
-  font-size: 21px;
-  font-weight: 900;
-  box-shadow: 0 7px 16px rgba(145,93,17,.24);
-  cursor: pointer;
-}
-
-.mic-button:focus-visible,.next-button:focus-visible {
+.next-button:focus-visible,
+.mic-state:focus-visible {
   outline: 5px solid #ffd54a;
   outline-offset: 3px;
 }
 
-@keyframes resume-pulse {
-  50% {
-    r: 31;
-    fill: #fff;
-    stroke: #ffec7b;
-    filter: drop-shadow(0 0 12px #fff27a);
-  }
+@keyframes speech-wave {
+  from { transform: scaleY(.48); }
+  to { transform: scaleY(1.08); }
 }
 
-@keyframes spin {
+@keyframes trace-fill-complete {
+  from {
+    stroke-width: 10;
+    stroke: #9bc7ff;
+  }
+
+  65% {
+    stroke-width: 28;
+    stroke: #83b9fa;
+  }
+
   to {
-    transform: rotate(360deg);
-    transform-origin: 320px 250px;
+    stroke-width: 22;
+    stroke: #8fc0fb;
   }
 }
 
-@media (max-width:820px) {
-  .trace-layout {
-    grid-template-columns: 1fr 220px;
+@keyframes completion-wave {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(.24);
   }
 
-  .speech-panel {
-    padding: 14px;
+  28% {
+    opacity: .72;
   }
 
-  .speech-glyph {
-    width: 95px;
-    height: 95px;
-    font-size: 52px;
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1.22);
   }
 }
 
-@media (max-height:800px) {
+@keyframes speech-panel-ready {
+  from {
+    transform: scale(.97);
+  }
+
+  to {
+    transform: scale(1);
+  }
+}
+
+@container learner-canvas (max-height: 800px) {
   .activity {
-    gap: 9px;
-    padding: 12px 18px;
+    padding: 8px 14px;
   }
 
-  .activity-heading h1 {
-    font-size: 32px;
-  }
-
-  .trace-layout {
-    grid-template-columns: minmax(0,1fr) 245px;
+  .trace-layout,
+  .trace-side {
     gap: 14px;
   }
 
   .trace-svg {
-    min-height: 300px;
+    min-height: 270px;
   }
 
   .speech-panel {
-    gap: 10px;
-    padding: 13px;
+    gap: 7px;
+    padding: 10px;
   }
 
-  .speech-glyph {
-    width: 92px;
-    height: 92px;
-    font-size: 50px;
-  }
-
-  .eye-icon {
-    width: 72px;
-    height: 72px;
-    font-size: 46px;
-  }
-
-  .mic-button {
-    min-height: 52px;
+  .speech-wave {
+    height: 46px;
+    transform: scale(.8);
   }
 
   .action-bar {
-    min-height: 48px;
+    right: 14px;
+    bottom: 5px;
+    width: calc(100% - 28px);
+    height: 46px;
   }
 
   .next-button {
-    min-height: 48px;
+    min-height: 46px;
   }
 }
 
-@media (prefers-reduced-motion:reduce) {
-  .resume-point.stalled,.complete-ring {
+@media (prefers-reduced-motion: reduce) {
+  .trace-stage.complete .stroke-filled {
     animation: none;
+    stroke: #8fc0fb;
+    stroke-width: 22;
   }
 
-  .gaze-cursor {
-    transition: none;
+  .completion-wave {
+    display: none;
+  }
+
+  .speech-wave i {
+    animation: none !important;
   }
 }

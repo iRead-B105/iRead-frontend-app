@@ -6,28 +6,36 @@
 import { computed, ref, watchEffect } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getAllCategories, getCategoryById } from '@/mocks/trainingLookup'
+import { devPreviewLessons } from '@/mocks/trainingLessons'
 import TrainingCategoryCard from '@/components/training/TrainingCategoryCard.vue'
 import TrainingCurriculumPath, {
   type CurriculumPathStep,
 } from '@/components/training/TrainingCurriculumPath.vue'
 import TrainingLessonModal from '@/components/training/TrainingLessonModal.vue'
 import { useDailyCurriculum } from '@/composables/useDailyCurriculum'
-import { learnerDataSource } from '@/config/learnerDataSource'
 
 const route = useRoute()
 const router = useRouter()
 
 const categories = getAllCategories()
 const showAllTrainings = ref(false)
+const isDeveloperMode = import.meta.env.DEV
+const debugPanelOpen = ref(false)
 const dailyCurriculum = useDailyCurriculum()
 
 void dailyCurriculum.reloadCurrentCurriculum().catch(() => undefined)
 
 watchEffect(() => {
-  if (dailyCurriculum.isTodayComplete.value) {
+  if (!isDeveloperMode && dailyCurriculum.isTodayComplete.value) {
     void router.replace({ name: 'training-today-complete' })
   }
 })
+
+const debugLessonGroups = [{
+  id: 'activity-previews',
+  title: '화면별 미리보기',
+  lessons: devPreviewLessons,
+}]
 
 const curriculumSteps = computed<CurriculumPathStep[]>(() =>
   dailyCurriculum.curriculumItems.map((step) => ({
@@ -70,7 +78,7 @@ const retryCurriculum = () => {
 
 const handleLessonSelect = (lessonId: string) => {
   if (!activeCategoryId.value) return
-  // 준비된 레슨 선택 → 레슨 화면(인트로)으로 이동
+  // 준비된 레슨 선택 → 첫 문제로 바로 이동
   void router.push({
     name: 'training-lesson',
     params: { categoryId: activeCategoryId.value, lessonId },
@@ -81,18 +89,27 @@ const handleCloseModal = () => {
   void router.push({ name: 'training-home' })
 }
 
+const openDebugLesson = (categoryId: string, lessonId: string) => {
+  debugPanelOpen.value = false
+  void router.push({
+    name: 'training-lesson',
+    params: { categoryId, lessonId },
+    query: { debug: '1' },
+  })
+}
+
 </script>
 
 <template>
   <main class="training-home">
     <button
-      v-if="learnerDataSource === 'mock'"
+      v-if="isDeveloperMode"
       class="debug-view-button"
       type="button"
-      :aria-pressed="showAllTrainings"
-      @click="showAllTrainings = !showAllTrainings"
+      aria-haspopup="dialog"
+      @click="debugPanelOpen = true"
     >
-      {{ showAllTrainings ? '커리큘럼 보기' : '전체 훈련 보기' }}
+      DEV
     </button>
 
     <section
@@ -139,8 +156,8 @@ const handleCloseModal = () => {
 
     <section v-else class="home-content">
       <header class="home-heading">
-        <h1 class="home-title">어떤 훈련을 해볼까요?</h1>
-        <p class="home-subtitle">하고 싶은 훈련을 골라보세요.</p>
+        <h1 class="home-title">어떤 훈련을 해볼까?</h1>
+        <p class="home-subtitle">하고 싶은 훈련을 골라봐!</p>
       </header>
 
       <div class="category-grid">
@@ -159,6 +176,49 @@ const handleCloseModal = () => {
       @select="handleLessonSelect"
       @close="handleCloseModal"
     />
+
+    <div
+      v-if="isDeveloperMode && debugPanelOpen"
+      class="debug-launcher-backdrop"
+      role="presentation"
+      @click.self="debugPanelOpen = false"
+    >
+      <section
+        class="debug-launcher"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="debug-launcher-title"
+      >
+        <header class="debug-launcher-header">
+          <div>
+            <span>DEVELOPMENT ONLY</span>
+            <h2 id="debug-launcher-title">전체 학습 디버그</h2>
+          </div>
+          <button type="button" aria-label="디버그 목록 닫기" @click="debugPanelOpen = false">×</button>
+        </header>
+
+        <div class="debug-launcher-groups">
+          <section
+            v-for="group in debugLessonGroups"
+            :key="group.id"
+            class="debug-launcher-group"
+          >
+            <h3>{{ group.title }}</h3>
+            <div class="debug-lesson-grid">
+              <button
+                v-for="lesson in group.lessons"
+                :key="lesson.id"
+                type="button"
+                @click="openDebugLesson(lesson.categoryId, lesson.id)"
+              >
+                <strong>{{ lesson.title }}</strong>
+                <span>{{ lesson.activityType }} · {{ lesson.questions.length }}개 변형</span>
+              </button>
+            </div>
+          </section>
+        </div>
+      </section>
+    </div>
 
   </main>
 </template>

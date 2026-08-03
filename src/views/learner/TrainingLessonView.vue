@@ -1,11 +1,10 @@
 <script setup lang="ts">
-// 훈련 레슨 화면: 인트로 → 문제 풀이 → 결과 저장
+// 훈련 레슨 화면: 문제 풀이 → 결과 저장
 // 세션 상태는 useTrainingSession(싱글톤)에서 공유합니다.
 // 액티비티는 'next' 이벤트만 보내며, 다음 레슨으로의 이동/자동 진행은 이곳에서 처리합니다.
 // (향후 자동 커리큘럼 연결 시 이 지점의 goNext/finish 흐름을 서버 세션 기반으로 교체)
 //
 // 본 화면은 "메인 섬 화면"처럼 요소를 최소로 유지합니다.
-// 별도의 피드백 배너/무거운 헤더 대신 토끼 한 마리가 역할을 모두 맡습니다.
 
 import { computed, onBeforeUnmount, onMounted, ref, watch, type Component } from 'vue'
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
@@ -20,10 +19,13 @@ import {
   isSkillChallengeTrackId,
   useSkillChallenge,
 } from '@/composables/useSkillChallenge'
-import TrainingIntro from '@/components/training/TrainingIntro.vue'
 import { trainingActivityComponents } from '@/components/training/activityRegistry'
-import PageBackButton from '@/components/common/PageBackButton.vue'
+import LearningBackButton from '@/components/training/LearningBackButton.vue'
+import LearningNextButton from '@/components/training/LearningNextButton.vue'
 import leaveTrainingRabbit from '@/assets/training/ui/leave-training-rabbit.png'
+import lessonProgressTitleBoard from '@/assets/training/ui/lesson-progress-title-board-compact.webp'
+import eyeTrackerIcon from '@/assets/icons/eye-tracker.svg'
+import microphoneIcon from '@/assets/icons/microphone.svg'
 import { learnerDataSource } from '@/config/learnerDataSource'
 import {
   learnerTrainingRepository,
@@ -54,6 +56,7 @@ const errorModal = useLearnerErrorModalStore()
 const { eyeTrackerConnected, microphoneAvailable } = useDeviceStatus()
 const voiceRecorder = useVoiceRecorder()
 
+const debugMode = computed(() => import.meta.env.DEV && route.query.debug === '1')
 const challengeTrackId = computed(() => {
   const value = String(route.params.trackId ?? route.query.challenge ?? '')
   return isSkillChallengeTrackId(value) ? value : null
@@ -83,7 +86,7 @@ const learningItemId = computed(() => String(
 const fallbackLesson = computed(() => getLessonById(lessonId.value))
 const serverLesson = ref<TrainingLesson | null>(null)
 const lesson = computed(() =>
-  learnerDataSource === 'api' ? serverLesson.value : fallbackLesson.value,
+  learnerDataSource === 'api' && !debugMode.value ? serverLesson.value : fallbackLesson.value,
 )
 const serverIntro = ref<LearnerTrainingIntro | null>(null)
 const serverQuestions = ref<readonly MappedTrainingQuestion[]>([])
@@ -92,6 +95,7 @@ const submittingQuestion = ref(false)
 const voiceGateOpen = ref(false)
 const voiceSubmitting = ref(false)
 const voiceFeedback = ref('')
+const advanceAfterAutomaticVoice = ref(false)
 const pendingNextResponse = ref<LearnerTraceSubmissionResponse | undefined>()
 const recordedQuestionNumbers = new Set<number>()
 const gazeSessionId = ref<string | null>(null)
@@ -131,6 +135,8 @@ const deviceBlocker = ref<'eye-tracker' | 'microphone' | null>(null)
 const leaveConfirmationOpen = ref(false)
 const integrationError = ref('')
 let resolveLeaveConfirmation: ((allow: boolean) => void) | null = null
+let automaticVoiceStopTimer: ReturnType<typeof setTimeout> | null = null
+let automaticVoiceRetryTimer: ReturnType<typeof setTimeout> | null = null
 
 watch(integrationError, (error) => {
   if (!error) return
@@ -141,13 +147,10 @@ watch(integrationError, (error) => {
 const gazeRequiredActivities = new Set<TrainingActivityType>([
   'gaze-trace',
   'word-reading-grid',
-  'sentence-reading',
 ])
 const microphoneRequiredActivities = new Set<TrainingActivityType>([
   'gaze-trace',
   'word-reading-grid',
-  'sentence-reading',
-  'read-aloud',
 ])
 const gazeRequired = computed(() =>
   learnerDataSource === 'api'
@@ -165,28 +168,56 @@ const microphoneRequired = computed(() =>
 )
 
 const currentQuestion = computed(() => session.currentQuestion.value)
-const conciseInstructions: Partial<Record<TrainingActivityType, string>> = {
-  'gaze-trace': '글자를 따라가봐요',
-  'audio-letter-choice': '첫소리를 찾아봐요',
-  'listen-and-select': '같은 소리를 찾아봐요',
-  'sound-choice': '소리를 찾아봐요',
-  'letter-build': '글자를 만들어봐요',
-  'sound-manipulation': '낱말을 바꿔봐요',
-  'sound-omit': '소리를 빼봐요',
-  'sound-blend': '소리를 합쳐봐요',
-  'card-combine': '글자를 합쳐봐요',
-  'word-reading-grid': '낱말을 읽어봐요',
-  'sentence-reading': '문장을 읽어봐요',
-  'sentence-choice': '맞는 문장을 찾아봐요',
-  'fill-blank': '빈칸을 채워봐요',
-  'sentence-order': '문장을 만들어봐요',
-  'read-aloud': '소리 내어 읽어봐요',
+const questionScroll = ref<HTMLElement | null>(null)
+const sharedNextEnabled = computed(() => session.progressState.isCurrentCorrect === true)
+type ActivityLayout = 'trace-speak' | 'choice' | 'manipulation' | 'reading-speak'
+const activityLayouts: Record<TrainingActivityType, ActivityLayout> = {
+  'gaze-trace': 'trace-speak',
+  'audio-letter-choice': 'choice',
+  'listen-and-select': 'choice',
+  'sound-choice': 'choice',
+  'sentence-choice': 'choice',
+  'letter-build': 'manipulation',
+  'sound-manipulation': 'manipulation',
+  'sound-omit': 'manipulation',
+  'sound-blend': 'manipulation',
+  'fill-blank': 'manipulation',
+  'sentence-order': 'manipulation',
+  'word-reading-grid': 'reading-speak',
+  'card-match': 'choice',
+  'drag-and-drop': 'manipulation',
 }
+const activityLayoutClass = computed(() =>
+  lesson.value
+    ? `activity-layout--${activityLayouts[lesson.value.activityType]}`
+    : undefined,
+)
+const conciseInstructions: Partial<Record<TrainingActivityType, string>> = {
+  'gaze-trace': '글자를 따라 읽어요!',
+  'audio-letter-choice': '첫소리를 찾아봐!',
+  'listen-and-select': '비슷한 소리를 찾아봐!',
+  'sound-choice': '소리를 찾아봐!',
+  'letter-build': '소리 듣고 글자를 만들어봐!',
+  'sound-manipulation': '낱말을 바꿔봐!',
+  'sound-omit': '잘 듣고 글자를 잘라봐!',
+  'sound-blend': '소리를 합쳐봐!',
+  'word-reading-grid': '낱말을 읽어봐!',
+  'sentence-choice': '맞는 문장을 찾아봐!',
+  'fill-blank': '빈칸을 채워봐!',
+  'sentence-order': '문장을 만들어봐!',
+}
+const mockListeningPromptLessonIds = new Set([
+  'repeat-sentence',
+  'follow-sentence',
+])
 const displayQuestion = computed(() => {
   const question = currentQuestion.value
   if (!question || !lesson.value) return question
   return {
     ...question,
+    audioPromptEnabled:
+      question.audioPromptEnabled
+      ?? mockListeningPromptLessonIds.has(lesson.value.id),
     requiredInputs: learnerDataSource === 'api'
       ? serverQuestions.value[session.progressState.currentQuestionIndex]?.requiredInputs
       : undefined,
@@ -353,10 +384,10 @@ onMounted(async () => {
     skillChallenge.ensureChallenge(challengeTrackId.value, lessonId.value)
   }
   // 세션 초기화 및 첫 문제 준비(이전 정답/녹음은 모두 리셋)
-  if (learnerDataSource === 'mock' && lesson.value) {
-    session.startLesson(lesson.value)
+  if ((learnerDataSource === 'mock' || debugMode.value) && fallbackLesson.value) {
+    session.startLesson(fallbackLesson.value)
   }
-  if (learnerDataSource === 'api') {
+  if (learnerDataSource === 'api' && !debugMode.value) {
     const itemId = learningItemId.value
     if (!/^\d+$/.test(itemId)) {
       integrationError.value = '서버 학습 ID가 없어 학습을 시작할 수 없습니다.'
@@ -439,7 +470,11 @@ onMounted(async () => {
       }
     }
   }
-  phase.value = 'intro'
+  if (debugMode.value) {
+    phase.value = 'playing'
+  } else if (!integrationError.value) {
+    await startPlaying()
+  }
 })
 
 const startPlaying = async () => {
@@ -454,7 +489,7 @@ const startPlaying = async () => {
   }
   startingTraining.value = true
   try {
-    if (learnerDataSource === 'api') {
+    if (learnerDataSource === 'api' && !debugMode.value) {
       const intro = serverIntro.value
       const itemId = learningItemId.value
       if (!intro || !/^\d+$/.test(itemId)) {
@@ -499,6 +534,7 @@ const startPlaying = async () => {
 }
 
 onBeforeRouteLeave(() => {
+  if (debugMode.value) return true
   if (phase.value === 'intro' || session.progressState.isCompleted) return true
 
   leaveConfirmationOpen.value = true
@@ -515,6 +551,7 @@ const finishLeaveConfirmation = (allow: boolean) => {
 }
 
 onBeforeUnmount(() => {
+  clearAutomaticVoiceTimers()
   window.removeEventListener('iread:gaze', onGazeSample)
   window.removeEventListener('iread:gaze-word-hit', onGazeWordHit)
   if (gazeSessionId.value && !gazeSessionCompleted.value) {
@@ -532,6 +569,10 @@ onBeforeUnmount(() => {
 watch(
   [eyeTrackerConnected, microphoneAvailable],
   ([eyeConnected, micAvailable]) => {
+    if (debugMode.value) {
+      deviceBlocker.value = null
+      return
+    }
     if (deviceBlocker.value === 'eye-tracker' && gazeDeviceFallbackEnabled) deviceBlocker.value = null
     if (deviceBlocker.value === 'microphone' && voiceDeviceFallbackEnabled) deviceBlocker.value = null
     if (deviceBlocker.value === 'eye-tracker' && eyeConnected) deviceBlocker.value = null
@@ -544,7 +585,23 @@ watch(
 )
 
 const exitToHome = () => {
+  if (debugMode.value) {
+    void router.push({ name: 'training-home', query: { debugPanel: '1' } })
+    return
+  }
   void router.push({ name: challengeTrackId.value ? 'skill-challenge' : 'training-home' })
+}
+
+const activateSharedNext = () => {
+  if (!sharedNextEnabled.value) return
+  const source = questionScroll.value?.querySelector<HTMLButtonElement>(
+    'button.shared-next-source',
+  )
+  if (source && !source.disabled) {
+    source.click()
+    return
+  }
+  void goNext()
 }
 
 const submitMockVoice = async (
@@ -574,9 +631,69 @@ const submitMockVoice = async (
 }
 
 // 다음 문제로 이동. 마지막 문제면 결과 저장 흐름으로 진입.
+const clearAutomaticVoiceTimers = () => {
+  if (automaticVoiceStopTimer) clearTimeout(automaticVoiceStopTimer)
+  if (automaticVoiceRetryTimer) clearTimeout(automaticVoiceRetryTimer)
+  automaticVoiceStopTimer = null
+  automaticVoiceRetryTimer = null
+}
+
+const beginAutomaticVoiceCapture = async (
+  response?: LearnerTraceSubmissionResponse,
+  advanceAfterSubmit = true,
+) => {
+  if (
+    voiceSubmitting.value
+    || voiceRecorder.state.status === 'requesting'
+    || voiceRecorder.state.status === 'recording'
+  ) return
+
+  const mapped = serverQuestions.value[session.progressState.currentQuestionIndex]
+  if (!mapped?.expectedText) {
+    errorModal.show(
+      new Error('음성 평가에 필요한 읽기 문구가 없어요.'),
+      '음성 평가 오류',
+    )
+    return
+  }
+
+  clearAutomaticVoiceTimers()
+  pendingNextResponse.value = response
+  advanceAfterAutomaticVoice.value = advanceAfterSubmit
+  voiceFeedback.value = '준비되면 바로 말해요!'
+  voiceRecorder.reset()
+  voiceGateOpen.value = true
+  await voiceRecorder.start()
+
+  const recorderStatus = voiceRecorder.state.status as string
+  if (recorderStatus !== 'recording') {
+    voiceGateOpen.value = false
+    deviceBlocker.value = 'microphone'
+    return
+  }
+
+  voiceFeedback.value = '듣고 있어요!'
+  const recordingMs = Math.min(
+    12_000,
+    Math.max(3_000, mapped.expectedText.length * 650 + 1_800),
+  )
+  automaticVoiceStopTimer = setTimeout(() => voiceRecorder.stop(), recordingMs)
+}
+
+const retryAutomaticVoiceCapture = () => {
+  clearAutomaticVoiceTimers()
+  automaticVoiceRetryTimer = setTimeout(
+    () => void beginAutomaticVoiceCapture(
+      pendingNextResponse.value,
+      advanceAfterAutomaticVoice.value,
+    ),
+    1_100,
+  )
+}
+
 const goNext = async (response?: LearnerTraceSubmissionResponse) => {
   if (submittingQuestion.value) return
-  if (learnerDataSource === 'api') {
+  if (learnerDataSource === 'api' && !debugMode.value) {
     const mapped = serverQuestions.value[session.progressState.currentQuestionIndex]
     if (
       mapped?.requiredInputs.includes('VOICE')
@@ -590,15 +707,13 @@ const goNext = async (response?: LearnerTraceSubmissionResponse) => {
         await submitRecordedVoice(mapped, captured)
         return
       }
-      voiceFeedback.value = ''
-      voiceRecorder.reset()
-      voiceGateOpen.value = true
+      await beginAutomaticVoiceCapture(response)
       return
     }
   }
   submittingQuestion.value = true
   try {
-    if (learnerDataSource === 'api') {
+    if (learnerDataSource === 'api' && !debugMode.value) {
       const itemId = learningItemId.value
       const mapped = serverQuestions.value[session.progressState.currentQuestionIndex]
       if (!mapped || !/^\d+$/.test(itemId)) {
@@ -641,9 +756,65 @@ const goNext = async (response?: LearnerTraceSubmissionResponse) => {
   }
 }
 
-const toggleVoiceRecording = () => {
-  if (voiceRecorder.state.status === 'recording') voiceRecorder.stop()
-  else void voiceRecorder.start()
+type ActivityVoiceEvaluationControls = {
+  success: (message?: string) => void
+  retry: (message?: string) => void
+}
+
+// 따라 읽기 액티비티에서 수음한 음성을 즉시 백엔드 발음 평가로 보낸다.
+// 성공한 문항 번호를 기록해 다음 버튼에서 같은 음성을 다시 요구하지 않는다.
+const evaluateActivityVoice = async (
+  blob: Blob,
+  controls: ActivityVoiceEvaluationControls,
+) => {
+  const mapped = serverQuestions.value[session.progressState.currentQuestionIndex]
+  const itemId = learningItemId.value
+
+  if (learnerDataSource !== 'api' || debugMode.value) {
+    controls.success()
+    return
+  }
+  if (!mapped?.expectedText || !/^\d+$/.test(itemId)) {
+    controls.retry('음성 평가 정보를 확인할 수 없어요. 다시 말해 주세요.')
+    return
+  }
+
+  voiceSubmitting.value = true
+  try {
+    const extension = blob.type.includes('mp4') ? 'm4a' : 'webm'
+    const result = await learningRepository.value.saveRecording(
+      getCachedStudent().studentId,
+      itemId,
+      mapped.questionNumber,
+      {
+        targetIndex: mapped.recordingTargetIndex ?? undefined,
+        expectedText: mapped.expectedText,
+        audioFile: new File([blob], `training-${mapped.questionNumber}.${extension}`, {
+          type: blob.type || 'audio/webm',
+        }),
+      },
+    )
+    const score = Math.round(result.pronunciationAccuracyScore)
+    if (result.canRetry) {
+      controls.retry(`${score}점이에요. 한 번 더 또박또박 읽어봐요!`)
+      return
+    }
+
+    recordedQuestionNumbers.add(mapped.questionNumber)
+    controls.success(
+      result.passed
+        ? `${score}점! 또박또박 잘 읽었어!`
+        : '끝까지 읽었어! 다음 글자도 연습해보자!',
+    )
+  } catch (error) {
+    controls.retry(
+      error instanceof Error
+        ? error.message
+        : '목소리를 확인하지 못했어요. 다시 말해 주세요.',
+    )
+  } finally {
+    voiceSubmitting.value = false
+  }
 }
 
 const submitVoiceRecording = async () => {
@@ -695,13 +866,14 @@ const submitRecordedVoice = async (
     if (result.canRetry) {
       voiceRecorder.reset()
       voiceGateOpen.value = true
+      retryAutomaticVoiceCapture()
       return
     }
     recordedQuestionNumbers.add(mapped.questionNumber)
     voiceGateOpen.value = false
     const pending = pendingNextResponse.value
     pendingNextResponse.value = undefined
-    await goNext(pending)
+    if (advanceAfterAutomaticVoice.value) await goNext(pending)
   } catch (error) {
     voiceFeedback.value = error instanceof Error ? error.message : '녹음을 저장하지 못했습니다.'
   } finally {
@@ -710,11 +882,48 @@ const submitRecordedVoice = async (
 }
 
 // 결과 저장 중에는 기술 용어 없이 마무리 로딩만 보여줍니다.
+watch(() => voiceRecorder.state.status, (status) => {
+  if (!voiceGateOpen.value || status !== 'recorded' || voiceSubmitting.value) return
+  clearAutomaticVoiceTimers()
+  void submitVoiceRecording()
+})
+
+watch(voiceSubmitting, (submitting, wasSubmitting) => {
+  if (
+    wasSubmitting
+    && !submitting
+    && voiceGateOpen.value
+    && voiceRecorder.state.status === 'recorded'
+  ) retryAutomaticVoiceCapture()
+})
+
+// 조작형 학습은 정답을 완성하는 즉시 화면 안에서 발음을 받는다.
+// 다음 버튼이 녹음 모달을 여는 흐름을 없애고, 녹음 완료 뒤에도 현재 문항을 유지한다.
+watch(
+  [sharedNextEnabled, () => session.progressState.currentQuestionIndex],
+  ([correct]) => {
+    if (!correct || learnerDataSource !== 'api' || debugMode.value || mockVoiceSubmissionsEnabled) return
+    const mapped = serverQuestions.value[session.progressState.currentQuestionIndex]
+    if (
+      !mapped?.requiredInputs.includes('VOICE')
+      || recordedQuestionNumbers.has(mapped.questionNumber)
+      || voiceGateOpen.value
+    ) return
+    const captured = session.storedRecordings[mapped.question.id]?.blob ?? null
+    if (captured) {
+      advanceAfterAutomaticVoice.value = false
+      void submitRecordedVoice(mapped, captured)
+      return
+    }
+    void beginAutomaticVoiceCapture(undefined, false)
+  },
+)
+
 const saveAndFinish = async () => {
   phase.value = 'saving'
   let ok = false
   let nextCurriculumItem: (typeof dailyCurriculum.curriculumItems)[number] | null = null
-  if (learnerDataSource === 'api') {
+  if (learnerDataSource === 'api' && !debugMode.value) {
     session.savingState.status = 'saving'
     session.savingState.errorMessage = null
     try {
@@ -763,6 +972,10 @@ const saveAndFinish = async () => {
   }
   if (ok) {
     session.completeLesson()
+    if (debugMode.value) {
+      void router.replace({ name: 'training-home', query: { debugPanel: '1' } })
+      return
+    }
     void router.replace(
       challengeTrackId.value
         ? {
@@ -789,57 +1002,88 @@ const saveAndFinish = async () => {
 }
 
 const isSavingFailed = computed(() => session.savingState.status === 'failed')
-
 </script>
 
 <template>
   <div class="lesson-view">
-    <div v-if="!integrationError && phase === 'intro' && lesson" class="lesson-topbar lesson-topbar--intro">
-      <PageBackButton label="훈련 선택으로 돌아가기" @back="exitToHome" />
-    </div>
-
-    <!-- 인트로 -->
-    <TrainingIntro
-      v-if="!integrationError && phase === 'intro' && lesson"
-      :lesson="lesson"
-      @start="startPlaying"
-    />
-
     <!-- 문제 풀이 -->
-    <div v-else-if="phase === 'playing' && lesson" class="playing">
+    <div
+      v-if="phase === 'playing' && lesson"
+      class="playing"
+      :class="{ 'playing--first-sound': lesson.id === 'word-first-sound-choice' }"
+    >
       <div class="lesson-topbar lesson-topbar--inside">
-        <PageBackButton label="학습을 그만하고 훈련 선택으로 돌아가기" @back="exitToHome" />
-        <div
-          class="topbar-progress"
+        <LearningBackButton @back="exitToHome" />
+        <section
+          v-if="displayQuestion"
+          class="lesson-progress-board"
           role="status"
-          :aria-label="`현재 ${session.currentQuestionNumber.value}번, 전체 ${session.totalQuestions.value}문제`"
+          :aria-label="`${displayQuestion.instruction}. 현재 ${session.currentQuestionNumber.value}번, 전체 ${session.totalQuestions.value}문제`"
         >
-          <strong>{{ session.currentQuestionNumber.value }} / {{ session.totalQuestions.value }}</strong>
-          <span class="topbar-progress-dots" aria-hidden="true">
-            <span
-              v-for="i in session.totalQuestions.value"
-              :key="i"
-              class="prog-dot"
-              :class="{ active: i <= session.currentQuestionNumber.value }"
-            ></span>
-          </span>
-        </div>
-        <span class="lesson-topbar-spacer" aria-hidden="true"></span>
+          <img
+            class="lesson-progress-board-image"
+            :src="lessonProgressTitleBoard"
+            alt=""
+            aria-hidden="true"
+          />
+          <div class="lesson-progress-board-content">
+            <div class="lesson-progress-copy">
+              <div class="topbar-progress">
+                <strong>{{ session.currentQuestionNumber.value }} / {{ session.totalQuestions.value }}</strong>
+                <span class="topbar-progress-dots" aria-hidden="true">
+                  <span
+                    v-for="i in session.totalQuestions.value"
+                    :key="i"
+                    class="prog-dot"
+                    :class="{
+                      active: i <= session.currentQuestionNumber.value,
+                      current: i === session.currentQuestionNumber.value,
+                    }"
+                  ></span>
+                </span>
+              </div>
+              <h1 class="learner-instruction lesson-instruction">
+                {{ displayQuestion.instruction }}
+              </h1>
+            </div>
+          </div>
+        </section>
+        <LearningNextButton
+          :enabled="sharedNextEnabled"
+          @activate="activateSharedNext"
+        />
       </div>
-      <h1 v-if="displayQuestion" class="learner-instruction lesson-instruction">
-        {{ displayQuestion.instruction }}
-      </h1>
-      <p v-if="displayedHint" class="learner-instruction" role="status">
-        {{ displayedHint }}
-      </p>
-      <div class="question-scroll">
+      <div ref="questionScroll" class="question-scroll" :class="activityLayoutClass">
         <component
           :is="activityComponent"
           v-if="displayQuestion && activityComponent"
           :key="displayQuestion.id"
           :question="displayQuestion"
           @next="goNext"
+          @voice-recorded="evaluateActivityVoice"
         />
+        <Transition name="fade">
+          <aside
+            v-if="voiceGateOpen"
+            class="inline-voice-panel"
+            aria-label="목소리 인식 중"
+            aria-live="polite"
+          >
+            <span class="inline-voice-icon" aria-hidden="true">
+              <img :src="microphoneIcon" alt="" />
+            </span>
+            <div
+              class="automatic-voice-wave"
+              :class="{
+                recording: voiceRecorder.state.status === 'recording',
+                evaluating: voiceSubmitting,
+              }"
+              role="status"
+            >
+              <span v-for="index in 7" :key="index" aria-hidden="true"></span>
+            </div>
+          </aside>
+        </Transition>
       </div>
     </div>
 
@@ -849,7 +1093,7 @@ const isSavingFailed = computed(() => session.savingState.status === 'failed')
         <div class="saving-panel">
           <template v-if="!isSavingFailed">
             <span class="saving-spinner" aria-hidden="true"></span>
-            <p class="saving-text">학습을 마무리하고 있어요…</p>
+            <p class="saving-text">학습을 마무리하고 있어…</p>
           </template>
           <template v-else>
             <p class="saving-icon" aria-hidden="true">!</p>
@@ -857,43 +1101,6 @@ const isSavingFailed = computed(() => session.savingState.status === 'failed')
             <button class="retry-button" type="button" @click="saveAndFinish">다시 시도할래요</button>
           </template>
         </div>
-      </div>
-    </Transition>
-
-    <Transition name="fade">
-      <div
-        v-if="voiceGateOpen"
-        class="device-blocker"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="voice-gate-title"
-      >
-        <section class="device-blocker-panel">
-          <span class="device-blocker-icon" aria-hidden="true">
-            <svg viewBox="0 0 48 48">
-              <rect x="17" y="6" width="14" height="25" rx="7" />
-              <path d="M11 23c0 8 5.8 14 13 14s13-6 13-14M24 37v7M17 44h14" />
-            </svg>
-          </span>
-          <h2 id="voice-gate-title">{{ serverQuestions[session.progressState.currentQuestionIndex]?.expectedText }}</h2>
-          <p>{{ voiceFeedback || '완성한 글자나 문장을 소리 내어 읽어 주세요.' }}</p>
-          <button
-            v-if="voiceRecorder.state.status !== 'recorded'"
-            type="button"
-            :disabled="voiceRecorder.state.status === 'requesting'"
-            @click="toggleVoiceRecording"
-          >
-            {{ voiceRecorder.state.status === 'recording' ? '녹음 끝내기' : '녹음 시작하기' }}
-          </button>
-          <button
-            v-else
-            type="button"
-            :disabled="voiceSubmitting"
-            @click="submitVoiceRecording"
-          >
-            {{ voiceSubmitting ? '점수를 확인하고 있어요…' : '발음 점수 확인하기' }}
-          </button>
-        </section>
       </div>
     </Transition>
 
@@ -907,18 +1114,10 @@ const isSavingFailed = computed(() => session.savingState.status === 'failed')
       >
         <section class="device-blocker-panel">
           <span class="device-blocker-icon" aria-hidden="true">
-            <svg v-if="deviceBlocker === 'eye-tracker'" viewBox="0 0 64 48">
-              <ellipse cx="20" cy="24" rx="15" ry="20" />
-              <ellipse cx="44" cy="24" rx="15" ry="20" />
-              <circle cx="22" cy="26" r="8" />
-              <circle cx="46" cy="26" r="8" />
-              <circle class="device-icon-shine" cx="25" cy="22" r="3" />
-              <circle class="device-icon-shine" cx="49" cy="22" r="3" />
-            </svg>
-            <svg v-else viewBox="0 0 48 48">
-              <rect x="17" y="6" width="14" height="25" rx="7" />
-              <path d="M11 23c0 8 5.8 14 13 14s13-6 13-14M24 37v7M17 44h14" />
-            </svg>
+            <img
+              :src="deviceBlocker === 'eye-tracker' ? eyeTrackerIcon : microphoneIcon"
+              alt=""
+            />
           </span>
           <h2 :id="`${deviceBlocker}-title`">
             {{ deviceBlocker === 'eye-tracker' ? '아이트래커를 연결해 주세요' : '마이크를 켜 주세요' }}
@@ -943,8 +1142,8 @@ const isSavingFailed = computed(() => session.savingState.status === 'failed')
       >
         <section class="leave-confirmation-panel">
           <img class="leave-confirmation-image" :src="leaveTrainingRabbit" alt="" aria-hidden="true" />
-          <h2 id="leave-confirmation-title">학습을 그만할까요?</h2>
-          <p>나가면 이 훈련은 다음에 처음부터 다시 시작해요.</p>
+          <h2 id="leave-confirmation-title">학습을 그만할까?</h2>
+          <p>나가면 이 훈련은 다음에 처음부터 다시 시작해.</p>
           <div>
             <button
               class="leave-confirmation-cancel"

@@ -16,6 +16,9 @@ import {
 } from '@/features/learner/training'
 import { useVoiceRecorder } from '@/composables/useVoiceRecorder'
 import { useLearnerErrorModalStore } from '@/stores/learnerErrorModal'
+import arrowRightIcon from '@/assets/icons/arrow-right.svg'
+import microphoneIcon from '@/assets/icons/microphone.svg'
+import checkIcon from '@/assets/icons/check.svg'
 
 interface StoryPage {
   lineId: string
@@ -25,7 +28,18 @@ interface StoryPage {
   readAt: string | null
   requiresBranchInput: boolean
 }
-interface Story { title: string; character: string; question: string; pages: StoryPage[] }
+interface Story {
+  title: string
+  character: string
+  question: string
+  status: 'UNREAD' | 'IN_PROGRESS' | 'COMPLETED'
+  currentDay: number
+  availableDay: number
+  totalDays: number
+  pagesPerDay: number
+  dayComplete: boolean
+  pages: StoryPage[]
+}
 
 const route = useRoute()
 const router = useRouter()
@@ -36,6 +50,12 @@ const story = ref<Story>({
   title: '이야기를 불러오는 중',
   character: '이야기 친구',
   question: '다음에는 어떤 일이 일어날까요?',
+  status: 'IN_PROGRESS',
+  currentDay: 1,
+  availableDay: 1,
+  totalDays: 10,
+  pagesPerDay: 10,
+  dayComplete: false,
   pages: [{
     lineId: '',
     image: storyChoiceScene,
@@ -54,6 +74,12 @@ async function loadStory() {
     title: detail.title,
     character: detail.character,
     question: detail.branchQuestion,
+    status: detail.status,
+    currentDay: detail.currentDay,
+    availableDay: detail.availableDay,
+    totalDays: detail.totalDays,
+    pagesPerDay: detail.pagesPerDay,
+    dayComplete: detail.dayComplete,
     pages: detail.pages.map((page) => ({
       lineId: page.lineId,
       image: page.imageUrl,
@@ -81,7 +107,7 @@ function initialPage() {
 }
 
 const currentPage = ref(0)
-const screen = ref<'reading' | 'question' | 'generating' | 'reward'>('reading')
+const screen = ref<'reading' | 'question' | 'generating' | 'dayComplete' | 'reward'>('reading')
 const rewardedFriend = ref<VillageItem | null>(null)
 const readThrough = ref(-1)
 const gaze = ref({ x: 0, y: 0, visible: false })
@@ -260,6 +286,10 @@ async function goNext() {
       clearDwell()
       clearLeaveTimer()
       gaze.value.visible = false
+      if (story.value.status !== 'COMPLETED') {
+        screen.value = 'dayComplete'
+        return
+      }
       screen.value = 'reward'
       try {
         rewardedFriend.value = await unlockStoryFriend(storyId.value)
@@ -436,8 +466,8 @@ onBeforeUnmount(() => {
           label="이야기 나라로 돌아가기"
           @back="exitToStorySelection"
         />
-        <div class="story-progress" role="status" :aria-label="`현재 ${currentPage + 1}페이지, 전체 ${allPages.length}페이지`">
-          {{ currentPage + 1 }} / {{ allPages.length }}
+        <div class="story-progress" role="status" :aria-label="`${story.currentDay}일차 ${(currentPage % story.pagesPerDay) + 1}페이지`">
+          {{ story.currentDay }}일차 · {{ (currentPage % story.pagesPerDay) + 1 }} / {{ story.pagesPerDay }}
         </div>
         <button
           class="story-listen"
@@ -460,7 +490,7 @@ onBeforeUnmount(() => {
         </div>
         <button v-if="isPageRead" class="next-page story-next" type="button" @click="goNext">
           <span>{{ page.requiresBranchInput ? '이야기 이어 만들기' : isLastPage ? '이야기 마치기' : '다음 페이지' }}</span>
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 7 7-7 7" /></svg>
+          <img :src="arrowRightIcon" alt="" aria-hidden="true" />
         </button>
       </div>
 
@@ -487,7 +517,7 @@ onBeforeUnmount(() => {
                 :aria-label="isListening ? '녹음 끝내기' : '녹음 시작하기'"
                 @click="isListening ? stopListening() : startListening()"
               >
-                <svg viewBox="0 0 48 48"><rect x="17" y="6" width="14" height="25" rx="7"/><path d="M11 23c0 8 5.8 14 13 14s13-6 13-14M24 37v7M17 44h14"/></svg>
+                <img :src="microphoneIcon" alt="" aria-hidden="true" />
               </button>
               <div class="listening-copy">
                 <strong>
@@ -531,7 +561,7 @@ onBeforeUnmount(() => {
                   @click="submitBranchAnswer"
                 >
                   이어 만들기
-                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4 10-10"/></svg>
+                  <img :src="checkIcon" alt="" aria-hidden="true" />
                 </button>
               </div>
             </section>
@@ -543,6 +573,19 @@ onBeforeUnmount(() => {
             <p v-else>녹음한 대답을 이야기 서버에 보내고 있어요.</p>
             <span class="making-dots" aria-label="다음 이야기 만드는 중"><i/><i/><i/></span>
           </template>
+        </section>
+      </div>
+
+      <div v-else-if="screen === 'dayComplete'" class="reward-scene">
+        <section class="reward-card" aria-live="polite">
+          <span class="reward-kicker">{{ story.currentDay }}일차 완료!</span>
+          <h1>오늘 이야기 10페이지를 다 읽었어요!</h1>
+          <p>다음 이야기는 {{ Math.min(story.currentDay + 1, story.totalDays) }}일차에 이어져요.</p>
+          <div class="reward-actions">
+            <button type="button" @click="router.push({ name: 'story-selection' })">
+              이야기 나라로
+            </button>
+          </div>
         </section>
       </div>
 

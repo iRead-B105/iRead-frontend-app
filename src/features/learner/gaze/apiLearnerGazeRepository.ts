@@ -14,6 +14,57 @@ interface GazeSessionDto {
   readonly endedAt: string | null
 }
 
+interface CollectedGazeData {
+  readonly samples?: readonly unknown[]
+  readonly words?: readonly {
+    readonly questionNo?: number
+    readonly targetIndex?: number
+    readonly tokenIndex?: number
+    readonly text?: string
+    readonly dwellMs?: number
+    readonly visitCount?: number
+    readonly skipped?: boolean
+    readonly regressionCount?: number
+    readonly firstSeenMs?: number
+    readonly lastSeenMs?: number
+  }[]
+}
+
+function analysisBody(studentId: string, data: CollectedGazeData) {
+  const words = data.words ?? []
+  const totalVisitedDuration = words.reduce((sum, word) => sum + (word.dwellMs ?? 0), 0)
+  const totalVisitedCount = words.reduce((sum, word) => sum + (word.visitCount ?? 0), 0)
+  const reverseReadCount = words.reduce((sum, word) => sum + (word.regressionCount ?? 0), 0)
+  return {
+    studentId: Number(studentId),
+    totalVisitedDuration,
+    totalVisitedCount,
+    reverseReadCount,
+    avgVisitedDuration: totalVisitedCount > 0
+      ? Math.round(totalVisitedDuration / totalVisitedCount)
+      : 0,
+    wordAttempts: words.map((word) => ({
+      useLocation: 'TRAINING',
+      targetIndex: word.targetIndex ?? 0,
+      tokenIndex: word.tokenIndex ?? 0,
+      surfaceText: word.text ?? '-',
+      hasGazeData: (word.visitCount ?? 0) > 0,
+      fixationDurationMs: word.dwellMs ?? 0,
+      fixationCount: word.visitCount ?? 0,
+      gazeStartOffsetMs: word.firstSeenMs ?? 0,
+      gazeEndOffsetMs: word.lastSeenMs ?? 0,
+      isSkipped: word.skipped ?? (word.visitCount ?? 0) === 0,
+      regressionCount: word.regressionCount ?? 0,
+      questionNo: word.questionNo,
+      isFinal: true,
+    })),
+    analysisMeta: {
+      contentType: 'TRAINING',
+      calculationSource: 'FRONTEND_GAZE_BRIDGE_V1',
+    },
+  }
+}
+
 function toSession(response: GazeSessionDto): LearnerGazeSession {
   return { ...response, gazeSessionId: String(response.gazeSessionId) }
 }
@@ -51,6 +102,15 @@ export class ApiLearnerGazeRepository implements LearnerGazeRepository {
         body: jsonBody({ studentId: Number(studentId), endStatus, data }),
       },
     )
+    if (endStatus === 'COMPLETED' && data && typeof data === 'object') {
+      await learnerApiClient.request(
+        `/api/app/gaze/sessions/${encodeURIComponent(gazeSessionId)}/analysis-results`,
+        {
+          method: 'POST',
+          body: jsonBody(analysisBody(studentId, data as CollectedGazeData)),
+        },
+      )
+    }
     return toSession(response)
   }
 

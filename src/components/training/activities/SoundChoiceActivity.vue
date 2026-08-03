@@ -37,12 +37,6 @@ const select = (choice: TrainingChoice) => {
 
     <div class="activity-main">
       <div class="listen-panel">
-        <div class="sound-orb" aria-hidden="true">
-          <svg viewBox="0 0 64 64">
-            <path d="M13 25h12l15-11v36L25 39H13z" fill="currentColor" />
-            <path d="M46 23c4 5 4 13 0 18M52 17c8 9 8 21 0 30" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" />
-          </svg>
-        </div>
         <SoundButton :text="question.audioText ?? ''" size="medium" variant="primary" />
       </div>
 
@@ -57,6 +51,7 @@ const select = (choice: TrainingChoice) => {
               :class="{ 'answer-hint': showAnswerHint(choice) }"
               :selectable="!isAnswered"
               size="large"
+              surface="choice"
               @select="select(choice)"
             />
             <button
@@ -79,7 +74,7 @@ const select = (choice: TrainingChoice) => {
 
     <div class="action-bar">
       <button v-if="!isAnswered" class="action action--primary" type="button" :disabled="!session.canSubmit.value" @click="session.submitAnswer()">확인</button>
-      <button v-else class="action action--next" type="button" @click="$emit('next')">다음 문제</button>
+      <button v-else class="action action--next shared-next-source" type="button" @click="$emit('next')">다음 문제</button>
     </div>
   </section>
 </template>

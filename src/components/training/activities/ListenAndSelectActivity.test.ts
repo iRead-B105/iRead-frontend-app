@@ -41,4 +41,36 @@ describe('ListenAndSelectActivity', () => {
     expect(wrapper.text()).not.toContain('VOWEL')
     wrapper.unmount()
   })
+
+  it('듣기 문제가 아니면 목표와 선택지의 음성 버튼을 모두 숨긴다', () => {
+    const question: TrainingQuestion = {
+      id: 'fill-blank',
+      instruction: '빈칸에 들어갈 말을 골라봐!',
+      answer: 'choice-0',
+      targetText: '책상 위에 빈칸 그림이 있어.',
+      audioPromptEnabled: false,
+      choiceAudioEnabled: true,
+      choices: [
+        { id: 'choice-0', text: '사과' },
+        { id: 'choice-1', text: '기차' },
+      ],
+    }
+    const session = useTrainingSession()
+    session.resetSession()
+    session.startLesson({
+      id: 'fill-blank-lesson',
+      categoryId: 'short-text',
+      title: '빈칸 채우기',
+      description: '',
+      activityType: 'listen-and-select',
+      estimatedMinutes: 1,
+      questions: [question],
+    })
+
+    const wrapper = mount(ListenAndSelectActivity, { props: { question } })
+
+    expect(wrapper.findAll('.sound-button')).toHaveLength(0)
+    expect(wrapper.find('.target-sound-visual').exists()).toBe(false)
+    wrapper.unmount()
+  })
 })

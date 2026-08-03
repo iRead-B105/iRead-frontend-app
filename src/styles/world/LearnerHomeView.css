@@ -40,7 +40,7 @@
   transform: translate(-50%,10px);
 }
 
-@media (max-width:800px) {
+@container learner-canvas (max-width:800px) {
   .learner-home {
     display: block;
     overflow: auto;

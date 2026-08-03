@@ -61,8 +61,8 @@ describe('SoundManipulationActivity', () => {
     const wrapper = mount(SoundManipulationActivity, { props: { question } })
 
     await wrapper.findAll('.sound-unit')[0]!.trigger('click')
-    await wrapper.get('.action--check').trigger('click')
-    await wrapper.get('.action--check').trigger('click')
+    await wrapper.get('.complete-button').trigger('click')
+    await wrapper.get('.complete-button').trigger('click')
 
     const answerCard = wrapper.findAll('.sound-unit')[2]!
     expect(answerCard.classes()).toContain('sound-unit--pulse')

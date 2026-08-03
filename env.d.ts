@@ -8,4 +8,6 @@ interface ImportMetaEnv {
   readonly VITE_MOCK_VOICE_SUBMISSIONS?: string
   readonly VITE_MOCK_GAZE_SUBMISSIONS?: string
   readonly VITE_GAZE_DEBUG_PANEL?: string
+  readonly VITE_GAZE_WS_URL?: string
+  readonly VITE_GAZE_MODE_URL?: string
 }

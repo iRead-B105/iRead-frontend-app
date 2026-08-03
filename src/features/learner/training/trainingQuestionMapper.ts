@@ -223,9 +223,21 @@ function mapChoice(number: number, source: StudentQuestionDto): {
     'SYLLABLE_INITIAL_CHOICE',
     'WORD_INITIAL_CHOICE',
   ])
+  const listeningChoiceTypes = new Set([
+    ...audioLetterTypes,
+    'CONSONANT_VOWEL_CLASSIFICATION',
+    'SAME_INITIAL_WORD_CHOICE',
+    'FINAL_CONSONANT_CHOICE',
+    'WORD_FINAL_SOUND_CHOICE',
+    'FINAL_CONSONANT_COMPARISON',
+    'SIMILAR_SOUND_CHOICE',
+  ])
+  const audioPromptEnabled = listeningChoiceTypes.has(source.questionType)
   const activityType: TrainingActivityType =
     source.questionType === 'SIMILAR_SOUND_CHOICE'
       ? 'sound-choice'
+      : source.questionType === 'IMAGE_SENTENCE_MATCH'
+        ? 'sentence-choice'
       : audioLetterTypes.has(source.questionType)
         ? 'audio-letter-choice'
         : 'listen-and-select'
@@ -240,7 +252,8 @@ function mapChoice(number: number, source: StudentQuestionDto): {
     audioText,
     targetText: source.questionType === 'SAME_INITIAL_WORD_CHOICE' ? audioText : undefined,
     targetImage: optionalString(source.content, 'imageUrl') ?? undefined,
-    choiceAudioEnabled: !isConsonantVowelClassification,
+    audioPromptEnabled,
+    choiceAudioEnabled: audioPromptEnabled && !isConsonantVowelClassification,
     choices,
   }
   return { activityType, question }
@@ -255,12 +268,13 @@ function mapOrdering(number: number, source: StudentQuestionDto): {
   const answer = order.map(choiceId).join('|')
   if (source.questionType === 'SENTENCE_ASSEMBLY') {
     return {
-      activityType: 'sound-blend',
+      activityType: 'sentence-order',
       question: {
         ...baseQuestion(number, '낱말 카드를 순서대로 놓아요', answer),
         soundParts: cards,
         choices: choicesFromStrings(cards),
         targetResult: requiredString(source.answer, 'completedSentence'),
+        audioPromptEnabled: false,
       },
     }
   }
@@ -271,6 +285,7 @@ function mapOrdering(number: number, source: StudentQuestionDto): {
       soundParts: stringArray(source.content, 'audioParts'),
       choices: choicesFromStrings(cards),
       targetResult: requiredString(source.answer, 'result'),
+      audioPromptEnabled: true,
     },
   }
 }
@@ -303,6 +318,7 @@ function mapComponentBuild(number: number, source: StudentQuestionDto): Training
   return {
     ...baseQuestion(number, '소리를 듣고 글자를 만들어요', answer),
     audioText: requiredString(source.content, 'targetAudioText'),
+    audioPromptEnabled: true,
     combined: requiredString(source.answer, 'result'),
     choices,
     buildSlots,
@@ -322,6 +338,7 @@ function mapManipulation(number: number, source: StudentQuestionDto): TrainingQu
       ...baseQuestion(number, '바꿀 음절과 새 음절을 골라요', answer),
       targetText: sourceText,
       audioText: requiredString(source.content, 'targetAudioText'),
+      audioPromptEnabled: true,
       manipulationMode: 'replace',
       manipulationUnits: units,
       manipulationTargetUnitIds: [unitId(replaceIndex)],
@@ -340,6 +357,7 @@ function mapManipulation(number: number, source: StudentQuestionDto): TrainingQu
     ...baseQuestion(number, '빼야 할 소리를 골라요', unitId(deleteIndex)),
     targetText: sourceText,
     audioText: requiredString(source.content, 'targetAudioText'),
+    audioPromptEnabled: true,
     manipulationMode: 'remove',
     manipulationUnits: values.map((text, index) => ({ id: unitId(index), text })),
     manipulationTargetUnitIds: [unitId(deleteIndex)],
@@ -383,7 +401,7 @@ function mapAudio(number: number, source: StudentQuestionDto): {
         chunks: text.split(/\s+/),
       }))
     return {
-      activityType: 'sentence-reading',
+      activityType: 'word-reading-grid',
       expectedText,
       question: {
         ...baseQuestion(number, '처음부터 차례대로 읽어요', expectedText),
@@ -413,13 +431,14 @@ function mapAudio(number: number, source: StudentQuestionDto): {
     phraseChunks = [expectedText]
   }
   return {
-    activityType: 'read-aloud',
+    activityType: 'word-reading-grid',
     expectedText,
     question: {
       ...baseQuestion(number, '소리 내어 읽어요', expectedText),
       targetText: expectedText,
       phraseChunks,
       focusWord,
+      audioPromptEnabled: source.questionType === 'SENTENCE_REPEAT',
     },
   }
 }
@@ -434,6 +453,8 @@ function mapFillBlank(number: number, source: StudentQuestionDto): TrainingQuest
     targetText: requiredString(source.content, 'sentence'),
     choices: choicesFromStrings(stringArray(source.content, 'choices')),
     targetResult: requiredString(source.answer, 'completedSentence'),
+    audioPromptEnabled: false,
+    choiceAudioEnabled: false,
   }
 }
 
@@ -449,7 +470,7 @@ export function mapTrainingQuestion(payload: LearnerTrainingQuestionPayload): Ma
     question = mapTrace(payload.questionNumber, source)
     expectedText = requiredString(source.content, 'soundText')
   } else if (source.questionType === 'FILL_IN_THE_BLANK') {
-    activityType = 'listen-and-select'
+    activityType = 'fill-blank'
     question = mapFillBlank(payload.questionNumber, source)
   } else if (source.responseType === 'SINGLE_CHOICE') {
     const mapped = source.questionType.endsWith('_DELETE') || source.questionType === 'SYLLABLE_REPLACE'

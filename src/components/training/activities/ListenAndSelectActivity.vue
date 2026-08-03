@@ -44,19 +44,13 @@ const handleSelect = (choice: TrainingChoice) => {
 
     <div class="activity-main">
       <div class="target-area">
-        <div class="target-visual">
+        <div v-if="question.targetImage || question.targetImageLabel" class="target-visual">
           <img v-if="question.targetImage" class="target-image" :src="question.targetImage" :alt="question.targetText || '낱말 그림'" />
           <ResourceRequired v-else-if="question.targetImageLabel" :label="question.targetImageLabel" size="medium" />
-          <div v-else class="target-sound-visual" aria-hidden="true">
-            <svg viewBox="0 0 64 64">
-              <path d="M13 25h12l15-11v36L25 39H13z" fill="currentColor" />
-              <path d="M46 23c4 5 4 13 0 18M52 17c8 9 8 21 0 30" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" />
-            </svg>
-          </div>
         </div>
         <strong v-if="question.targetText" class="target-word">{{ question.targetText }}</strong>
         <SoundButton
-          v-if="targetAudioText"
+          v-if="question.audioPromptEnabled !== false && targetAudioText"
           :text="targetAudioText"
           size="medium"
           variant="primary"
@@ -74,13 +68,6 @@ const handleSelect = (choice: TrainingChoice) => {
                 { 'answer-hint': showAnswerHint(choice) },
               ]"
             >
-              <SoundButton
-                v-if="question.choiceAudioEnabled !== false"
-                :text="choice.text"
-                size="medium"
-                variant="ghost"
-                :disabled="isAnswered"
-              />
               <button
                 class="word-select"
                 type="button"
@@ -106,6 +93,7 @@ const handleSelect = (choice: TrainingChoice) => {
               :class="{ 'answer-hint': showAnswerHint(choice) }"
               :selectable="!isAnswered"
               size="large"
+              surface="choice"
               @select="handleSelect(choice)"
             />
           </template>
@@ -123,7 +111,7 @@ const handleSelect = (choice: TrainingChoice) => {
       >
         선택하기
       </button>
-      <button v-else class="action action--next" type="button" @click="$emit('next')">
+      <button v-else class="action action--next shared-next-source" type="button" @click="$emit('next')">
         다음 문제
       </button>
     </div>

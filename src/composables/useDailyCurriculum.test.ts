@@ -140,4 +140,29 @@ describe('useDailyCurriculum', () => {
     expect(dailyCurriculum.curriculumItems.map((item) => item.status))
       .toEqual(['COMPLETED', 'CURRENT'])
   })
+
+  it('주기 갱신 중에는 현재 교육과정을 유지해서 준비 화면으로 깜빡이지 않는다', async () => {
+    learnerState.studentId = '2199'
+    let resolveRefresh!: (value: ReturnType<typeof curriculum>) => void
+    learnerState.fetchCurrentCurriculum
+      .mockResolvedValueOnce(curriculum('190099', 'READY', 1))
+      .mockImplementationOnce(() => new Promise((resolve) => {
+        resolveRefresh = resolve
+      }))
+
+    const dailyCurriculum = useDailyCurriculum()
+    await dailyCurriculum.loadCurrentCurriculum()
+
+    const refresh = dailyCurriculum.reloadCurrentCurriculum()
+    await Promise.resolve()
+
+    expect(dailyCurriculum.curriculumStatus.value).toBe('ready')
+    expect(dailyCurriculum.curriculumItems).toHaveLength(1)
+    expect(dailyCurriculum.curriculumItems[0]?.status).toBe('CURRENT')
+
+    resolveRefresh(curriculum('190099', 'COMPLETED', 2))
+    await refresh
+
+    expect(dailyCurriculum.curriculumStatus.value).toBe('completed')
+  })
 })
