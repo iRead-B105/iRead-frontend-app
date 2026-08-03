@@ -139,6 +139,32 @@ const startLesson = (lesson: TrainingLesson): void => {
   Object.keys(storedRecordings).forEach((k) => delete storedRecordings[k])
 }
 
+const restoreProgress = (completedQuestionNumbers: readonly number[]): void => {
+  const lesson = currentLesson.value
+  if (!lesson) return
+
+  const completedIndexes = new Set(
+    completedQuestionNumbers
+      .filter((number) => Number.isInteger(number) && number >= 1 && number <= lesson.questions.length)
+      .map((number) => number - 1),
+  )
+  progressState.completedQuestionIds = lesson.questions
+    .filter((_, index) => completedIndexes.has(index))
+    .map((question) => question.id)
+
+  const firstIncompleteIndex = lesson.questions.findIndex((_, index) => !completedIndexes.has(index))
+  progressState.currentQuestionIndex = firstIncompleteIndex >= 0
+    ? firstIncompleteIndex
+    : Math.max(lesson.questions.length - 1, 0)
+  progressState.isCurrentCorrect = firstIncompleteIndex < 0 && lesson.questions.length > 0
+    ? true
+    : null
+  progressState.selectedAnswer = null
+  progressState.attemptCount = 0
+  progressState.hintLevel = 0
+  currentHint.value = null
+}
+
 const selectAnswer = (answer: string | string[]): void => {
   if (progressState.isCurrentCorrect === true) return // 이미 맞힌 문제는 잠금
   progressState.selectedAnswer = answer
@@ -338,6 +364,7 @@ export function useTrainingSession() {
     hasNextQuestion,
     // 액션
     startLesson,
+    restoreProgress,
     selectAnswer,
     submitAnswer,
     setAnswerEvaluator,

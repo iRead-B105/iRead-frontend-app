@@ -49,8 +49,8 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
 }
 
 .learner-error-dialog {
-  width: min(420px, 100%);
-  padding: 34px 28px 26px;
+  width: min(720px, 100%);
+  padding: 38px 40px 30px;
   border: 5px solid #fff;
   border-radius: 30px;
   background: #fff8e8;
@@ -76,10 +76,12 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
   margin: 0;
   color: #354b78;
   font-family: inherit;
-  font-size: clamp(24px, 5cqw, 34px);
+  font-size: clamp(24px, 2.4vw, 32px);
   font-weight: 900;
-  line-height: 1.25;
-  overflow-wrap: anywhere;
+  line-height: 1.35;
+  white-space: pre-line;
+  word-break: keep-all;
+  overflow-wrap: break-word;
 }
 
 .learner-error-dialog button {

@@ -100,4 +100,26 @@ describe('useTrainingSession', () => {
 
     expect(onCompleted).toHaveBeenCalledOnce()
   })
+
+  it('서버에서 완료한 문항 다음부터 훈련을 이어서 시작한다', () => {
+    session.startLesson({
+      id: 'resume-lesson',
+      categoryId: 'phonics',
+      title: '이어 하기',
+      description: '',
+      activityType: 'listen-and-select',
+      estimatedMinutes: 1,
+      questions: [
+        { id: 'resume-1', instruction: '첫 번째', answer: 'a', choices: [] },
+        { id: 'resume-2', instruction: '두 번째', answer: 'b', choices: [] },
+        { id: 'resume-3', instruction: '세 번째', answer: 'c', choices: [] },
+      ],
+    })
+
+    session.restoreProgress([1, 2])
+
+    expect(session.progressState.completedQuestionIds).toEqual(['resume-1', 'resume-2'])
+    expect(session.progressState.currentQuestionIndex).toBe(2)
+    expect(session.progressState.isCurrentCorrect).toBeNull()
+  })
 })

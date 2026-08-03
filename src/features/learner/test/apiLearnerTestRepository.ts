@@ -80,6 +80,7 @@ export class ApiLearnerTestRepository implements LearnerTestRepository {
       status: response.status,
       trainingName: response.trainingName,
       generatedData: response.generatedData,
+      completedQuestionNumbers: [],
       startedAt: response.status === 'NOT_STARTED' ? null : response.createdAt,
       finishedAt: response.status === 'COMPLETED' ? response.createdAt : null,
     }
@@ -163,6 +164,7 @@ export class ApiLearnerTestRepository implements LearnerTestRepository {
     const response = await learnerApiClient.request<TestRecordingDto>(
       `${testPath(studentId)}/questions/${questionNumber}/recordings`,
       { method: 'POST', body },
+      { suppressErrorHandler: true },
     )
     return { ...response, trainingId: String(response.testId) }
   }

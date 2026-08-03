@@ -46,6 +46,7 @@ import { useLearnerErrorModalStore } from '@/stores/learnerErrorModal'
 import { learnerGazeRepository } from '@/features/learner/gaze'
 import { learnerTestRepository } from '@/features/learner/test'
 import { presentTrainingHint } from '@/features/learner/training/hintPresentation'
+import { isApiError } from '@/lib/api'
 
 const route = useRoute()
 const router = useRouter()
@@ -94,6 +95,8 @@ const startingTraining = ref(false)
 const submittingQuestion = ref(false)
 const voiceGateOpen = ref(false)
 const voiceSubmitting = ref(false)
+const voiceAttemptLimitReached = ref(false)
+const voiceCompleted = ref(false)
 const voiceFeedback = ref('')
 const advanceAfterAutomaticVoice = ref(false)
 const pendingNextResponse = ref<LearnerTraceSubmissionResponse | undefined>()
@@ -133,11 +136,11 @@ const activityComponent = computed<Component | null>(() =>
 type Phase = 'intro' | 'playing' | 'saving'
 const phase = ref<Phase>('intro')
 const deviceBlocker = ref<'eye-tracker' | 'microphone' | null>(null)
+const microphoneRetrying = ref(false)
 const leaveConfirmationOpen = ref(false)
 const integrationError = ref('')
 let resolveLeaveConfirmation: ((allow: boolean) => void) | null = null
 let automaticVoiceStopTimer: ReturnType<typeof setTimeout> | null = null
-let automaticVoiceRetryTimer: ReturnType<typeof setTimeout> | null = null
 
 watch(integrationError, (error) => {
   if (!error) return
@@ -167,10 +170,17 @@ const microphoneRequired = computed(() =>
       ? microphoneRequiredActivities.has(lesson.value.activityType)
       : false,
 )
+const currentQuestionRequiresMicrophone = computed(() =>
+  learnerDataSource === 'api'
+    ? serverQuestions.value[session.progressState.currentQuestionIndex]?.requiredInputs.includes('VOICE') === true
+    : microphoneRequired.value,
+)
 
 const currentQuestion = computed(() => session.currentQuestion.value)
 const questionScroll = ref<HTMLElement | null>(null)
-const sharedNextEnabled = computed(() => session.progressState.isCurrentCorrect === true)
+const sharedNextEnabled = computed(() =>
+  session.progressState.isCurrentCorrect === true || voiceAttemptLimitReached.value,
+)
 type ActivityLayout = 'trace-speak' | 'choice' | 'manipulation' | 'reading-speak'
 const activityLayouts: Record<TrainingActivityType, ActivityLayout> = {
   'gaze-trace': 'trace-speak',
@@ -419,6 +429,10 @@ onMounted(async () => {
       try {
         const studentId = getCachedStudent().studentId
         const intro = await learningRepository.value.getIntro(studentId, itemId)
+        if (intro.status === 'COMPLETED') {
+          await router.replace({ name: challengeTrackId.value ? 'skill-challenge' : 'training-home' })
+          return
+        }
         const firstPayload = await learningRepository.value.getQuestion(studentId, itemId, 1)
         const remainingPayloads = await Promise.all(
           Array.from(
@@ -452,6 +466,7 @@ onMounted(async () => {
         serverQuestions.value = mappedQuestions
         serverLesson.value = loadedLesson
         session.startLesson(loadedLesson)
+        session.restoreProgress(intro.completedQuestionNumbers)
         session.setAnswerEvaluator(async (answer) => {
           const mapped = serverQuestions.value[session.progressState.currentQuestionIndex]
           if (!mapped || ['TRACE', 'AUDIO'].includes(mapped.responseType)) {
@@ -549,6 +564,17 @@ const startPlaying = async () => {
       }
     }
     phase.value = 'playing'
+    if (
+      learnerDataSource === 'api'
+      && !debugMode.value
+      && !mockVoiceSubmissionsEnabled
+      && currentQuestionRequiresMicrophone.value
+      && session.progressState.isCurrentCorrect !== true
+    ) {
+      voiceRecorder.reset()
+      voiceGateOpen.value = true
+      voiceFeedback.value = '준비되면 말하기 버튼을 눌러 주세요.'
+    }
   } catch (error) {
     integrationError.value =
       error instanceof Error ? error.message : '서버 훈련을 시작하지 못했습니다.'
@@ -591,8 +617,8 @@ onBeforeUnmount(() => {
 })
 
 watch(
-  [eyeTrackerConnected, microphoneAvailable],
-  ([eyeConnected, micAvailable]) => {
+  [eyeTrackerConnected, microphoneAvailable, phase, () => session.progressState.isCompleted],
+  ([eyeConnected, micAvailable, currentPhase, completed]) => {
     if (debugMode.value) {
       deviceBlocker.value = null
       return
@@ -606,9 +632,12 @@ watch(
       if (phase.value === 'intro') void startPlaying()
     }
 
-    if (phase.value !== 'playing') return
+    if (currentPhase !== 'playing' || completed) {
+      deviceBlocker.value = null
+      return
+    }
     if (!gazeDeviceFallbackEnabled && gazeRequired.value && !eyeConnected) deviceBlocker.value = 'eye-tracker'
-    else if (!voiceDeviceFallbackEnabled && microphoneRequired.value && !micAvailable) deviceBlocker.value = 'microphone'
+    else if (!voiceDeviceFallbackEnabled && currentQuestionRequiresMicrophone.value && !micAvailable) deviceBlocker.value = 'microphone'
   },
 )
 
@@ -661,9 +690,7 @@ const submitMockVoice = async (
 // 다음 문제로 이동. 마지막 문제면 결과 저장 흐름으로 진입.
 const clearAutomaticVoiceTimers = () => {
   if (automaticVoiceStopTimer) clearTimeout(automaticVoiceStopTimer)
-  if (automaticVoiceRetryTimer) clearTimeout(automaticVoiceRetryTimer)
   automaticVoiceStopTimer = null
-  automaticVoiceRetryTimer = null
 }
 
 const beginAutomaticVoiceCapture = async (
@@ -676,7 +703,8 @@ const beginAutomaticVoiceCapture = async (
     || voiceRecorder.state.status === 'recording'
   ) return
 
-  const mapped = serverQuestions.value[session.progressState.currentQuestionIndex]
+  const questionIndex = session.progressState.currentQuestionIndex
+  const mapped = serverQuestions.value[questionIndex]
   if (!mapped?.expectedText) {
     errorModal.show(
       new Error('음성 평가에 필요한 읽기 문구가 없어요.'),
@@ -693,6 +721,17 @@ const beginAutomaticVoiceCapture = async (
   voiceGateOpen.value = true
   await voiceRecorder.start()
 
+  if (
+    phase.value !== 'playing'
+    || session.progressState.isCompleted
+    || session.progressState.currentQuestionIndex !== questionIndex
+  ) {
+    voiceRecorder.reset()
+    voiceGateOpen.value = false
+    deviceBlocker.value = null
+    return
+  }
+
   const recorderStatus = voiceRecorder.state.status as string
   if (recorderStatus !== 'recording') {
     voiceGateOpen.value = false
@@ -708,14 +747,38 @@ const beginAutomaticVoiceCapture = async (
   automaticVoiceStopTimer = setTimeout(() => voiceRecorder.stop(), recordingMs)
 }
 
-const retryAutomaticVoiceCapture = () => {
-  clearAutomaticVoiceTimers()
-  automaticVoiceRetryTimer = setTimeout(
-    () => void beginAutomaticVoiceCapture(
-      pendingNextResponse.value,
-      advanceAfterAutomaticVoice.value,
-    ),
-    1_100,
+const enableMicrophoneFromBlocker = async () => {
+  if (deviceBlocker.value !== 'microphone' || microphoneRetrying.value) return
+
+  microphoneRetrying.value = true
+  try {
+    const available = await voiceRecorder.checkAccess()
+    if (!available) {
+      deviceBlocker.value = 'microphone'
+      return
+    }
+
+    deviceBlocker.value = null
+    if (
+      phase.value === 'playing'
+      && !session.progressState.isCompleted
+      && currentQuestionRequiresMicrophone.value
+    ) {
+      voiceGateOpen.value = true
+      voiceFeedback.value = '준비되면 말하기 버튼을 눌러 주세요.'
+      return
+    }
+
+    if (phase.value === 'intro') await startPlaying()
+  } finally {
+    microphoneRetrying.value = false
+  }
+}
+
+const restartAutomaticVoiceCapture = () => {
+  void beginAutomaticVoiceCapture(
+    pendingNextResponse.value,
+    advanceAfterAutomaticVoice.value,
   )
 }
 
@@ -789,6 +852,11 @@ type ActivityVoiceEvaluationControls = {
   retry: (message?: string) => void
 }
 
+const isPronunciationAttemptLimitError = (error: unknown): boolean =>
+  isApiError(error)
+  && error.status === 409
+  && error.message.includes('발음 문항의 최대 시도 횟수')
+
 // 따라 읽기 액티비티에서 수음한 음성을 즉시 백엔드 발음 평가로 보낸다.
 // 성공한 문항 번호를 기록해 다음 버튼에서 같은 음성을 다시 요구하지 않는다.
 const evaluateActivityVoice = async (
@@ -835,6 +903,11 @@ const evaluateActivityVoice = async (
         : '끝까지 읽었어! 다음 글자도 연습해보자!',
     )
   } catch (error) {
+    if (isPronunciationAttemptLimitError(error)) {
+      recordedQuestionNumbers.add(mapped.questionNumber)
+      controls.success('끝까지 잘 했어요! 다음 문제로 넘어가요.')
+      return
+    }
     controls.retry(
       error instanceof Error
         ? error.message
@@ -894,16 +967,29 @@ const submitRecordedVoice = async (
     if (result.canRetry) {
       voiceRecorder.reset()
       voiceGateOpen.value = true
-      retryAutomaticVoiceCapture()
       return
     }
     recordedQuestionNumbers.add(mapped.questionNumber)
+    voiceCompleted.value = true
     voiceGateOpen.value = false
     const pending = pendingNextResponse.value
     pendingNextResponse.value = undefined
     if (advanceAfterAutomaticVoice.value) await goNext(pending)
   } catch (error) {
+    if (isPronunciationAttemptLimitError(error)) {
+      recordedQuestionNumbers.add(mapped.questionNumber)
+      voiceAttemptLimitReached.value = true
+      voiceFeedback.value = '끝까지 잘 했어요! 다음 문제로 넘어가요.'
+      voiceGateOpen.value = false
+      voiceRecorder.reset()
+      const pending = pendingNextResponse.value
+      pendingNextResponse.value = undefined
+      if (advanceAfterAutomaticVoice.value) await goNext(pending)
+      return
+    }
     voiceFeedback.value = error instanceof Error ? error.message : '녹음을 저장하지 못했습니다.'
+    voiceRecorder.reset()
+    voiceGateOpen.value = true
   } finally {
     voiceSubmitting.value = false
   }
@@ -913,16 +999,32 @@ const submitRecordedVoice = async (
 watch(() => voiceRecorder.state.status, (status) => {
   if (!voiceGateOpen.value || status !== 'recorded' || voiceSubmitting.value) return
   clearAutomaticVoiceTimers()
+  if (
+    voiceRecorder.voiceActivityDetectionAvailable.value
+    && !voiceRecorder.hasDetectedVoice.value
+  ) {
+    voiceFeedback.value = '목소리가 들리지 않았어요. 말하기 버튼을 눌러 주세요.'
+    voiceRecorder.reset()
+    return
+  }
   void submitVoiceRecording()
 })
 
-watch(voiceSubmitting, (submitting, wasSubmitting) => {
-  if (
-    wasSubmitting
-    && !submitting
-    && voiceGateOpen.value
-    && voiceRecorder.state.status === 'recorded'
-  ) retryAutomaticVoiceCapture()
+watch(() => session.progressState.currentQuestionIndex, () => {
+  clearAutomaticVoiceTimers()
+  voiceRecorder.reset()
+  voiceAttemptLimitReached.value = false
+  voiceCompleted.value = false
+  voiceGateOpen.value = (
+    phase.value === 'playing'
+    && learnerDataSource === 'api'
+    && !debugMode.value
+    && !mockVoiceSubmissionsEnabled
+    && currentQuestionRequiresMicrophone.value
+  )
+  if (voiceGateOpen.value) {
+    voiceFeedback.value = '준비되면 말하기 버튼을 눌러 주세요.'
+  }
 })
 
 // 조작형 학습은 정답을 완성하는 즉시 화면 안에서 발음을 받는다.
@@ -943,11 +1045,21 @@ watch(
       void submitRecordedVoice(mapped, captured)
       return
     }
-    void beginAutomaticVoiceCapture(undefined, false)
+    pendingNextResponse.value = undefined
+    advanceAfterAutomaticVoice.value = false
+    voiceRecorder.reset()
+    voiceGateOpen.value = true
+    voiceFeedback.value = '준비되면 말하기 버튼을 눌러 주세요.'
   },
 )
 
 const saveAndFinish = async () => {
+  clearAutomaticVoiceTimers()
+  voiceGateOpen.value = false
+  voiceAttemptLimitReached.value = false
+  voiceCompleted.value = false
+  deviceBlocker.value = null
+  voiceRecorder.reset()
   phase.value = 'saving'
   let ok = false
   let nextCurriculumItem: (typeof dailyCurriculum.curriculumItems)[number] | null = null
@@ -1092,24 +1204,43 @@ const isSavingFailed = computed(() => session.savingState.status === 'failed')
         />
         <Transition name="fade">
           <aside
-            v-if="voiceGateOpen"
+            v-if="voiceGateOpen || voiceAttemptLimitReached || voiceCompleted"
             class="inline-voice-panel"
-            aria-label="목소리 인식 중"
+            :class="{
+              'inline-voice-panel--ready': voiceRecorder.state.status === 'idle' && !voiceAttemptLimitReached && !voiceCompleted,
+              'inline-voice-panel--listening': voiceRecorder.state.status === 'recording',
+              'inline-voice-panel--complete': voiceAttemptLimitReached || voiceCompleted,
+            }"
+            :aria-label="voiceAttemptLimitReached || voiceCompleted
+              ? '발음 연습 완료'
+              : voiceRecorder.state.status === 'recording'
+                ? '목소리 인식 중'
+                : '목소리 녹음 준비'"
             aria-live="polite"
           >
-            <span class="inline-voice-icon" aria-hidden="true">
+            <span
+              class="inline-voice-icon"
+              :class="{ 'inline-voice-icon--listening': voiceRecorder.state.status === 'recording' }"
+              aria-hidden="true"
+            >
               <img :src="microphoneIcon" alt="" />
             </span>
-            <div
-              class="automatic-voice-wave"
-              :class="{
-                recording: voiceRecorder.state.status === 'recording',
-                evaluating: voiceSubmitting,
-              }"
-              role="status"
+            <strong class="inline-voice-title">
+              {{ voiceAttemptLimitReached || voiceCompleted
+                ? '참 잘했어요!'
+                : voiceRecorder.state.status === 'recording'
+                  ? '듣고 있어요!'
+                  : '말할 준비가 됐어요' }}
+            </strong>
+            <p class="inline-voice-feedback" role="status">{{ voiceFeedback }}</p>
+            <button
+              v-if="voiceRecorder.state.status === 'idle' && !voiceAttemptLimitReached && !voiceCompleted"
+              class="inline-voice-retry"
+              type="button"
+              @click="restartAutomaticVoiceCapture"
             >
-              <span v-for="index in 7" :key="index" aria-hidden="true"></span>
-            </div>
+              말하기
+            </button>
           </aside>
         </Transition>
       </div>
@@ -1121,7 +1252,7 @@ const isSavingFailed = computed(() => session.savingState.status === 'failed')
         <div class="saving-panel">
           <template v-if="!isSavingFailed">
             <span class="saving-spinner" aria-hidden="true"></span>
-            <p class="saving-text">학습을 마무리하고 있어…</p>
+            <p class="saving-text">학습을 마무리하고 있어요</p>
           </template>
           <template v-else>
             <p class="saving-icon" aria-hidden="true">!</p>
@@ -1134,7 +1265,7 @@ const isSavingFailed = computed(() => session.savingState.status === 'failed')
 
     <Transition name="fade">
       <div
-        v-if="deviceBlocker"
+        v-if="deviceBlocker && phase === 'playing' && !session.progressState.isCompleted"
         class="device-blocker"
         role="alertdialog"
         aria-modal="true"
@@ -1150,12 +1281,28 @@ const isSavingFailed = computed(() => session.savingState.status === 'failed')
           <h2 :id="`${deviceBlocker}-title`">
             {{ deviceBlocker === 'eye-tracker' ? '아이트래커를 연결해 주세요' : '마이크를 켜 주세요' }}
           </h2>
-          <p>
+          <p v-if="deviceBlocker === 'eye-tracker' || voiceRecorder.state.errorMessage">
             {{ deviceBlocker === 'eye-tracker'
               ? '이 훈련은 눈으로 따라가는 활동이에요.'
-              : '이 훈련은 목소리를 들려주는 활동이에요.' }}
+              : voiceRecorder.state.errorMessage }}
           </p>
-          <button type="button" @click="exitToHome">훈련 선택으로 돌아가기</button>
+          <div class="device-blocker-actions">
+            <button
+              v-if="deviceBlocker === 'microphone'"
+              type="button"
+              :disabled="microphoneRetrying"
+              @click="enableMicrophoneFromBlocker"
+            >
+              {{ microphoneRetrying ? '마이크 확인 중…' : '마이크 켜기' }}
+            </button>
+            <button
+              class="device-blocker-secondary"
+              type="button"
+              @click="exitToHome"
+            >
+              뒤로가기
+            </button>
+          </div>
         </section>
       </div>
     </Transition>

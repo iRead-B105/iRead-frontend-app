@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter, type RouteLocationRaw } from 'vue-router'
 import storyLandBackground from '../../assets/backgrounds/story-section-background.png'
 import otherBooksIcon from '../../assets/story/ui/other-books-icon.png'
@@ -34,6 +34,8 @@ const storySessions = ref<StorySession[]>([])
 const storyTemplates = ref<StoryTemplate[]>([])
 const requestError = ref('')
 const openingBookId = ref<string | null>(null)
+const currentPage = ref(1)
+const booksPerPage = 3
 
 onMounted(async () => {
   try {
@@ -80,6 +82,26 @@ const startedBooks = computed(() =>
 const visibleLibraryBooks = computed(() =>
   mode.value === 'other' ? startedBooks.value : storyTemplates.value,
 )
+const pageCount = computed(() => Math.max(1, Math.ceil(visibleLibraryBooks.value.length / booksPerPage)))
+const paginatedLibraryBooks = computed(() => {
+  const start = (currentPage.value - 1) * booksPerPage
+  return visibleLibraryBooks.value.slice(start, start + booksPerPage)
+})
+
+watch([mode, pageCount], () => {
+  currentPage.value = Math.min(currentPage.value, pageCount.value)
+  if (currentPage.value < 1) currentPage.value = 1
+})
+
+function openCatalog(nextMode: Exclude<LibraryMode, 'home'>) {
+  currentPage.value = 1
+  mode.value = nextMode
+}
+
+function closeCatalog() {
+  currentPage.value = 1
+  mode.value = 'home'
+}
 
 function readingRoute(book: StoryTemplate, continueReading = false): RouteLocationRaw {
   const routeStoryId = (book as Partial<StorySession>).sessionId ?? book.id
@@ -95,7 +117,7 @@ function openCurrentBook() {
     void router.push(readingRoute(currentBook.value, true))
     return
   }
-  mode.value = 'new'
+  openCatalog('new')
 }
 
 async function openBook(book: StoryTemplate | StorySession) {
@@ -137,7 +159,11 @@ function sessionTitle(book: StorySession) {
     class="story-library"
     :style="{ backgroundImage: `url(${storyLandBackground})` }"
   >
-    <section class="library-panel" aria-labelledby="story-library-title">
+    <section
+      class="library-panel"
+      :class="{ 'library-panel--catalog': mode !== 'home' }"
+      aria-labelledby="story-library-title"
+    >
       <template v-if="mode === 'home'">
         <header class="library-heading">
           <img class="library-heading-star" :src="progressStar" alt="" aria-hidden="true" />
@@ -179,11 +205,11 @@ function sessionTitle(book: StorySession) {
         </button>
 
         <div class="library-actions">
-          <button type="button" @click="mode = 'other'">
+          <button type="button" @click="openCatalog('other')">
             <img class="action-icon" :src="otherBooksIcon" alt="" aria-hidden="true" />
             <strong>읽던 책 고르기</strong>
           </button>
-          <button type="button" @click="mode = 'new'">
+          <button type="button" @click="openCatalog('new')">
             <img class="action-icon" :src="newBookIcon" alt="" aria-hidden="true" />
             <strong>새 이야기 시작하기</strong>
           </button>
@@ -192,16 +218,20 @@ function sessionTitle(book: StorySession) {
 
       <template v-else>
         <header class="catalog-heading">
-          <PageBackButton label="이야기 나라 처음으로" @back="mode = 'home'" />
+          <PageBackButton label="이야기 나라 처음으로" @back="closeCatalog" />
           <div>
             <small>{{ mode === 'other' ? '나의 책장' : '새 이야기 고르기' }}</small>
             <h1>{{ mode === 'other' ? '읽던 책 고르기' : '새 이야기 시작하기' }}</h1>
           </div>
         </header>
 
-        <div v-if="visibleLibraryBooks.length" class="book-grid">
+        <div
+          v-if="visibleLibraryBooks.length"
+          class="book-grid"
+          :class="{ 'book-grid--partial': paginatedLibraryBooks.length < booksPerPage }"
+        >
           <button
-            v-for="book in visibleLibraryBooks"
+            v-for="book in paginatedLibraryBooks"
             :key="mode === 'other' ? (book as StorySession).sessionId : book.id"
             class="book-card"
             type="button"
@@ -238,10 +268,47 @@ function sessionTitle(book: StorySession) {
           </button>
         </div>
 
+        <nav
+          v-if="visibleLibraryBooks.length && pageCount > 1"
+          class="book-pagination"
+          aria-label="이야기 책 페이지"
+        >
+          <button
+            class="pagination-arrow"
+            type="button"
+            :disabled="currentPage === 1"
+            aria-label="이전 책 페이지"
+            @click="currentPage -= 1"
+          >
+            ‹
+          </button>
+          <button
+            v-for="pageNumber in pageCount"
+            :key="pageNumber"
+            class="pagination-page"
+            :class="{ 'pagination-page--active': pageNumber === currentPage }"
+            type="button"
+            :aria-label="`${pageNumber}번째 책 페이지`"
+            :aria-current="pageNumber === currentPage ? 'page' : undefined"
+            @click="currentPage = pageNumber"
+          >
+            {{ pageNumber }}
+          </button>
+          <button
+            class="pagination-arrow"
+            type="button"
+            :disabled="currentPage === pageCount"
+            aria-label="다음 책 페이지"
+            @click="currentPage += 1"
+          >
+            ›
+          </button>
+        </nav>
+
         <div v-else class="catalog-empty">
           <img :src="otherBooksIcon" alt="" aria-hidden="true" />
           <strong>아직 보여 줄 책이 없어!</strong>
-          <button type="button" @click="mode = 'new'">새로운 책 고르기</button>
+          <button type="button" @click="openCatalog('new')">새로운 책 고르기</button>
         </div>
       </template>
     </section>

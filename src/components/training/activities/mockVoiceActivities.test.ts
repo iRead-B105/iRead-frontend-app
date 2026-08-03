@@ -11,6 +11,22 @@ import WordReadingGridActivity from './WordReadingGridActivity.vue'
 import SentenceReadingActivity from './SentenceReadingActivity.vue'
 import ReadAloudActivity from './ReadAloudActivity.vue'
 
+vi.mock('@/composables/useAudioPlayer', async () => {
+  const { ref } = await import('vue')
+  const resolved = vi.fn().mockResolvedValue(undefined)
+  return {
+    useAudioPlayer: () => ({
+      isPlaying: ref(false),
+      currentText: ref<string | null>(null),
+      speak: resolved,
+      playLetterSound: resolved,
+      playSequence: resolved,
+      replay: resolved,
+      stop: vi.fn(),
+    }),
+  }
+})
+
 const session = useTrainingSession()
 
 const startQuestion = (

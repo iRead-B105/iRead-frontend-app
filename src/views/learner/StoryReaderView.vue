@@ -2,6 +2,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import storyChoiceScene from '../../assets/story/story-choice-turtle-crossroads.png'
+import storySceneFallback from '../../assets/story/story-reader-turtle-scene-mock.png'
 import {
   getCachedStudent,
   getStoryDetail,
@@ -22,6 +23,14 @@ import { useLearnerErrorModalStore } from '@/stores/learnerErrorModal'
 import arrowRightIcon from '@/assets/icons/arrow-right.svg'
 import microphoneIcon from '@/assets/icons/microphone.svg'
 import checkIcon from '@/assets/icons/check.svg'
+
+const MOCK_TRANSPARENT_SCENE =
+  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII='
+
+const resolveStoryScene = (imageUrl: string | null): string =>
+  !imageUrl || imageUrl === MOCK_TRANSPARENT_SCENE
+    ? storySceneFallback
+    : imageUrl
 
 interface StoryPage {
   lineId: string
@@ -87,7 +96,7 @@ async function loadStory() {
     dayComplete: detail.dayComplete,
     pages: detail.pages.map((page) => ({
       lineId: page.lineId,
-      image: page.imageUrl,
+      image: resolveStoryScene(page.imageUrl),
       imagePosition: page.imagePosition,
       lines: [...page.lines],
       readAt: page.readAt,
@@ -979,8 +988,10 @@ onBeforeUnmount(() => {
                   :disabled="branchSubmitting"
                   @click="() => submitBranchAnswer()"
                 >
-                  이어 만들기
-                  <img :src="checkIcon" alt="" aria-hidden="true" />
+                  <span>이어 만들기</span>
+                  <span class="confirm-answer-icon" aria-hidden="true">
+                    <img :src="checkIcon" alt="" />
+                  </span>
                 </button>
               </div>
             </section>

@@ -1,4 +1,4 @@
-import { jsonBody } from '@/lib/api'
+import { isAbortError, jsonBody } from '@/lib/api'
 import { learnerApiClient } from '../learnerApiClient'
 import type {
   LearnerTrainingIntro,
@@ -19,6 +19,7 @@ interface TrainingIntroDto {
   readonly status: string
   readonly trainingName: string
   readonly generatedData: unknown
+  readonly completedQuestionNumbers?: readonly number[]
   readonly startedAt: string | null
   readonly finishedAt: string | null
 }
@@ -29,6 +30,8 @@ interface TrainingQuestionDto {
   readonly totalQuestions: number
   readonly question: unknown
 }
+
+const TRAINING_COMPLETION_TIMEOUT_MS = 20_000
 
 interface TrainingFeedbackDto {
   readonly submissionId: string
@@ -67,6 +70,7 @@ export class ApiLearnerTrainingRepository implements LearnerTrainingRepository {
       trainingId: String(response.trainingId),
       trainingTemplateId: String(response.trainingTemplateId),
       dailyCurriculumId: String(response.dailyCurriculumId),
+      completedQuestionNumbers: response.completedQuestionNumbers ?? [],
     }
   }
 
@@ -133,14 +137,29 @@ export class ApiLearnerTrainingRepository implements LearnerTrainingRepository {
     const response = await learnerApiClient.request<TrainingRecordingDto>(
       `${trainingPath(studentId, trainingId)}/questions/${questionNumber}/recordings`,
       { method: 'POST', body },
+      { suppressErrorHandler: true },
     )
     return { ...response, trainingId: String(response.trainingId) }
   }
 
   async complete(studentId: string, trainingId: string): Promise<void> {
-    await learnerApiClient.request(
-      `${trainingPath(studentId, trainingId)}/complete`,
-      { method: 'POST' },
+    const controller = new AbortController()
+    const timeoutId = globalThis.setTimeout(
+      () => controller.abort(),
+      TRAINING_COMPLETION_TIMEOUT_MS,
     )
+    try {
+      await learnerApiClient.request(
+        `${trainingPath(studentId, trainingId)}/complete`,
+        { method: 'POST', signal: controller.signal },
+      )
+    } catch (error) {
+      if (isAbortError(error)) {
+        throw new Error('저장이 조금 늦어지고 있어요. 잠시 후 다시 시도해 주세요.')
+      }
+      throw error
+    } finally {
+      globalThis.clearTimeout(timeoutId)
+    }
   }
 }

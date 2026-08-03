@@ -42,6 +42,15 @@
   transform-origin: center;
 }
 
+.library-panel--catalog {
+  position: relative;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  align-items: stretch;
+  gap: clamp(10px, 1.4cqh, 16px);
+  padding-bottom: clamp(72px, 8cqh, 86px);
+}
+
 /* 이야기 나라 제목 크기와 별 장식 간격 */
 .library-heading {
   display: flex;
@@ -436,7 +445,7 @@ button {
   align-items: center;
   align-self: stretch;
   gap: 22px;
-  min-height: 100px;
+  min-height: 82px;
 }
 
 .catalog-heading small {
@@ -457,7 +466,16 @@ button {
   align-items: stretch;
   gap: clamp(24px, 3.4cqw, 50px);
   width: min(100%, 1160px);
+  height: 100%;
   min-height: 0;
+  overflow: hidden;
+  align-self: start;
+  margin-inline: auto;
+}
+
+.book-grid--partial {
+  grid-template-columns: repeat(2, minmax(0, 340px));
+  justify-content: center;
 }
 
 .book-card {
@@ -465,7 +483,10 @@ button {
   flex-direction: column;
   align-items: stretch;
   min-width: 0;
-  padding: 16px 16px 20px;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+  padding: clamp(10px, 1.3cqh, 14px) clamp(12px, 1.5cqw, 16px) clamp(14px, 1.8cqh, 18px);
   border: var(--learner-card-border);
   border-radius: var(--learner-card-radius);
   background: var(--learner-card-background);
@@ -484,7 +505,10 @@ button {
 .book-cover {
   position: relative;
   display: block;
-  height: clamp(240px, 38cqh, 390px);
+  flex: 1 1 0;
+  min-height: 0;
+  height: auto;
+  overflow: hidden;
 }
 
 .book-cover img {
@@ -522,7 +546,8 @@ button {
 
 .book-card > strong {
   overflow: hidden;
-  margin: 16px 4px 4px;
+  flex: 0 0 auto;
+  margin: clamp(8px, 1.2cqh, 13px) 4px 3px;
   font-family: var(--learner-font-display);
   font-size: clamp(22px, 2cqw, 30px);
   text-overflow: ellipsis;
@@ -530,10 +555,82 @@ button {
 }
 
 .book-card > small {
+  flex: 0 0 auto;
   margin: 0 4px;
   color: #667494;
   font-size: 17px;
   font-weight: 800;
+}
+
+.book-pagination {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: max-content;
+  min-height: 48px;
+  margin-top: 0;
+  padding: 6px 10px;
+  border: 2px solid rgb(255 255 255 / 90%);
+  border-radius: 999px;
+  background: rgb(255 253 247 / 92%);
+  box-shadow: 0 8px 18px rgb(67 71 120 / 18%);
+  transform: translateX(-50%);
+  backdrop-filter: blur(6px);
+  z-index: 3;
+}
+
+.book-pagination button {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border: 3px solid #d9e2f6;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: var(--learner-shadow-small);
+  color: #526486;
+  font-family: var(--learner-font-display);
+  font-size: 22px;
+  font-weight: var(--learner-font-weight-heavy);
+  cursor: pointer;
+  transition: transform .16s ease, box-shadow .16s ease, background-color .16s ease;
+}
+
+.book-pagination .pagination-arrow {
+  border-color: transparent;
+  background: var(--learner-color-story);
+  color: #fff;
+  font-size: 38px;
+  line-height: 0;
+  padding: 0 0 4px;
+  box-shadow: 0 4px 0 #5638b4, var(--learner-shadow-small);
+}
+
+.book-pagination .pagination-page--active {
+  border-color: #fff;
+  background: #ffc936;
+  color: #263b73;
+  box-shadow: 0 0 0 4px rgb(255 201 54 / 30%), var(--learner-shadow-small);
+}
+
+.book-pagination button:not(:disabled):hover {
+  transform: translateY(-2px);
+  box-shadow: var(--learner-shadow-control-hover);
+}
+
+.book-pagination button:disabled {
+  cursor: default;
+  opacity: .35;
+  box-shadow: none;
+}
+
+.book-pagination button:focus-visible {
+  outline: 5px solid rgb(255 199 54 / 72%);
+  outline-offset: 3px;
 }
 
 .mini-progress {
@@ -584,6 +681,10 @@ button {
 
   .book-grid {
     gap: 18px;
+  }
+
+  .book-grid--partial {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .continue-card--empty {
@@ -638,11 +739,7 @@ button {
   }
 
   .catalog-heading {
-    min-height: 72px;
-  }
-
-  .book-cover {
-    height: min(37cqh, 310px);
+    min-height: 64px;
   }
 }
 
