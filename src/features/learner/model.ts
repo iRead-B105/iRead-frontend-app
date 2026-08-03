@@ -74,6 +74,15 @@ export interface LearnerStoryLibrary {
   readonly templates: readonly LearnerStoryTemplate[]
 }
 
+export interface LearnerStoryBranchOption {
+  readonly optionNo: 1 | 2 | 3
+  readonly label: string
+}
+
+export interface LearnerStoryBranchPrompt {
+  readonly options: readonly LearnerStoryBranchOption[]
+}
+
 export interface LearnerStoryPage {
   readonly lineId: string
   readonly order: number
@@ -82,6 +91,7 @@ export interface LearnerStoryPage {
   readonly imagePosition?: string
   readonly readAt: string | null
   readonly requiresBranchInput: boolean
+  readonly branchPrompt: LearnerStoryBranchPrompt | null
 }
 
 export interface LearnerStoryDetail {

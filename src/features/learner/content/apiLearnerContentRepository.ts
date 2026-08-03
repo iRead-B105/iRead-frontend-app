@@ -33,6 +33,13 @@ interface StoryLinesDto {
     readonly lineId: number
     readonly storyId: number
     readonly imageUrl: string | null
+    readonly branchPrompt: {
+      readonly options: readonly {
+        readonly optionNo: 1 | 2 | 3
+        readonly label: string
+      }[]
+    } | null
+
     readonly requiresBranchInput: boolean
     readonly lineText: string
     readonly sceneOrder?: number
@@ -206,6 +213,7 @@ export class ApiLearnerContentRepository implements LearnerContentRepository {
           imageUrl: line.imageUrl || fallbackScene,
           readAt: line.readAt,
           requiresBranchInput: line.requiresBranchInput,
+          branchPrompt: line.branchPrompt,
         })),
     }
   }

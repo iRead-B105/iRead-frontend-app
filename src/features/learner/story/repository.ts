@@ -30,7 +30,7 @@ export interface LearnerStoryRepository {
     studentId: string,
     storyId: string,
     lineId: string,
-    audioFile: File,
+    answer: File | number,
   ) => Promise<LearnerStoryBranchResult>
   readonly transcribeLine: (
     studentId: string,

@@ -28,10 +28,12 @@ export class ApiLearnerStoryRepository implements LearnerStoryRepository {
     studentId: string,
     storyId: string,
     lineId: string,
-    audioFile: File,
+    answer: File | number,
   ): Promise<LearnerStoryBranchResult> {
-    const body = new FormData()
-    body.append('audioFile', audioFile)
+    const body = answer instanceof File
+      ? new FormData()
+      : jsonBody({ optionNo: answer })
+    if (body instanceof FormData) body.append('audioFile', answer as File)
     const response = await learnerApiClient.request<{
       transcript: string
       nextLineId: number
