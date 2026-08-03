@@ -639,19 +639,29 @@
   min-height: 118px !important;
   aspect-ratio: auto;
   padding: clamp(10px, 1.4cqw, 20px) !important;
-  /* PNG 프레임 대신 CSS 프레임: 카드가 어떤 비율로 늘어나도
-     실선-점선 간격이 상하/좌우 동일하다. 색은 카드별 인라인 변수. */
+}
+
+/* 빈칸 채우기: 문장 조립과 같은 낱말 카드, 가로로 긴 비율로 위아래를 낮춘다 */
+.lesson-view :deep(.activity--fill-blank .choices > .word-card) {
+  width: min(100%, 300px) !important;
+  aspect-ratio: 1.9;
+  padding: clamp(12px, 1.6cqw, 22px) !important;
+}
+
+/* PNG 프레임 대신 CSS 프레임: 카드가 어떤 비율로 늘어나도
+   실선-점선 간격이 상하/좌우 동일하다. 색은 카드별 인라인 변수. */
+.lesson-view :deep(:is(.activity--sentence-order, .activity--fill-blank) .choices > .word-card) {
   border: 5px solid var(--word-frame-border, #fde995) !important;
   border-radius: 22px !important;
   background: #fdf9ef !important;
   box-shadow: 0 8px 12px rgb(86 65 28 / 15%) !important;
 }
 
-.lesson-view :deep(.activity--sentence-order .choices > .word-card::before) {
+.lesson-view :deep(:is(.activity--sentence-order, .activity--fill-blank) .choices > .word-card::before) {
   content: none !important;
 }
 
-.lesson-view :deep(.activity--sentence-order .choices > .word-card::after) {
+.lesson-view :deep(:is(.activity--sentence-order, .activity--fill-blank) .choices > .word-card::after) {
   content: '' !important;
   position: absolute;
   inset: 5px;

@@ -81,14 +81,16 @@
   box-shadow: inset 0 0 0 2px #eadfbd,0 9px 20px rgba(70,91,112,.13);
 }
 
+/* 빈칸은 낱말 카드와 같은 크기(230px, 1.9 비율)를 갖는다 */
 .blank {
+  position: relative;
   display: grid;
   place-items: center;
-  min-width: 170px;
-  min-height: 82px;
-  padding: 0 22px;
+  width: 230px;
+  aspect-ratio: 1.9;
+  padding: 0 18px;
   border: 5px dashed #7593e4;
-  border-radius: 21px;
+  border-radius: 22px;
   background: #eef4ff;
   color: #3158c6;
   transition: border-color .18s,background .18s,transform .18s,box-shadow .18s;
@@ -101,40 +103,55 @@
   box-shadow: 0 0 0 6px rgba(255,210,52,.22);
 }
 
+/* 끼운 낱말은 카드 스타일(색 프레임 + 점선 + 글자)을 그대로 유지한다.
+   글자 스타일은 .word-card strong과 동일하게 맞춘다. */
 .blank.filled {
-  border-style: solid;
-  border-color: #62bd69;
-  background: #efffea;
-  color: #297a35;
+  border: 5px solid var(--word-frame-border, #fde995);
+  background: #fdf9ef;
+  color: #263853;
+  /* 카드 글씨와 동일: 읽기 전용 글꼴(.word-card strong과 같은 공통 규칙) */
+  font-family: var(--learner-font-reading);
+  font-size: clamp(24px,2.4cqw,34px);
+  font-weight: 900;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+  text-align: center;
+  box-shadow: 0 8px 12px rgb(86 65 28 / 15%);
+}
+
+.blank.filled::after {
+  content: '';
+  position: absolute;
+  inset: 5px;
+  border: 1.5px dashed var(--word-frame-dash, #f0d072);
+  border-radius: 12px;
+  pointer-events: none;
 }
 
 .blank.hint {
   animation: blank-pulse .9s ease-in-out infinite;
 }
 
+/* 카드 폭을 빈칸과 같은 230px로 고정한다 */
 .choices {
   display: grid;
-  grid-template-columns: repeat(3,minmax(180px,230px));
+  grid-template-columns: repeat(3,230px);
   gap: 22px;
   justify-content: center;
   width: 100%;
-  min-height: 152px;
+  min-height: 122px;
+  margin-top: clamp(14px,3cqh,36px);
 }
 
+/* 낱말 카드 표면(테두리·배경·점선)은 공통 CSS 프레임
+   (TrainingLessonView.css의 .activity--fill-blank .choices > .word-card)이 담당한다. */
 .word-card {
   position: relative;
   display: grid;
   place-items: center;
-  min-height: 145px;
-  padding: 18px;
-  border: 4px solid #efe1bd;
-  border-radius: 25px;
-  background: #fffdf8;
   color: #263853;
-  box-shadow: 0 7px 17px rgba(59,83,111,.13);
   cursor: grab;
   user-select: none;
-  transition: transform .18s,opacity .18s,border-color .18s,box-shadow .18s;
 }
 
 .word-card:active {
@@ -142,33 +159,26 @@
 }
 
 .word-card strong {
+  min-width: 0;
   font-family: var(--learner-font-display);
-  font-size: 34px;
+  font-size: clamp(24px,2.4cqw,34px);
   font-weight: 900;
-}
-
-.grip {
-  position: absolute;
-  top: 10px;
-  right: 14px;
-  width: 24px;
-  height: 24px;
-  object-fit: contain;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+  text-align: center;
 }
 
 .word-card.wrong {
-  border-color: #ed8175;
-  background: #fff2ef;
   animation: shake .38s ease-in-out;
-}
-
-.word-card.hint {
-  border-color: #ffc83d;
-  animation: card-pulse .9s ease-in-out infinite;
 }
 
 .word-card.used {
   opacity: .22;
+}
+
+/* 드래그하는 동안 원본은 자리만 지키고 보이지 않는다 (고스트가 대신 보임) */
+.word-card.dragging {
+  visibility: hidden;
 }
 
 .choices.locked .word-card:not(.used) {
@@ -276,12 +286,8 @@
     min-height: 118px;
   }
 
-  .word-card {
-    min-height: 112px;
-    padding: 10px;
-  }
-
-  .word-card strong {
+  .word-card strong,
+  .blank.filled {
     font-size: 29px;
   }
 
@@ -330,22 +336,33 @@
   touch-action: none;
 }
 
+/* 원본 카드와 같은 CSS 프레임·크기(인라인 width/height)를 유지한 채 끌린다 */
 .drag-ghost {
   position: fixed;
   z-index: 100;
   display: grid;
   place-items: center;
-  min-width: 190px;
-  min-height: 105px;
   padding: 14px 22px;
-  border: 4px solid #6f91e9;
-  border-radius: 23px;
-  background: #fffdf8;
+  border: 5px solid var(--word-frame-border, #fde995);
+  border-radius: 22px;
+  background: #fdf9ef;
   color: #263853;
   font-family: var(--learner-font-display);
   font-size: 32px;
   font-weight: 900;
-  box-shadow: 0 16px 28px rgba(45,75,120,.28);
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+  text-align: center;
+  box-shadow: 0 14px 16px rgb(45 75 120 / 30%);
   transform: translate(-50%,-50%) rotate(-2deg);
+  pointer-events: none;
+}
+
+.drag-ghost::after {
+  content: '';
+  position: absolute;
+  inset: 5px;
+  border: 1.5px dashed var(--word-frame-dash, #f0d072);
+  border-radius: 12px;
   pointer-events: none;
 }
