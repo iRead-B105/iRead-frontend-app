@@ -145,6 +145,7 @@ const phase = ref<Phase>('intro')
 const deviceBlocker = ref<'eye-tracker' | 'microphone' | null>(null)
 const microphoneRetrying = ref(false)
 const leaveConfirmationOpen = ref(false)
+const leaveConfirmed = ref(false)
 const integrationError = ref('')
 let resolveLeaveConfirmation: ((allow: boolean) => void) | null = null
 let automaticVoiceStopTimer: ReturnType<typeof setTimeout> | null = null
@@ -600,6 +601,7 @@ const startPlaying = async () => {
 
 onBeforeRouteLeave(() => {
   if (debugMode.value) return true
+  if (leaveConfirmed.value) return true
   if (phase.value === 'intro' || session.progressState.isCompleted) return true
 
   leaveConfirmationOpen.value = true
@@ -611,6 +613,7 @@ onBeforeRouteLeave(() => {
 
 const finishLeaveConfirmation = (allow: boolean) => {
   leaveConfirmationOpen.value = false
+  if (allow) leaveConfirmed.value = true
   resolveLeaveConfirmation?.(allow)
   resolveLeaveConfirmation = null
 }

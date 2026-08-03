@@ -72,17 +72,21 @@ function analysisBody(studentId: string, data: CollectedGazeData) {
     avgVisitedDuration: totalVisitedCount > 0
       ? Math.round(totalVisitedDuration / totalVisitedCount)
       : 0,
-    sentenceMetrics: sentenceMetrics.map((metric) => ({
-      storyLineId: metric.storyLineId,
-      sequenceNo: metric.sequenceNo,
-      surfaceText: metric.surfaceText ?? '-',
-      dwellDurationMs: metric.dwellDurationMs ?? 0,
-      fixationCount: metric.fixationCount ?? 0,
-      regressionCount: metric.regressionCount ?? 0,
-      averageFixationTimeMs: metric.averageFixationTimeMs,
-      firstGazeOffsetMs: metric.firstGazeOffsetMs ?? 0,
-      lastGazeOffsetMs: metric.lastGazeOffsetMs ?? 0,
-    })),
+    ...(contentType === 'STORY' && sentenceMetrics.length > 0
+      ? {
+          sentenceMetrics: sentenceMetrics.map((metric) => ({
+            storyLineId: metric.storyLineId,
+            sequenceNo: metric.sequenceNo,
+            surfaceText: metric.surfaceText ?? '-',
+            dwellDurationMs: metric.dwellDurationMs ?? 0,
+            fixationCount: metric.fixationCount ?? 0,
+            regressionCount: metric.regressionCount ?? 0,
+            averageFixationTimeMs: metric.averageFixationTimeMs,
+            firstGazeOffsetMs: metric.firstGazeOffsetMs ?? 0,
+            lastGazeOffsetMs: metric.lastGazeOffsetMs ?? 0,
+          })),
+        }
+      : {}),
     wordAttempts: words.map((word) => ({
       useLocation: contentType,
       storyLineId: word.storyLineId,
@@ -149,13 +153,18 @@ export class ApiLearnerGazeRepository implements LearnerGazeRepository {
       },
     )
     if (endStatus === 'COMPLETED' && data && typeof data === 'object') {
-      await learnerApiClient.request(
-        `/api/app/gaze/sessions/${encodeURIComponent(gazeSessionId)}/analysis-results`,
-        {
-          method: 'POST',
-          body: jsonBody(analysisBody(studentId, data as CollectedGazeData)),
-        },
-      )
+      try {
+        await learnerApiClient.request(
+          `/api/app/gaze/sessions/${encodeURIComponent(gazeSessionId)}/analysis-results`,
+          {
+            method: 'POST',
+            body: jsonBody(analysisBody(studentId, data as CollectedGazeData)),
+          },
+          { suppressErrorHandler: true },
+        )
+      } catch (error) {
+        console.warn('[gaze] 세션 종료 후 분석 결과 저장에 실패했습니다.', error)
+      }
     }
     return toSession(response)
   }

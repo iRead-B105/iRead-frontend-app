@@ -75,7 +75,33 @@ describe('API learner gaze repository', () => {
       2,
       '/api/app/gaze/sessions/81/analysis-results',
       expect.objectContaining({ method: 'POST' }),
+      { suppressErrorHandler: true },
     )
+    const analysisBody = JSON.parse(request.mock.calls[1]?.[1]?.body as string) as Record<string, unknown>
+    expect(analysisBody).not.toHaveProperty('sentenceMetrics')
     expect(result.collectionStatus).toBe('COMPLETED')
+  })
+
+  it('keeps the completed session result when analysis storage fails', async () => {
+    const request = vi.spyOn(learnerApiClient, 'request')
+      .mockResolvedValueOnce({
+        gazeSessionId: 81,
+        collectionStatus: 'COMPLETED',
+        calibrationStatus: 'SUCCESS',
+        startedAt: '2026-07-29T10:00:00',
+        endedAt: '2026-07-29T10:05:00',
+      })
+      .mockRejectedValueOnce(new Error('analysis failed'))
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    const repository = new ApiLearnerGazeRepository()
+
+    const result = await repository.end('81', '101', 'COMPLETED', {
+      contentType: 'TEST',
+      testId: 55,
+      words: [],
+    })
+
+    expect(result.collectionStatus).toBe('COMPLETED')
+    expect(request).toHaveBeenCalledTimes(2)
   })
 })
