@@ -10,6 +10,7 @@ import {
 import PageBackButton from '@/components/common/PageBackButton.vue'
 import type { VillageItem } from '@/types/village'
 import { learnerStoryRepository } from '@/features/learner/story'
+import type { LearnerStoryBranchPrompt } from '@/features/learner/model'
 import {
   createMockVoiceFile,
   mockDeviceSubmissionsEnabled,
@@ -27,6 +28,7 @@ interface StoryPage {
   imagePosition?: string
   readAt: string | null
   requiresBranchInput: boolean
+  branchPrompt: LearnerStoryBranchPrompt | null
 }
 interface Story {
   title: string
@@ -62,6 +64,7 @@ const story = ref<Story>({
     lines: ['이야기를 준비하고 있어요.'],
     readAt: null,
     requiresBranchInput: false,
+    branchPrompt: null,
   }],
 })
 const loadError = ref('')
@@ -87,6 +90,7 @@ async function loadStory() {
       lines: [...page.lines],
       readAt: page.readAt,
       requiresBranchInput: page.requiresBranchInput,
+      branchPrompt: page.branchPrompt,
     })),
     }
   } catch (error) {
@@ -132,6 +136,8 @@ const WORD_HIT_PADDING_Y = 24
 
 const allPages = computed(() => story.value.pages)
 const page = computed<StoryPage>(() => allPages.value[currentPage.value] ?? story.value.pages[0]!)
+const branchQuestion = computed(() => page.value.lines.join(' ').trim() || story.value.question)
+const branchOptions = computed(() => page.value.branchPrompt?.options ?? [])
 const pageWords = computed(() => page.value.lines.flatMap((line, lineIndex) => line.split(' ').map((word) => ({ word, lineIndex }))))
 const isLastPage = computed(() => currentPage.value === allPages.value.length - 1)
 const isPageRead = computed(() => readThrough.value >= pageWords.value.length - 1)
@@ -336,7 +342,19 @@ function stopListening() {
   voiceRecorder.stop()
 }
 
-async function submitBranchAnswer() {
+async function showStoryReward() {
+  clearDwell()
+  clearLeaveTimer()
+  voiceRecorder.reset()
+  screen.value = 'reward'
+  try {
+    rewardedFriend.value = await unlockStoryFriend(storyId.value)
+  } catch {
+    rewardedFriend.value = null
+  }
+}
+
+async function submitBranchAnswer(optionNo?: number) {
   const current = page.value
   const blob = voiceRecorder.audioBlob.value
   const audioFile = mockBranchVoiceFile.value ?? (
@@ -348,7 +366,8 @@ async function submitBranchAnswer() {
         )
       : null
   )
-  if (!current.lineId || !audioFile || branchSubmitting.value) {
+  const answer = optionNo ?? audioFile
+  if (!current.lineId || !answer || branchSubmitting.value) {
     speechError.value = true
     return
   }
@@ -361,9 +380,13 @@ async function submitBranchAnswer() {
       getCachedStudent().studentId,
       storyId.value,
       current.lineId,
-      audioFile,
+      answer,
     )
-    transcript.value = result.transcript
+    transcript.value = result.transcript || branchOptions.value.find((option) => option.optionNo === optionNo)?.label || ''
+    if (result.status === 'COMPLETED' || result.progress >= 100) {
+      await showStoryReward()
+      return
+    }
     await loadStory()
     const nextPageIndex = story.value.pages.findIndex(
       (item) => item.lineId === result.nextLineId,
@@ -379,7 +402,8 @@ async function submitBranchAnswer() {
     await nextTick()
   } catch (error) {
     screen.value = 'question'
-    speechError.value = true
+    // 버튼 선택 실패는 녹음 오류가 아니므로 음성 제출에만 재녹음을 안내한다.
+    speechError.value = optionNo === undefined
     errorModal.show(
       error instanceof Error ? error : new Error('다음 이야기를 만들지 못했습니다.'),
       '이야기 분기 오류',
@@ -507,7 +531,19 @@ onBeforeUnmount(() => {
             <div class="choice-illustration">
               <img :src="storyChoiceScene" alt="갈림길 앞에서 어느 길로 갈지 고민하는 거북이" />
             </div>
-            <h1>{{ story.question }}</h1>
+            <h1>{{ branchQuestion }}</h1>
+            <div v-if="branchOptions.length === 3" class="branch-options" aria-label="이야기 선택지">
+              <button
+                v-for="option in branchOptions"
+                :key="option.optionNo"
+                type="button"
+                :disabled="branchSubmitting"
+                @click="submitBranchAnswer(option.optionNo)"
+              >
+                {{ option.label }}
+              </button>
+            </div>
+            <p class="branch-or">버튼을 누르거나 말로 이야기해 주세요.</p>
             <section class="voice-answer" aria-label="말로 대답하기">
               <button
                 class="listening-mic"
@@ -558,7 +594,7 @@ onBeforeUnmount(() => {
                   class="confirm-answer"
                   type="button"
                   :disabled="branchSubmitting"
-                  @click="submitBranchAnswer"
+                  @click="() => submitBranchAnswer()"
                 >
                   이어 만들기
                   <img :src="checkIcon" alt="" aria-hidden="true" />
@@ -570,7 +606,7 @@ onBeforeUnmount(() => {
           <template v-else>
             <h1 class="making-title">다음 이야기를 만들고 있어요!</h1>
             <blockquote v-if="transcript">“{{ transcript }}”</blockquote>
-            <p v-else>녹음한 대답을 이야기 서버에 보내고 있어요.</p>
+            <p v-else>선택한 답으로 다음 이야기를 만들고 있어요.</p>
             <span class="making-dots" aria-label="다음 이야기 만드는 중"><i/><i/><i/></span>
           </template>
         </section>

@@ -65,13 +65,17 @@ const isExpectedUnavailable = (error: unknown): boolean => (
   )
 )
 
-const loadCurrentCurriculum = () => {
+const loadCurrentCurriculum = (preserveCurrentState = false) => {
   const studentId = getCachedStudent().studentId
   ensureStudentState(studentId)
   if (loadPromise && loadingStudentId === studentId) return loadPromise
   if (loadedStudentId === studentId && !curriculumError.value) return Promise.resolve()
 
-  resetCurriculumState()
+  if (preserveCurrentState) {
+    curriculumError.value = null
+  } else {
+    resetCurriculumState()
+  }
   loadingStudentId = studentId
   const requestVersion = stateVersion
 
@@ -132,7 +136,7 @@ const reloadCurrentCurriculum = async () => {
     return
   }
   loadedStudentId = null
-  await loadCurrentCurriculum()
+  await loadCurrentCurriculum(true)
   if (curriculumError.value) {
     throw new Error(curriculumError.value)
   }

@@ -65,6 +65,13 @@ describe('API learner content repository', () => {
           sceneOrder: 2,
           lineOrder: 1,
           readAt: null,
+          branchPrompt: {
+            options: [
+              { optionNo: 1, label: '숲으로 가요' },
+              { optionNo: 2, label: '친구를 찾아요' },
+              { optionNo: 3, label: '잠시 쉬어요' },
+            ],
+          },
         },
         {
           lineId: 8,
@@ -75,6 +82,7 @@ describe('API learner content repository', () => {
           sceneOrder: 1,
           lineOrder: 2,
           readAt: '2026-07-29T10:01:00',
+          branchPrompt: null,
         },
       ],
     })
@@ -85,6 +93,7 @@ describe('API learner content repository', () => {
     expect(result.pages.map((page) => page.lineId)).toEqual(['8', '9'])
     expect(result.pages[1]?.lines).toEqual(['토끼가 숲길을 걸었어요.'])
     expect(result.pages[1]?.requiresBranchInput).toBe(true)
+    expect(result.pages[1]?.branchPrompt?.options).toHaveLength(3)
     expect(result).toMatchObject({
       status: 'IN_PROGRESS',
       currentDay: 2,
