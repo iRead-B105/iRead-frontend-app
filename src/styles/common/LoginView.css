@@ -95,6 +95,15 @@
   text-align: center;
 }
 
+.login-demo-notice {
+  margin: -8px 0 18px;
+  color: #4f6590;
+  font-family: var(--learner-font-display);
+  font-size: clamp(18px, 1.45vw, 22px);
+  font-weight: var(--learner-font-weight-bold);
+  text-align: center;
+}
+
 .login-form {
   width: 100%;
   min-width: 0;

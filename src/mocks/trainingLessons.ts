@@ -8,8 +8,12 @@ import { traceConsonantLesson, traceSyllableLesson, traceVowelLesson } from './g
 import { letterSoundChoiceLesson, wordFirstSoundChoiceLesson } from './audioChoiceLessons'
 import { basicLetterBuildLesson, batchimLetterBuildLesson, doubleBatchimLetterBuildLesson } from './letterBuildLessons'
 import { removeBatchimLesson, removeSyllableLesson, replaceSyllableLesson } from './soundManipulationLessons'
-import { antBattleLesson, rabbitBattleLesson, turtleBattleLesson } from './hangulBattleLessons'
-import { nonwordReadingLesson, realWordReadingLesson } from './wordReadingLessons'
+import {
+  batchimWordReadingLesson,
+  nonwordReadingLesson,
+  realWordReadingLesson,
+  shortSentenceWordReadingLesson,
+} from './wordReadingLessons'
 import { sentenceReadingLesson } from './sentenceReadingLessons'
 import { shortPassageReadingLesson } from './shortPassageReadingLessons'
 import { pictureSentenceLesson } from './pictureSentenceLessons'
@@ -21,7 +25,6 @@ import {
 } from './phonicsLessons'
 import {
   fillBlankLesson,
-  hardWordLesson,
   repeatSentenceLesson,
   sentenceOrderLesson,
 } from './shortTextLessons'
@@ -36,14 +39,14 @@ import {
 export const sameSoundLesson: TrainingLesson = {
   id: 'same-sound',
   categoryId: 'phonological-awareness',
-  title: '같은 소리 찾기',
+  title: '비슷한 소리 찾기',
   description: '두 낱말의 첫소리가 같은지 들어봐요.',
   activityType: 'listen-and-select',
   estimatedMinutes: 10,
   questions: [
     {
       id: 'q1',
-      instruction: '같은 소리를 찾아봐요.',
+      instruction: '비슷한 소리를 찾아봐!',
       subInstruction: "'가방'과 같은 소리로 시작하는 낱말은?",
       targetText: '가방',
       targetSound: 'ㄱ',
@@ -60,7 +63,7 @@ export const sameSoundLesson: TrainingLesson = {
     },
     {
       id: 'q2',
-      instruction: '같은 소리를 찾아봐요.',
+      instruction: '비슷한 소리를 찾아봐!',
       subInstruction: "'나비'와 같은 소리로 시작하는 낱말은?",
       targetText: '나비',
       targetSound: 'ㄴ',
@@ -77,7 +80,7 @@ export const sameSoundLesson: TrainingLesson = {
     },
     {
       id: 'q3',
-      instruction: '같은 소리를 찾아봐요.',
+      instruction: '비슷한 소리를 찾아봐!',
       subInstruction: "'모자'와 같은 소리로 시작하는 낱말은?",
       targetText: '모자',
       targetSound: 'ㅁ',
@@ -94,7 +97,7 @@ export const sameSoundLesson: TrainingLesson = {
     },
     {
       id: 'q4',
-      instruction: '같은 소리를 찾아봐요.',
+      instruction: '비슷한 소리를 찾아봐!',
       subInstruction: "'사과'와 같은 소리로 시작하는 낱말은?",
       targetText: '사과',
       targetSound: 'ㅅ',
@@ -111,7 +114,7 @@ export const sameSoundLesson: TrainingLesson = {
     },
     {
       id: 'q5',
-      instruction: '같은 소리를 찾아봐요.',
+      instruction: '비슷한 소리를 찾아봐!',
       subInstruction: "'토끼'와 같은 소리로 시작하는 낱말은?",
       targetText: '토끼',
       targetSound: 'ㅌ',
@@ -505,96 +508,13 @@ export const soundCombineLesson: TrainingLesson = {
   ],
 }
 
-// 파닉스 - 자음과 모음 합치기 (카드를 끌어다 놓거나 눌러서 음절 만들기)
-export const combineCVLesson: TrainingLesson = {
-  id: 'combine-cv',
-  categoryId: 'phonics',
-  title: '자음과 모음 합치기',
-  description: '자음 카드와 모음 카드를 모아 한 글자를 만들어요.',
-  activityType: 'card-combine',
-  estimatedMinutes: 12,
-  questions: [
-    {
-      id: 'q1',
-      instruction: '글자를 모아봐요.',
-      subInstruction: 'ㄱ과 ㅏ를 모으면 어떤 글자가 될까요?',
-      consonant: 'ㄱ',
-      vowel: 'ㅏ',
-      combined: '가',
-      answer: '가',
-      hint: { level1: 'ㄱ 소리와 ㅏ 소리를 차례로 들어봐요.', level2: 'ㄱ + ㅏ = 가' },
-      feedback: {
-        correct: '글자를 멋지게 모았어요! ㄱ과 ㅏ를 모으면 가가 돼요.',
-        retry: '다시 한번 모아볼까요?',
-      },
-    },
-    {
-      id: 'q2',
-      instruction: '글자를 모아봐요.',
-      subInstruction: 'ㄴ과 ㅗ를 모으면 어떤 글자가 될까요?',
-      consonant: 'ㄴ',
-      vowel: 'ㅗ',
-      combined: '노',
-      answer: '노',
-      hint: { level1: 'ㄴ 소리와 ㅗ 소리를 차례로 들어봐요.', level2: 'ㄴ + ㅗ = 노' },
-      feedback: {
-        correct: '잘 합쳤어요! ㄴ과 ㅗ를 모으면 노가 돼요.',
-        retry: '괜찮아요. 한 번 더 해봐요.',
-      },
-    },
-    {
-      id: 'q3',
-      instruction: '글자를 모아봐요.',
-      subInstruction: 'ㅁ과 ㅜ를 모으면 어떤 글자가 될까요?',
-      consonant: 'ㅁ',
-      vowel: 'ㅜ',
-      combined: '무',
-      answer: '무',
-      hint: { level1: 'ㅁ 소리와 ㅜ 소리를 차례로 들어봐요.', level2: 'ㅁ + ㅜ = 무' },
-      feedback: {
-        correct: '소리를 아주 잘 만들었어요! ㅁ과 ㅜ를 모으면 무가 돼요.',
-        retry: '천천히 다시 모아볼까요?',
-      },
-    },
-    {
-      id: 'q4',
-      instruction: '글자를 모아봐요.',
-      subInstruction: 'ㄷ과 ㅏ를 모으면 어떤 글자가 될까요?',
-      consonant: 'ㄷ',
-      vowel: 'ㅏ',
-      combined: '다',
-      answer: '다',
-      hint: { level1: 'ㄷ 소리와 ㅏ 소리를 차례로 들어봐요.', level2: 'ㄷ + ㅏ = 다' },
-      feedback: {
-        correct: '훌륭해요! ㄷ과 ㅏ를 모으면 다가 돼요.',
-        retry: '천천히 다시 모아봐요.',
-      },
-    },
-    {
-      id: 'q5',
-      instruction: '글자를 모아봐요.',
-      subInstruction: 'ㅂ과 ㅗ를 모으면 어떤 글자가 될까요?',
-      consonant: 'ㅂ',
-      vowel: 'ㅗ',
-      combined: '보',
-      answer: '보',
-      hint: { level1: 'ㅂ 소리와 ㅗ 소리를 차례로 들어봐요.', level2: 'ㅂ + ㅗ = 보' },
-      feedback: {
-        correct: '완성했어요! ㅂ과 ㅗ를 모으면 보가 돼요.',
-        retry: '다시 한번 해볼까요?',
-        completed: '자음과 모음 합치기를 모두 마쳤어요! 가, 노, 무, 다, 보를 연습했어요.',
-      },
-    },
-  ],
-}
-
 // 유창성 - 문장 따라 읽기 (모범 음성 듣기 + 녹음)
 export const followSentenceLesson: TrainingLesson = {
   id: 'follow-sentence',
   categoryId: 'fluency',
   title: '문장 따라 읽기',
   description: '모범 음성을 듣고 따라 읽어요.',
-  activityType: 'read-aloud',
+  activityType: 'word-reading-grid',
   estimatedMinutes: 10,
   questions: [
     {
@@ -666,11 +586,10 @@ export const lessonMap: Record<string, TrainingLesson> = {
   'remove-batchim': removeBatchimLesson,
   'remove-syllable': removeSyllableLesson,
   'replace-syllable': replaceSyllableLesson,
-  'battle-rabbit': rabbitBattleLesson,
-  'battle-turtle': turtleBattleLesson,
-  'battle-ant': antBattleLesson,
   'read-real-words': realWordReadingLesson,
+  'read-batchim-words': batchimWordReadingLesson,
   'read-nonwords': nonwordReadingLesson,
+  'read-short-sentences': shortSentenceWordReadingLesson,
   'read-sentences': sentenceReadingLesson,
   'read-short-passage': shortPassageReadingLesson,
   'same-sound': sameSoundLesson,
@@ -680,13 +599,11 @@ export const lessonMap: Record<string, TrainingLesson> = {
   'sound-combine': soundCombineLesson,
   'consonant-sound': consonantSoundLesson,
   'vowel-sound': vowelSoundLesson,
-  'combine-cv': combineCVLesson,
   'batchim-sound': batchimSoundLesson,
   'similar-sound': similarSoundLesson,
   'repeat-sentence': repeatSentenceLesson,
   'fill-blank': fillBlankLesson,
   'match-picture': pictureSentenceLesson,
-  'hard-word': hardWordLesson,
   'sentence-order': sentenceOrderLesson,
   'word-chain': wordChainLesson,
   'follow-sentence': followSentenceLesson,
@@ -695,7 +612,127 @@ export const lessonMap: Record<string, TrainingLesson> = {
   'short-story': shortStoryLesson,
 }
 
+interface DevPreviewDefinition {
+  id: string
+  title: string
+  sourceLessonIds: string[]
+}
+
+const devPreviewDefinitions: DevPreviewDefinition[] = [
+  {
+    id: 'gaze-trace',
+    title: '따라 보기 UI',
+    sourceLessonIds: ['trace-consonant', 'trace-vowel', 'trace-syllable'],
+  },
+  {
+    id: 'audio-letter-choice',
+    title: '소리 듣고 글자 고르기 UI',
+    sourceLessonIds: ['letter-sound-choice', 'word-first-sound-choice'],
+  },
+  {
+    id: 'listen-and-select',
+    title: '듣고 카드 고르기 UI',
+    sourceLessonIds: ['same-sound', 'first-sound', 'last-sound', 'batchim-sound'],
+  },
+  {
+    id: 'sound-choice',
+    title: '비슷한 소리 고르기 UI',
+    sourceLessonIds: ['consonant-sound', 'vowel-sound', 'similar-sound'],
+  },
+  {
+    id: 'sound-blend',
+    title: '소리 합치기 UI',
+    sourceLessonIds: ['sound-combine'],
+  },
+  {
+    id: 'letter-build',
+    title: '글자 만들기 UI',
+    sourceLessonIds: ['build-basic-letter', 'build-batchim-letter', 'build-double-batchim-letter'],
+  },
+  {
+    id: 'sound-manipulation',
+    title: '소리 빼기·바꾸기 UI',
+    sourceLessonIds: ['remove-batchim', 'remove-syllable', 'replace-syllable'],
+  },
+  {
+    id: 'sound-omit',
+    title: '소리 나누기 UI',
+    sourceLessonIds: ['sound-split'],
+  },
+  {
+    id: 'word-reading-grid',
+    title: '눈으로 보고 읽기 UI',
+    sourceLessonIds: [
+      'read-real-words',
+      'read-batchim-words',
+      'read-nonwords',
+      'read-short-sentences',
+      'read-sentences',
+      'read-short-passage',
+      'follow-sentence',
+      'word-chain',
+      'phrase-reading',
+      're-read',
+      'short-story',
+      'repeat-sentence',
+    ],
+  },
+  {
+    id: 'fill-blank',
+    title: '빈칸 채우기 UI',
+    sourceLessonIds: ['fill-blank'],
+  },
+  {
+    id: 'sentence-choice',
+    title: '그림·문장 연결 UI',
+    sourceLessonIds: ['match-picture'],
+  },
+  {
+    id: 'sentence-order',
+    title: '문장 조립 UI',
+    sourceLessonIds: ['sentence-order'],
+  },
+]
+
+export const devPreviewSourceLessonIds = devPreviewDefinitions.flatMap(
+  (definition) => definition.sourceLessonIds,
+)
+
+export const devPreviewLessons: TrainingLesson[] = devPreviewDefinitions.map((definition) => {
+  const sourceLessons = definition.sourceLessonIds.map((lessonId) => {
+    const lesson = lessonMap[lessonId]
+    if (!lesson) throw new Error(`DEV 미리보기 원본 훈련을 찾을 수 없습니다: ${lessonId}`)
+    return lesson
+  })
+  const firstLesson = sourceLessons[0]
+  if (!firstLesson) throw new Error(`DEV 미리보기 훈련 구성이 비어 있습니다: ${definition.id}`)
+  if (sourceLessons.some((lesson) => lesson.activityType !== firstLesson.activityType)) {
+    throw new Error(`DEV 미리보기 화면 유형이 서로 다릅니다: ${definition.id}`)
+  }
+
+  return {
+    id: `dev-preview-${definition.id}`,
+    categoryId: firstLesson.categoryId,
+    title: definition.title,
+    description: '같은 화면을 사용하는 훈련의 대표 문제를 하나씩 확인합니다.',
+    activityType: firstLesson.activityType,
+    estimatedMinutes: 1,
+    questions: sourceLessons.map((lesson) => {
+      const question = lesson.questions[0]
+      if (!question) throw new Error(`DEV 미리보기 원본 문항이 없습니다: ${lesson.id}`)
+      return {
+        ...question,
+        id: `dev-${definition.id}-${lesson.id}`,
+      }
+    }),
+  }
+})
+
+const devPreviewLessonMap: Record<string, TrainingLesson> = Object.fromEntries(
+  devPreviewLessons.map((lesson) => [lesson.id, lesson]),
+)
+
 export const getLessonById = (id: string): TrainingLesson | null => {
-  const lesson = lessonMap[id]
+  const lesson = lessonMap[id] ?? devPreviewLessonMap[id]
   return lesson ? personalizeRuntimeValue(lesson) : null
 }

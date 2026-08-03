@@ -91,8 +91,8 @@ declare global {
   }
 }
 
-const GAZE_WS_URL = 'ws://127.0.0.1:8765/gaze'
-const GAZE_MODE_URL = 'http://127.0.0.1:8765/api/mode'
+const GAZE_WS_URL = import.meta.env.VITE_GAZE_WS_URL ?? 'ws://127.0.0.1:8765/gaze'
+const GAZE_MODE_URL = import.meta.env.VITE_GAZE_MODE_URL ?? 'http://127.0.0.1:8765/api/mode'
 const RECONNECT_DELAY_MS = 1200
 const GAZE_EMIT_INTERVAL_MS = 11
 const TRANSFORM_STORAGE_KEY = 'iread-tobii-gaze-transform-v2'

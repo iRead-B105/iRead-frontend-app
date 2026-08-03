@@ -1,61 +1,94 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { TracePoint, TrainingQuestion } from '@/types/training'
-import { useAudioPlayer } from '@/composables/useAudioPlayer'
 import { useTrainingSession } from '@/composables/useTrainingSession'
+import { useAudioPlayer } from '@/composables/useAudioPlayer'
+import { useVoiceRecorder } from '@/composables/useVoiceRecorder'
+import SoundButton from '@/components/training/SoundButton.vue'
+import microphoneIcon from '@/assets/icons/microphone.svg'
 import type { LearnerTraceSubmissionResponse } from '@/features/learner/training'
 import { mockVoiceSubmissionsEnabled } from '@/features/learner/training/mockDeviceSubmissions'
-import SoundButton from '../SoundButton.vue'
 
 const props = defineProps<{ question: TrainingQuestion }>()
-const emit = defineEmits<{ next: [response: LearnerTraceSubmissionResponse] }>()
+type VoiceEvaluationControls = {
+  success: (message?: string) => void
+  retry: (message?: string) => void
+}
+const emit = defineEmits<{
+  next: [response: LearnerTraceSubmissionResponse]
+  guideMessage: [message: string]
+  voiceRecorded: [blob: Blob, controls: VoiceEvaluationControls]
+}>()
+type SpeechState = 'waiting' | 'listening' | 'evaluating' | 'retry' | 'success'
 
 const session = useTrainingSession()
-const { replay, isPlaying } = useAudioPlayer()
+const audio = useAudioPlayer()
+const recorder = useVoiceRecorder()
 const stage = ref<SVGSVGElement | null>(null)
 const progress = ref(0)
-const cursor = ref({ x: 0, y: 0 })
-const cursorVisible = ref(false)
-const stalled = ref(false)
-const speechState = ref<'waiting' | 'listening' | 'retry' | 'success'>('waiting')
-const speechMessage = ref('')
+const speechState = ref<SpeechState>('waiting')
 const recordedStrokes = ref<Array<Array<{
   x: number
   y: number
   elapsedMs: number
   pressure?: number
 }>>>([])
-let lastAdvanceAt = 0
 let traceStartedAt = 0
-let stallTimer: ReturnType<typeof setInterval> | null = null
-let recognition: SpeechRecognitionLike | null = null
 let fallbackTimer: ReturnType<typeof setTimeout> | null = null
-
-interface SpeechRecognitionResultEventLike extends Event {
-  results: { [index: number]: { [index: number]: { transcript: string } } }
-}
-
-interface SpeechRecognitionErrorEventLike extends Event { error?: string }
-
-interface SpeechRecognitionLike {
-  lang: string
-  interimResults: boolean
-  continuous: boolean
-  onresult: ((event: SpeechRecognitionResultEventLike) => void) | null
-  onerror: ((event: SpeechRecognitionErrorEventLike) => void) | null
-  onend: (() => void) | null
-  start: () => void
-  stop: () => void
-}
-
-type SpeechRecognitionConstructor = new () => SpeechRecognitionLike
+let retryTimer: ReturnType<typeof setTimeout> | null = null
+let submittedBlob: Blob | null = null
 
 const strokes = computed(() => props.question.traceStrokes ?? [])
 const flatPoints = computed(() => strokes.value.flat())
 const totalPoints = computed(() => flatPoints.value.length)
 const traceCompleted = computed(() => totalPoints.value > 0 && progress.value >= totalPoints.value)
 const currentPoint = computed<TracePoint | null>(() => flatPoints.value[progress.value] ?? null)
-const glyphText = computed(() => props.question.traceGlyph ?? props.question.targetText ?? '')
+const hangulPronunciations: Record<string, string> = {
+  'ㄱ': '기역',
+  'ㄴ': '니은',
+  'ㄷ': '디귿',
+  'ㄹ': '리을',
+  'ㅁ': '미음',
+  'ㅂ': '비읍',
+  'ㅅ': '시옷',
+  'ㅇ': '이응',
+  'ㅈ': '지읒',
+  'ㅊ': '치읓',
+  'ㅋ': '키읔',
+  'ㅌ': '티읕',
+  'ㅍ': '피읖',
+  'ㅎ': '히읗',
+  'ㅏ': '아',
+  'ㅑ': '야',
+  'ㅓ': '어',
+  'ㅕ': '여',
+  'ㅗ': '오',
+  'ㅛ': '요',
+  'ㅜ': '우',
+  'ㅠ': '유',
+  'ㅡ': '으',
+  'ㅣ': '이',
+  'ㅐ': '애',
+  'ㅔ': '에',
+  'ㅚ': '외',
+  'ㅟ': '위',
+  'ㅢ': '의',
+}
+const pronunciationText = computed(() => {
+  const glyph = props.question.traceGlyph ?? ''
+  return hangulPronunciations[glyph]
+    ?? props.question.speechAliases?.find((alias) => alias && alias !== glyph)
+    ?? props.question.audioText
+    ?? props.question.targetText
+    ?? glyph
+})
+const speechStatusText = computed(() => {
+  if (speechState.value === 'listening') return '말하는 중이에요!'
+  if (speechState.value === 'evaluating') return '목소리를 확인하고 있어요!'
+  if (speechState.value === 'retry') return '한 번 더 말해봐요!'
+  if (speechState.value === 'success') return '잘 들었어요!'
+  return '글자를 따라 읽어요!'
+})
 
 const pointString = (points: TracePoint[]) => points.map((point) => `${point.x},${point.y}`).join(' ')
 
@@ -75,77 +108,71 @@ const completedStroke = (strokeIndex: number): TracePoint[] => {
   return strokes.value[strokeIndex]?.slice(0, count) ?? []
 }
 
-const normalizeSpeech = (value: string) => value.replace(/[\s.,!?]/g, '').toLowerCase()
+const stopSpeech = () => {
+  if (fallbackTimer) clearTimeout(fallbackTimer)
+  fallbackTimer = null
+  recorder.stop()
+}
 
-const finishSpeech = (isMock: boolean) => {
+const finishSpeech = (isMock: boolean, blob: Blob | null = null, message?: string) => {
   if (speechState.value === 'success') return
+  stopSpeech()
   speechState.value = 'success'
-  speechMessage.value = '목소리를 잘 들었어요!'
-  session.markRecordingComplete({ isMock, audioUrl: null })
+  emit('guideMessage', message || '잘했어!\n또박또박 잘 읽었어!')
+  session.markRecordingComplete({ isMock, audioUrl: null, blob })
 }
 
-const speechMatches = (transcript: string) => {
-  const heard = normalizeSpeech(transcript)
-  const accepted = [props.question.traceGlyph ?? '', ...(props.question.speechAliases ?? [])]
-    .map(normalizeSpeech)
-    .filter(Boolean)
-  return accepted.some((answer) => heard === answer || heard.includes(answer))
+const setRetry = (message?: string) => {
+  stopSpeech()
+  if (retryTimer) clearTimeout(retryTimer)
+  recorder.reset()
+  submittedBlob = null
+  speechState.value = 'retry'
+  if (message) emit('guideMessage', message)
+  retryTimer = setTimeout(() => void startSpeech(), 1_100)
 }
 
-const startSpeech = () => {
+const startSpeech = async () => {
   if (!traceCompleted.value || speechState.value === 'listening' || speechState.value === 'success') return
-  if (mockVoiceSubmissionsEnabled) {
-    finishSpeech(true)
-    return
-  }
+  stopSpeech()
+  if (retryTimer) clearTimeout(retryTimer)
+  retryTimer = null
+  recorder.reset()
+  submittedBlob = null
   speechState.value = 'listening'
-  speechMessage.value = '말해 보세요!'
 
-  const speechWindow = window as typeof window & {
-    SpeechRecognition?: SpeechRecognitionConstructor
-    webkitSpeechRecognition?: SpeechRecognitionConstructor
-  }
-  const Recognition = speechWindow.SpeechRecognition ?? speechWindow.webkitSpeechRecognition
-
-  if (!Recognition) {
-    fallbackTimer = setTimeout(() => finishSpeech(true), 1200)
+  if (mockVoiceSubmissionsEnabled) {
+    fallbackTimer = setTimeout(() => finishSpeech(true), 1100)
     return
   }
 
-  recognition = new Recognition()
-  recognition.lang = 'ko-KR'
-  recognition.interimResults = false
-  recognition.continuous = false
-  recognition.onresult = (event) => {
-    const transcript = event.results[0]?.[0]?.transcript ?? ''
-    if (speechMatches(transcript)) finishSpeech(false)
-    else {
-      speechState.value = 'retry'
-      speechMessage.value = `${props.question.traceGlyph} 소리를 다시 말해봐요.`
-    }
+  await recorder.start()
+  if (recorder.state.status !== 'recording') {
+    setRetry(recorder.state.errorMessage ?? '마이크를 확인해 주세요.')
+    return
   }
-  recognition.onerror = () => {
-    speechState.value = 'retry'
-    speechMessage.value = '마이크를 켜고 다시 말해봐요.'
-  }
-  recognition.onend = () => {
-    if (speechState.value === 'listening') {
-      speechState.value = 'retry'
-      speechMessage.value = '한 번 더 또박또박 말해봐요.'
-    }
-    recognition = null
-  }
-  recognition.start()
+  // 한 글자 발화에 충분한 시간을 준 뒤 자동으로 녹음을 끝낸다.
+  fallbackTimer = setTimeout(() => recorder.stop(), 5_000)
 }
 
-const speakGlyph = () => {
-  const glyph = props.question.traceGlyph ?? props.question.targetText
-  if (glyph && !isPlaying.value) void replay(glyph, 0.68)
-}
+watch(() => recorder.state.status, (status) => {
+  const blob = recorder.audioBlob.value
+  if (status !== 'recorded' || !blob || blob === submittedBlob) return
+  submittedBlob = blob
+  speechState.value = 'evaluating'
+  emit('voiceRecorded', blob, {
+    success: (message) => finishSpeech(false, blob, message),
+    retry: (message) => setRetry(message),
+  })
+})
 
-const announceRepeat = async () => {
-  const glyph = props.question.traceGlyph ?? ''
-  await replay(`따라 해봐. ${glyph}`, 0.72)
+const playPronunciation = () => audio.replay(pronunciationText.value, 0.72)
+
+const completeTrace = async () => {
+  const questionId = props.question.id
+  await playPronunciation()
+  if (props.question.id !== questionId || !traceCompleted.value) return
+  await startSpeech()
 }
 
 const advanceFromClientPoint = (clientX: number, clientY: number) => {
@@ -158,28 +185,21 @@ const advanceFromClientPoint = (clientX: number, clientY: number) => {
   const localPoint = new DOMPoint(clientX, clientY).matrixTransform(screenMatrix.inverse())
   const x = localPoint.x
   const y = localPoint.y
-  cursor.value = { x, y }
-  cursorVisible.value = x >= 0 && x <= 640 && y >= 0 && y <= 500
+  if (Math.hypot(x - target.x, y - target.y) > 46) return
 
-  const distance = Math.hypot(x - target.x, y - target.y)
-  if (distance <= 46) {
-    if (traceStartedAt === 0) traceStartedAt = Date.now()
-    const strokeIndex = strokeIndexAt(progress.value)
-    const points = recordedStrokes.value[strokeIndex] ?? []
-    if (!recordedStrokes.value[strokeIndex]) recordedStrokes.value[strokeIndex] = points
-    points.push({
-      x: Math.max(0, x),
-      y: Math.max(0, y),
-      elapsedMs: Date.now() - traceStartedAt,
-    })
-    progress.value += 1
-    lastAdvanceAt = Date.now()
-    stalled.value = false
-  }
+  if (traceStartedAt === 0) traceStartedAt = Date.now()
+  const strokeIndex = strokeIndexAt(progress.value)
+  const points = recordedStrokes.value[strokeIndex] ?? []
+  if (!recordedStrokes.value[strokeIndex]) recordedStrokes.value[strokeIndex] = points
+  points.push({
+    x: Math.max(0, x),
+    y: Math.max(0, y),
+    elapsedMs: Date.now() - traceStartedAt,
+  })
+  progress.value += 1
 }
 
 const onPointerMove = (event: PointerEvent) => advanceFromClientPoint(event.clientX, event.clientY)
-const onPointerLeave = () => { cursorVisible.value = false }
 const onGaze = (event: Event) => {
   const detail = (event as CustomEvent<{ clientX?: number; clientY?: number; headPoseStable?: boolean }>).detail
   if (
@@ -190,69 +210,53 @@ const onGaze = (event: Event) => {
 }
 
 const submitTrace = () => {
-  const strokes = recordedStrokes.value
+  const submittedStrokes = recordedStrokes.value
     .filter((points) => points.length >= 2)
     .map((points) => ({ points: points.map((point) => ({ ...point })) }))
-  if (strokes.length === 0) return
+  if (submittedStrokes.length === 0) return
   emit('next', {
     canvasWidth: 640,
     canvasHeight: 500,
-    strokes,
+    strokes: submittedStrokes,
   })
 }
 
 const resetQuestion = () => {
+  stopSpeech()
+  if (retryTimer) clearTimeout(retryTimer)
+  retryTimer = null
+  audio.stop()
   progress.value = 0
-  cursorVisible.value = false
-  stalled.value = false
   speechState.value = 'waiting'
-  speechMessage.value = ''
   recordedStrokes.value = []
-  lastAdvanceAt = 0
   traceStartedAt = 0
-  recognition?.stop()
-  recognition = null
-  if (fallbackTimer) clearTimeout(fallbackTimer)
-  fallbackTimer = null
-  void nextTick(speakGlyph)
+  submittedBlob = null
+  recorder.reset()
+  emit('guideMessage', '')
 }
 
 watch(() => props.question.id, resetQuestion, { immediate: true })
 watch(traceCompleted, (completed, wasCompleted) => {
-  if (completed && !wasCompleted) void announceRepeat()
+  if (completed && !wasCompleted) void completeTrace()
 })
 
-onMounted(() => {
-  window.addEventListener('iread:gaze', onGaze)
-  stallTimer = setInterval(() => {
-    if (progress.value > 0 && !traceCompleted.value && lastAdvanceAt && Date.now() - lastAdvanceAt >= 3000) {
-      stalled.value = true
-    }
-  }, 250)
-})
-
+onMounted(() => window.addEventListener('iread:gaze', onGaze))
 onBeforeUnmount(() => {
   window.removeEventListener('iread:gaze', onGaze)
-  if (stallTimer) clearInterval(stallTimer)
-  if (fallbackTimer) clearTimeout(fallbackTimer)
-  recognition?.stop()
+  stopSpeech()
+  if (retryTimer) clearTimeout(retryTimer)
+  audio.stop()
 })
 </script>
 
 <template>
   <section class="activity" :aria-label="question.instruction">
-    <header class="activity-heading">
-      <h1>{{ traceCompleted ? `${question.traceGlyph} 완성!` : question.instruction }}</h1>
-      <SoundButton :text="glyphText" size="medium" variant="primary" />
-    </header>
-
     <div class="trace-layout">
       <div
         class="trace-stage"
         :class="{ complete: traceCompleted }"
         @pointermove="onPointerMove"
         @pointerdown="onPointerMove"
-        @pointerleave="onPointerLeave"
       >
         <svg
           ref="stage"
@@ -264,33 +268,65 @@ onBeforeUnmount(() => {
           <g v-for="(stroke, strokeIndex) in strokes" :key="`base-${strokeIndex}`">
             <polyline class="stroke-outline" :points="pointString(stroke)" />
             <polyline class="stroke-guide" :points="pointString(stroke)" />
-            <polyline v-if="completedStroke(strokeIndex).length > 1" class="stroke-filled" :points="pointString(completedStroke(strokeIndex))" />
+            <polyline
+              v-if="completedStroke(strokeIndex).length > 1"
+              class="stroke-filled"
+              :points="pointString(completedStroke(strokeIndex))"
+            />
+            <g
+              v-if="completedStroke(strokeIndex).length === 0 && stroke[0]"
+              class="stroke-start"
+              :transform="`translate(${stroke[0].x} ${stroke[0].y})`"
+            >
+              <circle r="25" />
+              <text y="2">{{ strokeIndex + 1 }}</text>
+            </g>
           </g>
-          <circle v-if="currentPoint" class="resume-point" :class="{ stalled }" :cx="currentPoint.x" :cy="currentPoint.y" r="21" />
-          <circle v-if="traceCompleted" class="complete-ring" cx="320" cy="250" r="205" />
         </svg>
-        <p v-if="stalled" class="resume-message" role="status">반짝이는 곳부터 다시 봐요!</p>
+        <div
+          v-if="traceCompleted"
+          class="completion-wave"
+          role="status"
+          aria-label="글자를 끝까지 따라 읽었어요"
+          aria-hidden="false"
+        ></div>
       </div>
 
-      <aside class="speech-panel" :class="{ active: traceCompleted }">
-        <template v-if="!traceCompleted">
-          <span class="eye-icon" aria-hidden="true">◉</span>
-          <strong>글자를 따라가봐요</strong>
-        </template>
-        <template v-else>
-          <span class="speech-glyph" aria-hidden="true">{{ question.traceGlyph }}</span>
-          <strong>따라 말해봐요</strong>
-          <button v-if="speechState !== 'success'" class="mic-button" type="button" :disabled="speechState === 'listening'" @click="startSpeech">
-            <span aria-hidden="true">●</span>
-            {{ speechState === 'listening' ? '듣고 있어요' : '말하기' }}
-          </button>
-          <p v-if="speechMessage" class="speech-message" role="status">{{ speechMessage }}</p>
-        </template>
+      <aside class="trace-side">
+        <section class="listen-panel">
+          <span class="panel-label">소리 듣기</span>
+          <SoundButton
+            :text="pronunciationText"
+            :label="`${question.traceGlyph} 소리 듣기`"
+            :rate="0.72"
+            size="medium"
+          />
+        </section>
+
+        <section
+          class="speech-panel"
+          :class="`speech-panel--${speechState}`"
+          aria-live="polite"
+        >
+          <div
+            class="mic-state"
+            role="status"
+            :aria-label="speechStatusText"
+          >
+            <img :src="microphoneIcon" alt="" aria-hidden="true" />
+          </div>
+          <div class="speech-wave" :class="{ active: speechState === 'listening' }" aria-hidden="true">
+            <i v-for="index in 9" :key="index"></i>
+          </div>
+          <strong>{{ speechStatusText }}</strong>
+        </section>
       </aside>
     </div>
 
     <div class="action-bar">
-      <button v-if="speechState === 'success'" class="next-button" type="button" @click="submitTrace">다음 문제</button>
+      <button v-if="speechState === 'success'" class="next-button shared-next-source" type="button" @click="submitTrace">
+        다음 문제
+      </button>
     </div>
   </section>
 </template>

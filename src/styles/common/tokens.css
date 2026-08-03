@@ -53,9 +53,9 @@
   --learner-font-size-card-title: 32px;
   --learner-font-size-page-title: 48px;
   --learner-font-size-reading: 38px;
-  --learner-font-size-page-title-fluid: clamp(38px, 4vw, 60px);
-  --learner-font-size-card-title-fluid: clamp(26px, 2.5vw, 38px);
-  --learner-font-size-reading-fluid: clamp(30px, 3vw, 46px);
+  --learner-font-size-page-title-fluid: clamp(38px, 4cqw, 60px);
+  --learner-font-size-card-title-fluid: clamp(26px, 2.5cqw, 38px);
+  --learner-font-size-reading-fluid: clamp(30px, 3cqw, 46px);
   /** 공통 글자 단계
    * 아래 값만 바꾸면 같은 역할의 글자가 모든 화면에서 함께 변경됩니다.*/
   --learner-type-page-title: var(--learner-font-size-page-title-fluid);
@@ -64,7 +64,7 @@
   --learner-type-button: var(--learner-font-size-button);
   --learner-type-body: var(--learner-font-size-body);
   --learner-type-caption: var(--learner-font-size-caption);
-  --learner-type-reading: clamp(38px, min(3.55vw, 6vh), 58px);
+  --learner-type-reading: clamp(38px, min(3.55cqw, 6cqh), 58px);
   /*학습자 간격*/
   --learner-space-1: 4px;
   --learner-space-2: 8px;
@@ -114,6 +114,15 @@
   --learner-control-height-medium: 60px;
   --learner-control-height-large: 72px;
   --learner-touch-target: 52px;
+  /* Child-facing choice cards and listening control */
+  --learner-choice-card-letter-ratio: 1;
+  --learner-choice-card-word-ratio: 1.5;
+  --learner-choice-card-sentence-ratio: 2;
+  --learner-sound-control-width: clamp(118px, 9.5cqw, 148px);
+  --learner-sound-control-height: clamp(78px, 7.4cqw, 96px);
+  --learner-sound-control-background: #ff7968;
+  --learner-sound-control-background-hover: #ff6d5b;
+  --learner-sound-control-background-playing: #f45f54;
   /* 모달 */
   --learner-modal-backdrop: rgb(23 38 80 / 48%);
   --learner-modal-blur: 5px;
@@ -121,25 +130,30 @@
   --learner-modal-border: 4px solid rgb(255 255 255 / 90%);
   /* 일반 하위 화면 뒤로가기 */
   --learner-page-back-size: 56px;
-  --learner-page-back-inset: clamp(18px, 2vw, 30px);
+  --learner-page-back-inset: clamp(18px, 2cqw, 30px);
   --learner-page-back-background: #fff9e7;
   --learner-page-back-border: 2px solid #eadfbf;
   /* 상세 훈련 공통 레이아웃 */
   --learner-activity-panel-width: 1360px;
   --learner-activity-header-height: 118px;
-  --learner-activity-gap: clamp(12px, 1.5vmin, 22px);
-  --learner-activity-instruction-size: clamp(30px, 2.7vw, 44px);
+  --learner-activity-gap: clamp(12px, 1.5cqmin, 22px);
+  --learner-activity-instruction-size: clamp(30px, 2.7cqw, 44px);
   --learner-reading-line-height: 1.65;
   --learner-reading-paragraph-gap: 0.55em;
   --learner-reading-max-line: 24ch;
   /*학습자 레이아웃*/
-  /*F11 16:9 전체화면을 기준으로 높이와 너비가 함께 변하는 공통 프레임*/
-  --learner-header-height: clamp(122px, 10.4vw, 188px);
-  --learner-page-height: calc(100dvh - var(--learner-header-height));
+  /*F11 16:10 전체화면을 기준으로 높이와 너비가 함께 변하는 공통 프레임*/
+  --learner-header-height: clamp(122px, 10.4cqw, 188px);
+  --learner-page-height: calc(100cqh - var(--learner-header-height));
   --learner-content-width: 1440px;
   --learner-reading-width: 1080px;
-  --learner-safe-width: min(94vw, 1600px);
-  --learner-page-padding: clamp(16px, 2.4vmin, 48px);
+  --learner-safe-width: min(94cqw, 1600px);
+  --learner-page-padding: clamp(16px, 2.4cqmin, 48px);
+  /* 훈련·이야기·실력도전 선택 화면의 공통 콘텐츠 프레임 */
+  --learner-selection-frame-width: 1178px;
+  --learner-selection-frame-height: 722px;
+  /* 메인에서 진입하는 이야기 나라·글자 연습 블록 강조 배율 */
+  --learner-main-selection-scale: 1.25;
   /*학습자 애니메이션*/
   --learner-duration-fast: 160ms;
   --learner-duration-normal: 240ms;

@@ -72,7 +72,7 @@ describe('따라 읽기 녹음 재사용', () => {
       categoryId: 'fluency',
       title: '문장 따라 읽기',
       description: '',
-      activityType: 'read-aloud',
+      activityType: 'word-reading-grid',
       estimatedMinutes: 3,
       questions: [question],
     })
@@ -86,8 +86,7 @@ describe('따라 읽기 녹음 재사용', () => {
     enableMicrophone()
     const wrapper = mount(ReadAloudActivity, { props: { question } })
 
-    await wrapper.get('.mic-button').trigger('click')
-    await nextTick()
+    await vi.waitFor(() => expect(StubMediaRecorder.latest).not.toBeNull())
     StubMediaRecorder.latest?.stop()
     await nextTick()
 

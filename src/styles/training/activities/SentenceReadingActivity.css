@@ -30,7 +30,7 @@
   margin: 0;
   color: #223f7d;
   font-family: var(--learner-font-display);
-  font-size: clamp(28px,2.3vw,38px);
+  font-size: clamp(28px,2.3cqw,38px);
   font-weight: 900;
 }
 
@@ -50,9 +50,10 @@
   box-shadow: 0 5px 12px rgba(59,90,122,.1);
 }
 
-.reading-status span {
-  color: #73a2e8;
-  font-size: 14px;
+.reading-status img {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
 }
 
 .reading-status.retry {
@@ -77,7 +78,7 @@
   place-items: center;
   flex: 1;
   min-height: 0;
-  padding: clamp(28px,5vh,64px);
+  padding: clamp(28px,5cqh,64px);
   border: 5px solid #fff;
   border-radius: 31px;
   background: linear-gradient(145deg,#fffdf5,#fff9e8);
@@ -114,7 +115,7 @@
   z-index: 2;
   color: #292d3a;
   font-family: var(--learner-font-display);
-  font-size: clamp(44px,4.5vw,69px);
+  font-size: clamp(44px,4.5cqw,69px);
   font-weight: 900;
   letter-spacing: .025em;
   white-space: nowrap;
@@ -143,8 +144,9 @@
   position: absolute;
   z-index: 3;
   bottom: 7px;
-  color: #6ec462;
-  font-size: 12px;
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
 }
 
 .sentence-chunk.assist {
@@ -213,14 +215,10 @@
   box-shadow: 0 8px 18px rgba(50,81,155,.25);
 }
 
-.start-button span {
-  display: grid;
-  place-items: center;
-  width: 34px;
-  height: 34px;
-  border: 3px solid rgba(255,255,255,.82);
-  border-radius: 50%;
-  font-size: 14px;
+.start-button img {
+  width: 26px;
+  height: 26px;
+  object-fit: contain;
 }
 
 .next-button {
@@ -251,7 +249,7 @@
   }
 }
 
-@media (max-height:800px) {
+@container learner-canvas (max-height:800px) {
   .activity {
     gap: 10px;
     padding: 13px 22px 11px;
@@ -292,7 +290,7 @@
   }
 }
 
-@media (max-width:780px) {
+@container learner-canvas (max-width:780px) {
   .activity {
     padding: 14px;
   }
@@ -381,10 +379,10 @@
 }
 
 .multi .chunk-text {
-  font-size: clamp(32px,3.3vw,49px);
+  font-size: clamp(32px,3.3cqw,49px);
 }
 
-@media (max-height:800px) {
+@container learner-canvas (max-height:800px) {
   .multi .sentence-chunk {
     min-height: 68px;
     padding: 4px 11px 8px;
@@ -395,7 +393,7 @@
   }
 }
 
-@media (max-width:780px) {
+@container learner-canvas (max-width:780px) {
   .sentence-row {
     gap: 12px 8px;
   }

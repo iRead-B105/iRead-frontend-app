@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { ApiError } from '@/lib/api'
 
 const learnerState = vi.hoisted(() => ({
   studentId: '2001',
@@ -40,6 +41,31 @@ describe('useDailyCurriculum', () => {
   beforeEach(() => {
     learnerState.fetchCurrentCurriculum.mockReset()
     learnerState.studentId = '2001'
+    useDailyCurriculum().clearDailyCurriculum()
+  })
+
+  it('composable 생성만으로 인증 전 현재 커리큘럼을 조회하지 않는다', async () => {
+    learnerState.fetchCurrentCurriculum.mockResolvedValue(curriculum('180001', 'READY', 1))
+
+    useDailyCurriculum()
+    await Promise.resolve()
+
+    expect(learnerState.fetchCurrentCurriculum).not.toHaveBeenCalled()
+  })
+
+  it('최종 검수 전 현재 커리큘럼 없음은 오류가 아닌 대기 상태로 처리한다', async () => {
+    learnerState.fetchCurrentCurriculum.mockRejectedValue(new ApiError({
+      status: 404,
+      code: 'ACTIVE_CURRICULUM_NOT_FOUND',
+      message: '현재 진행 가능한 커리큘럼을 찾을 수 없습니다.',
+    }))
+    const dailyCurriculum = useDailyCurriculum()
+
+    await dailyCurriculum.loadCurrentCurriculum()
+
+    expect(dailyCurriculum.curriculumStatus.value).toBe('unavailable')
+    expect(dailyCurriculum.curriculumError.value).toBeNull()
+    expect(dailyCurriculum.curriculumItems).toHaveLength(0)
   })
 
   it('학습자가 바뀌면 이전 학습자의 완료 상태를 버리고 새 커리큘럼을 조회한다', async () => {
@@ -113,5 +139,30 @@ describe('useDailyCurriculum', () => {
     expect(dailyCurriculum.currentIndex.value).toBe(1)
     expect(dailyCurriculum.curriculumItems.map((item) => item.status))
       .toEqual(['COMPLETED', 'CURRENT'])
+  })
+
+  it('주기 갱신 중에는 현재 교육과정을 유지해서 준비 화면으로 깜빡이지 않는다', async () => {
+    learnerState.studentId = '2199'
+    let resolveRefresh!: (value: ReturnType<typeof curriculum>) => void
+    learnerState.fetchCurrentCurriculum
+      .mockResolvedValueOnce(curriculum('190099', 'READY', 1))
+      .mockImplementationOnce(() => new Promise((resolve) => {
+        resolveRefresh = resolve
+      }))
+
+    const dailyCurriculum = useDailyCurriculum()
+    await dailyCurriculum.loadCurrentCurriculum()
+
+    const refresh = dailyCurriculum.reloadCurrentCurriculum()
+    await Promise.resolve()
+
+    expect(dailyCurriculum.curriculumStatus.value).toBe('ready')
+    expect(dailyCurriculum.curriculumItems).toHaveLength(1)
+    expect(dailyCurriculum.curriculumItems[0]?.status).toBe('CURRENT')
+
+    resolveRefresh(curriculum('190099', 'COMPLETED', 2))
+    await refresh
+
+    expect(dailyCurriculum.curriculumStatus.value).toBe('completed')
   })
 })

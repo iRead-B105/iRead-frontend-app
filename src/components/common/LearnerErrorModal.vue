@@ -76,7 +76,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
   margin: 0;
   color: #354b78;
   font-family: inherit;
-  font-size: clamp(24px, 5vw, 34px);
+  font-size: clamp(24px, 5cqw, 34px);
   font-weight: 900;
   line-height: 1.25;
   overflow-wrap: anywhere;

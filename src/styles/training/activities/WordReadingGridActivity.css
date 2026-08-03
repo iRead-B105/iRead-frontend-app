@@ -30,7 +30,7 @@
   margin: 0;
   color: #223f7d;
   font-family: var(--learner-font-display);
-  font-size: clamp(28px,2.3vw,38px);
+  font-size: clamp(28px,2.3cqw,38px);
   font-weight: 900;
 }
 
@@ -51,8 +51,9 @@
 }
 
 .status-icon {
-  color: #73a2e8;
-  font-size: 14px;
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
 }
 
 .reading-status.retry {
@@ -83,6 +84,19 @@
   touch-action: none;
 }
 
+.word-grid--single {
+  grid-template-columns: 1fr;
+  grid-template-rows: 1fr;
+}
+
+.word-grid--single .word-card strong {
+  max-width: 92%;
+  text-align: center;
+  font-size: clamp(58px,6.2cqw,92px);
+  letter-spacing: .04em;
+  white-space: nowrap;
+}
+
 .word-card {
   position: relative;
   display: grid;
@@ -101,7 +115,7 @@
   z-index: 2;
   color: #292d3a;
   font-family: var(--learner-font-display);
-  font-size: clamp(48px,5vw,76px);
+  font-size: clamp(48px,5cqw,76px);
   font-weight: 900;
   letter-spacing: .08em;
 }
@@ -131,16 +145,9 @@
   right: 19px;
   top: 15px;
   z-index: 3;
-  display: grid;
-  place-items: center;
   width: 42px;
   height: 42px;
-  border-radius: 50%;
-  background: #70c363;
-  color: #fff;
-  font-family: var(--learner-font-display);
-  font-size: 27px;
-  font-weight: 900;
+  object-fit: contain;
 }
 
 .word-card.assist {
@@ -209,14 +216,23 @@
   box-shadow: 0 8px 18px rgba(50,81,155,.25);
 }
 
-.start-button span {
-  display: grid;
-  place-items: center;
-  width: 34px;
-  height: 34px;
-  border: 3px solid rgba(255,255,255,.82);
+.start-button img {
+  width: 26px;
+  height: 26px;
+  object-fit: contain;
+}
+
+.start-button--icon-only {
+  min-width: 92px;
+  width: 92px;
+  min-height: 92px;
+  padding: 0;
   border-radius: 50%;
-  font-size: 14px;
+}
+
+.start-button--icon-only img {
+  width: 46px;
+  height: 46px;
 }
 
 .next-button {
@@ -247,7 +263,7 @@
   }
 }
 
-@media (max-height:800px) {
+@container learner-canvas (max-height:800px) {
   .activity {
     padding: 12px 22px 10px;
   }
@@ -287,7 +303,7 @@
   }
 }
 
-@media (max-width:760px) {
+@container learner-canvas (max-width:760px) {
   .activity {
     padding: 14px;
   }

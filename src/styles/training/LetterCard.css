@@ -39,6 +39,22 @@
   object-fit: contain;
 }
 
+.letter-card--choice {
+  border: 0;
+  background: transparent;
+}
+
+.letter-glyph {
+  position: relative;
+  z-index: 1;
+  color: #34200d;
+  font-family: var(--learner-font-reading);
+  font-size: clamp(72px, 8cqw, 122px);
+  font-weight: var(--learner-font-weight-heavy);
+  line-height: 1;
+  text-shadow: 0 3px 0 rgb(255 255 255 / 74%);
+}
+
 .letter-card.is-selectable {
   cursor: pointer;
 }

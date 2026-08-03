@@ -8,18 +8,18 @@
   inset: 0;
   display: grid;
   place-items: center;
-  padding: clamp(12px, 3dvh, 28px) clamp(12px, 3dvw, 36px);
+  padding: clamp(12px, 3cqh, 28px) clamp(12px, 3cqw, 36px);
   background: var(--learner-modal-backdrop);
   backdrop-filter: blur(var(--learner-modal-blur));
 }
 
 .lesson-modal-panel {
-  width: min(94dvw, 720px);
-  max-height: min(92dvh, 820px);
+  width: min(94cqw, 720px);
+  max-height: min(92cqh, 820px);
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  padding: clamp(16px, 3dvh, 32px);
+  padding: clamp(16px, 3cqh, 32px);
   border: var(--learner-modal-border);
   border-radius: var(--learner-radius-panel);
   background: var(--learner-modal-background);
@@ -97,7 +97,7 @@
   box-shadow: var(--learner-shadow-focus);
 }
 
-.modal-close svg {
+.modal-close img {
   width: 22px;
   height: 22px;
 }

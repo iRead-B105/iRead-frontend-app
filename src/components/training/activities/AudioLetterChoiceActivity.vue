@@ -46,15 +46,21 @@ watch(
 </script>
 
 <template>
-  <section class="activity" :aria-label="question.instruction">
+  <section
+    class="activity"
+    :class="{ 'activity--first-sound': question.instruction.includes('첫소리') }"
+    :aria-label="question.instruction"
+  >
     <h1>{{ question.instruction }}</h1>
 
     <div class="learning-area">
-      <SoundButton
-        :text="question.audioText ?? ''"
-        size="large"
-        variant="primary"
-      />
+      <div class="listen-panel">
+        <SoundButton
+          :text="question.audioText ?? ''"
+          size="large"
+          variant="primary"
+        />
+      </div>
 
       <div class="choices" aria-label="글자 선택지">
         <LetterCard
@@ -66,15 +72,16 @@ watch(
           :class="{ 'answer-hint': showAnswerHint(choice) }"
           :selectable="!isCorrect"
           size="large"
+          surface="choice"
           @select="choose(choice)"
         />
       </div>
     </div>
 
     <div class="action-row">
-      <p v-if="session.progressState.isCurrentCorrect === false" role="status">한 번 더 들어봐요.</p>
+      <p v-if="session.progressState.isCurrentCorrect === false" role="status">한 번 더 들어봐!</p>
       <span v-else></span>
-      <button v-if="isCorrect" class="next-button" type="button" @click="$emit('next')">
+      <button v-if="isCorrect" class="next-button shared-next-source" type="button" @click="$emit('next')">
         다음 문제
       </button>
     </div>

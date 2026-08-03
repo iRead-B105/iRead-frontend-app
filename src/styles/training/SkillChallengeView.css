@@ -4,24 +4,28 @@
   width: 100%;
   height: 100%;
   min-height: 0;
+  display: grid;
+  place-items: center;
   overflow: hidden;
-  padding: clamp(10px, 1.5vh, 20px) var(--learner-page-padding);
+  padding: clamp(10px, 1.5cqh, 20px) var(--learner-page-padding);
   background: #62bff2 url('../../assets/backgrounds/challenge-section-background.png') center / cover no-repeat;
 }
 
 .challenge-panel {
-  width: min(95%, 1340px);
-  height: min(95%, 760px);
+  width: min(95%, var(--learner-selection-frame-width));
+  height: min(95%, var(--learner-selection-frame-height));
   min-height: 0;
   margin: 0 auto;
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  padding: clamp(24px, 3vh, 40px) clamp(28px, 4vw, 56px);
+  padding: clamp(24px, 3cqh, 40px) clamp(28px, 4cqw, 56px);
   border: var(--learner-frame-border);
   border-radius: var(--learner-radius-panel);
   background: rgb(255 249 231 / 94%);
   box-shadow: var(--learner-shadow-panel);
+  transform: scale(var(--learner-main-selection-scale));
+  transform-origin: center;
 }
 
 .challenge-heading {
@@ -36,14 +40,14 @@
   border-radius: var(--learner-radius-pill);
   background: var(--learner-flow-accent);
   color: #fff;
-  font-size: clamp(17px, 1.35vw, 22px);
+  font-size: clamp(17px, 1.35cqw, 22px);
   font-weight: var(--learner-font-weight-heavy);
 }
 
 .challenge-heading h1 {
   margin: 10px 0 3px;
   color: var(--learner-color-text);
-  font-size: clamp(34px, 3.4vw, 54px);
+  font-size: clamp(34px, 3.4cqw, 54px);
   font-weight: var(--learner-font-weight-heavy);
   line-height: 1.12;
   letter-spacing: -.04em;
@@ -52,7 +56,7 @@
 .challenge-heading p {
   margin: 0;
   color: var(--learner-color-text-soft);
-  font-size: clamp(17px, 1.4vw, 22px);
+  font-size: clamp(17px, 1.4cqw, 22px);
   font-weight: var(--learner-font-weight-bold);
 }
 
@@ -62,8 +66,8 @@
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   align-items: stretch;
-  gap: clamp(18px, 2vw, 28px);
-  margin-top: clamp(20px, 3vh, 34px);
+  gap: clamp(18px, 2cqw, 28px);
+  margin-top: clamp(20px, 3cqh, 34px);
 }
 
 .challenge-card {
@@ -74,7 +78,7 @@
   display: grid;
   grid-template-rows: minmax(0, 1fr) auto auto;
   justify-items: center;
-  padding: clamp(18px, 2vw, 28px);
+  padding: clamp(18px, 2cqw, 28px);
   border: 3px solid color-mix(in srgb, var(--learner-flow-accent) 38%, #fff);
   border-radius: var(--learner-radius-selection-card);
   background: var(--learner-card-background);
@@ -101,7 +105,7 @@
 
 .challenge-card__illustration {
   width: min(78%, 220px);
-  height: min(24vh, 230px);
+  height: min(24cqh, 230px);
   min-height: 120px;
   align-self: center;
   object-fit: contain;
@@ -116,7 +120,7 @@
 
 .challenge-card__content strong {
   color: var(--learner-color-text);
-  font-size: clamp(28px, 2.35vw, 38px);
+  font-size: clamp(28px, 2.35cqw, 38px);
   font-weight: var(--learner-font-weight-heavy);
   line-height: 1.1;
 }
@@ -124,7 +128,7 @@
 .challenge-card__content small {
   margin-top: 6px;
   color: var(--learner-color-text-soft);
-  font-size: clamp(17px, 1.3vw, 21px);
+  font-size: clamp(17px, 1.3cqw, 21px);
   font-weight: var(--learner-font-weight-bold);
 }
 
@@ -185,31 +189,24 @@
 
 .challenge-card__footer b {
   color: var(--learner-flow-accent);
-  font-size: clamp(16px, 1.2vw, 20px);
+  font-size: clamp(16px, 1.2cqw, 20px);
 }
 
-.challenge-card__footer i {
+.challenge-card__footer img {
   width: 42px;
   height: 42px;
-  display: grid;
-  place-items: center;
-  border-radius: var(--learner-radius-control);
-  background: var(--learner-flow-accent);
-  color: #fff;
-  font-size: 26px;
-  font-style: normal;
-  font-weight: var(--learner-font-weight-heavy);
+  object-fit: contain;
 }
 
 .challenge-note {
-  margin: clamp(16px, 2vh, 24px) 0 0;
+  margin: clamp(16px, 2cqh, 24px) 0 0;
   color: var(--learner-color-text-soft);
   text-align: center;
-  font-size: clamp(16px, 1.2vw, 19px);
+  font-size: clamp(16px, 1.2cqw, 19px);
   font-weight: var(--learner-font-weight-bold);
 }
 
-@media (max-width: 900px) {
+@container learner-canvas (max-width: 900px) {
   .skill-challenge {
     overflow: auto;
   }
@@ -229,7 +226,7 @@
   }
 }
 
-@media (max-height: 800px) and (min-width: 901px) {
+@container learner-canvas (max-height: 800px) and (min-width: 901px) {
   .challenge-panel {
     padding-block: 18px;
   }

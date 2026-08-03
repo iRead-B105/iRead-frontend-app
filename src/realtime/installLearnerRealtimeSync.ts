@@ -28,7 +28,11 @@ export function installLearnerRealtimeSync(
   let lastVersion = 0
 
   const refreshCurriculum = (): Promise<void> => {
-    if (!session.authenticated || document.visibilityState !== 'visible') {
+    if (
+      !session.authenticated
+      || document.visibilityState !== 'visible'
+      || !CURRICULUM_ROUTES.has(String(router.currentRoute.value.name))
+    ) {
       return Promise.resolve()
     }
     if (refreshPromise) return refreshPromise
@@ -78,7 +82,10 @@ export function installLearnerRealtimeSync(
       client?.stop()
       client = null
       lastVersion = 0
-      if (!accessToken) return
+      if (!accessToken) {
+        dailyCurriculum.clearDailyCurriculum()
+        return
+      }
       client = new RealtimeClient({
         endpoint: '/api/app/realtime/events',
         onEvent: handleEvent,

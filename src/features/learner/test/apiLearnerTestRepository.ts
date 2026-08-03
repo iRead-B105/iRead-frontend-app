@@ -14,10 +14,10 @@ interface ChallengePlanDto extends Omit<
   LearnerSkillChallengePlan,
   'testCurriculumId' | 'nextTestId' | 'tracks'
 > {
-  readonly testCurriculumId: number
-  readonly nextTestId: number | null
+  readonly testCurriculumId: string
+  readonly nextTestId: string | null
   readonly tracks: readonly (Omit<LearnerSkillChallengePlan['tracks'][number], 'nextTestId'> & {
-    readonly nextTestId: number | null
+    readonly nextTestId: string | null
   })[]
 }
 
@@ -104,14 +104,14 @@ export class ApiLearnerTestRepository implements LearnerTestRepository {
   async start(studentId: string, testId: string): Promise<void> {
     await learnerApiClient.request(`${testPath(studentId)}/start`, {
       method: 'POST',
-      body: jsonBody({ testId: Number(testId) }),
+      body: jsonBody({ testId }),
     })
   }
 
   async reset(studentId: string, testId: string): Promise<void> {
     await learnerApiClient.request(`${testPath(studentId)}/session-reset`, {
       method: 'POST',
-      body: jsonBody({ testId: Number(testId) }),
+      body: jsonBody({ testId }),
     })
   }
 
@@ -125,7 +125,7 @@ export class ApiLearnerTestRepository implements LearnerTestRepository {
       `${testPath(studentId)}/questions/${questionNumber}/responses`,
       {
         method: 'POST',
-        body: jsonBody({ testId: Number(testId), submission: input }),
+        body: jsonBody({ testId, submission: input }),
       },
     )
     return {
@@ -170,7 +170,7 @@ export class ApiLearnerTestRepository implements LearnerTestRepository {
   async complete(studentId: string, testId: string): Promise<void> {
     await learnerApiClient.request(`${testPath(studentId)}/complete`, {
       method: 'POST',
-      body: jsonBody({ testId: Number(testId) }),
+      body: jsonBody({ testId }),
     })
   }
 }

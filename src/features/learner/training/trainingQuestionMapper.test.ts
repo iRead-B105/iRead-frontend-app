@@ -25,7 +25,13 @@ describe('backend training question mapper', () => {
     expect(mapped.responseType).toBe('TRACE')
     expect(mapped.requiredInputs).toEqual(['VOICE', 'GAZE'])
     expect(mapped.question.traceGlyph).toBe('ㅏ')
-    expect(mapped.question.traceStrokes?.[0]?.length).toBeGreaterThanOrEqual(2)
+    expect(mapped.question.traceStrokes).toHaveLength(2)
+    expect(mapped.question.traceStrokes?.[0]?.at(-1)?.x).toBe(
+      mapped.question.traceStrokes?.[0]?.[0]?.x,
+    )
+    expect(mapped.question.traceStrokes?.[1]?.at(-1)?.x).toBeGreaterThan(
+      mapped.question.traceStrokes?.[1]?.[0]?.x ?? Number.POSITIVE_INFINITY,
+    )
   })
 
   it('SYLLABLE_BLEND 문항을 순서 응답 화면으로 변환한다', () => {
@@ -75,7 +81,7 @@ describe('backend training question mapper', () => {
       },
     })
 
-    expect(mapped.activityType).toBe('listen-and-select')
+    expect(mapped.activityType).toBe('sentence-choice')
     expect(mapped.question.targetImage)
       .toBe('http://localhost:8000/api/v1/images/mock/example.svg')
     expect(mapped.expectedText).toBe('비가 와요.')

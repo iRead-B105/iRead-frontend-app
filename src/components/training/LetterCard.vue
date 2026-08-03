@@ -1,8 +1,4 @@
 <script setup lang="ts">
-// 한글 자모 카드 컴포넌트
-// 기존 한글 카드 에셋(src/assets/cards/hangul)을 사용합니다.
-// 해당 자모의 카드가 없으면 리소스 추가 필요 자리로 표시합니다.
-
 import { computed } from 'vue'
 import { getHangulCardUrl } from '@/data/hangulCards'
 import ResourceRequired from './ResourceRequired.vue'
@@ -14,12 +10,14 @@ const props = withDefaults(
     state?: 'default' | 'selected' | 'correct' | 'wrong' | 'hint' | 'disabled'
     selectable?: boolean
     size?: 'small' | 'medium' | 'large'
+    surface?: 'standard' | 'choice'
   }>(),
   {
     type: 'consonant',
     state: 'default',
     selectable: false,
     size: 'medium',
+    surface: 'standard',
   },
 )
 
@@ -27,6 +25,7 @@ const emit = defineEmits<{ select: [jamo: string] }>()
 
 const cardUrl = computed(() => getHangulCardUrl(props.jamo))
 const hasAsset = computed(() => cardUrl.value !== null)
+const typeLabel = computed(() => (props.type === 'consonant' ? '자음' : '모음'))
 
 const handleClick = () => {
   if (!props.selectable || props.state === 'disabled' || props.state === 'correct') return
@@ -45,16 +44,32 @@ const handleKeydown = (event: KeyboardEvent) => {
 <template>
   <div
     class="letter-card"
-    :class="[`letter-card--${size}`, `letter-card--${state}`, { 'is-selectable': selectable }]"
+    :class="[
+      `letter-card--${size}`,
+      `letter-card--${state}`,
+      `letter-card--${surface}`,
+      { 'is-selectable': selectable },
+    ]"
     :role="selectable ? 'button' : 'img'"
     :tabindex="selectable && state !== 'disabled' ? 0 : undefined"
-    :aria-label="`${type === 'consonant' ? '자음' : '모음'} ${jamo}`"
+    :aria-label="`${typeLabel} ${jamo}`"
     :aria-pressed="selectable && state === 'selected' ? true : undefined"
     @click="handleClick"
     @keydown="handleKeydown"
   >
-    <ResourceRequired v-if="!hasAsset" :label="`${jamo} ${type === 'consonant' ? '자음' : '모음'} 카드 PNG`" size="small" />
-    <img v-else class="letter-image" :src="cardUrl ?? ''" :alt="`${type === 'consonant' ? '자음' : '모음'} ${jamo}`" draggable="false" />
+    <span v-if="surface === 'choice'" class="letter-glyph" aria-hidden="true">{{ jamo }}</span>
+    <ResourceRequired
+      v-else-if="!hasAsset"
+      :label="`${jamo} ${typeLabel} 카드 PNG`"
+      size="small"
+    />
+    <img
+      v-else
+      class="letter-image"
+      :src="cardUrl ?? ''"
+      :alt="`${typeLabel} ${jamo}`"
+      draggable="false"
+    />
   </div>
 </template>
 

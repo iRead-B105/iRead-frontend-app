@@ -1,68 +1,57 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import type { TrainingChoice, TrainingQuestion } from '@/types/training'
-import { useAudioPlayer } from '@/composables/useAudioPlayer'
 import { useTrainingSession } from '@/composables/useTrainingSession'
 import ResourceRequired from '@/components/training/ResourceRequired.vue'
+import dragHandleIcon from '@/assets/icons/drag-handle.svg'
 
 const props = defineProps<{ question: TrainingQuestion }>()
 defineEmits<{ next: [] }>()
 
 const session = useTrainingSession()
-const { replay, stop: stopAudio } = useAudioPlayer()
 const targetSlot = ref<HTMLElement | null>(null)
 const choices = computed<TrainingChoice[]>(() => props.question.choices ?? [])
 const placedChoice = ref<TrainingChoice | null>(null)
 const attempts = ref(0)
 const wrongChoiceId = ref<string | null>(null)
 const statusMessage = ref('')
-const readingCorrect = ref(false)
 const isComplete = ref(false)
 const draggingChoiceId = ref<string | null>(null)
 const dragPoint = ref({ x: 0, y: 0 })
 const overTarget = ref(false)
 let wrongTimer: ReturnType<typeof setTimeout> | null = null
-let disposed = false
 
-const showHint = computed(() => attempts.value >= 3 && !placedChoice.value)
+const showHint = computed(() => attempts.value >= 2 && !placedChoice.value)
 
 const pointIsOverTarget = (clientX: number, clientY: number) => {
   const rect = targetSlot.value?.getBoundingClientRect()
   return Boolean(rect && clientX >= rect.left && clientX <= rect.right && clientY >= rect.top && clientY <= rect.bottom)
 }
 
-const finishCorrectChoice = async (choice: TrainingChoice) => {
+const finishCorrectChoice = (choice: TrainingChoice) => {
   placedChoice.value = choice
-  statusMessage.value = '잘 찾았어요!'
-  readingCorrect.value = true
-  await Promise.race([
-    replay(choice.text ?? props.question.targetText ?? '', 0.78),
-    new Promise<void>((resolve) => setTimeout(resolve, 4800)),
-  ])
-  stopAudio()
-  if (disposed) return
-  readingCorrect.value = false
+  statusMessage.value = '잘 찾았어!'
   isComplete.value = true
   session.markRecordingComplete({ isMock: false, audioUrl: null })
 }
 
 const evaluateChoice = (choiceId: string) => {
-  if (placedChoice.value || readingCorrect.value) return
+  if (placedChoice.value) return
   const choice = choices.value.find((item) => item.id === choiceId)
   if (!choice) return
   if (choice.id === props.question.answer) {
-    void finishCorrectChoice(choice)
+    finishCorrectChoice(choice)
     return
   }
   attempts.value += 1
   wrongChoiceId.value = choice.id
-  statusMessage.value = '한 번 더 해봐요'
+  statusMessage.value = '한 번 더 해봐!'
   if (wrongTimer) clearTimeout(wrongTimer)
   wrongTimer = setTimeout(() => { wrongChoiceId.value = null }, 650)
 }
 
 const startPointerDrag = (event: PointerEvent, choice: TrainingChoice) => {
-  if (placedChoice.value || readingCorrect.value || event.button !== 0) return
+  if (placedChoice.value || event.button !== 0) return
   event.preventDefault()
   draggingChoiceId.value = choice.id
   dragPoint.value = { x: event.clientX, y: event.clientY }
@@ -92,58 +81,58 @@ onMounted(() => {
   window.addEventListener('pointercancel', cancelPointerDrag)
 })
 onBeforeUnmount(() => {
-  disposed = true
   window.removeEventListener('pointermove', onPointerMove)
   window.removeEventListener('pointerup', finishPointerDrag)
   window.removeEventListener('pointercancel', cancelPointerDrag)
   if (wrongTimer) clearTimeout(wrongTimer)
-  stopAudio()
 })
 </script>
 
 <template>
   <section class="activity" :aria-label="question.instruction">
     <header class="activity-heading">
-      <h1>{{ placedChoice ? '그림과 문장이 연결됐어요!' : '그림에 맞는 문장을 연결해봐요' }}</h1>
+      <h1>{{ placedChoice ? '그림과 문장이 연결됐어!' : '그림에 맞는 문장을 연결해봐!' }}</h1>
       <p v-if="statusMessage" class="status-message" :class="{ success: placedChoice }" role="status" aria-live="polite">{{ statusMessage }}</p>
     </header>
 
-    <div class="picture-panel">
-      <img
-        v-if="question.targetImage"
-        class="picture"
-        :src="question.targetImage"
-        :alt="question.targetImageLabel || '문제 그림'"
-      />
-      <ResourceRequired
-        v-else
-        class="picture"
-        :label="question.targetImageLabel || '문제 그림'"
-      />
-      <div
-        ref="targetSlot"
-        class="sentence-target"
-        :class="{ over: overTarget, filled: placedChoice, hint: showHint }"
-      >
-        <span v-if="placedChoice">{{ placedChoice.text }}</span>
+    <div class="choice-layout">
+      <div class="picture-panel">
+        <img
+          v-if="question.targetImage"
+          class="picture"
+          :src="question.targetImage"
+          :alt="question.targetImageLabel || '문제 그림'"
+        />
+        <ResourceRequired
+          v-else
+          class="picture"
+          :label="question.targetImageLabel || '문제 그림'"
+        />
+        <div
+          ref="targetSlot"
+          class="sentence-target"
+          :class="{ over: overTarget, filled: placedChoice, hint: showHint }"
+        >
+          <span v-if="placedChoice">{{ placedChoice.text }}</span>
+        </div>
       </div>
-    </div>
 
-    <div class="choices" :class="{ locked: placedChoice }" aria-label="문장 카드">
-      <article
-        v-for="choice in choices"
-        :key="choice.id"
-        class="sentence-card"
-        :class="{
-          wrong: wrongChoiceId === choice.id,
-          hint: showHint && choice.id === question.answer,
-          used: placedChoice?.id === choice.id,
-        }"
-        @pointerdown="startPointerDrag($event, choice)"
-      >
-        <span class="grip" aria-hidden="true">⠿</span>
-        <strong>{{ choice.text }}</strong>
-      </article>
+      <div class="choices" :class="{ locked: placedChoice }" aria-label="문장 카드">
+        <article
+          v-for="choice in choices"
+          :key="choice.id"
+          class="sentence-card"
+          :class="{
+            wrong: wrongChoiceId === choice.id,
+            hint: showHint && choice.id === question.answer,
+            used: placedChoice?.id === choice.id,
+          }"
+          @pointerdown="startPointerDrag($event, choice)"
+        >
+          <img class="grip" :src="dragHandleIcon" alt="" aria-hidden="true" />
+          <strong>{{ choice.text }}</strong>
+        </article>
+      </div>
     </div>
 
     <Teleport to="body">
@@ -156,8 +145,7 @@ onBeforeUnmount(() => {
     </Teleport>
 
     <footer class="action-bar">
-      <p v-if="readingCorrect" class="reading-state" role="status"><span aria-hidden="true">●</span> 문장을 읽고 있어요</p>
-      <button v-else-if="isComplete" class="next-button" type="button" @click="$emit('next')">다음</button>
+      <button v-if="isComplete" class="next-button shared-next-source" type="button" @click="$emit('next')">다음</button>
     </footer>
   </section>
 </template>

@@ -25,88 +25,156 @@
   position: absolute;
   z-index: 10;
   top: calc(var(--learner-header-height) + var(--learner-page-back-inset));
-  left: max(var(--learner-page-back-inset), calc((100% - min(92vw, var(--learner-activity-panel-width))) / 2));
+  left: max(var(--learner-page-back-inset), calc((100% - min(92cqw, var(--learner-activity-panel-width))) / 2));
 }
 
 .playing {
-  flex: 1;
+  /* 커리큘럼 선택 화면과 동일한 기준 프레임과 강조 배율을 사용한다. */
+  flex: 0 0 auto;
   min-height: 0;
-  width: min(92vw, var(--learner-activity-panel-width));
-  margin: clamp(8px, 1.2vh, 18px) auto clamp(10px, 1.8vh, 24px);
+  width: min(95%, var(--learner-selection-frame-width));
+  height: min(95%, var(--learner-selection-frame-height));
+  margin: auto;
   overflow: hidden;
   display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr);
-  gap: var(--learner-activity-gap);
-  padding: clamp(14px, 1.8vmin, 24px);
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: clamp(4px, .8cqh, 10px);
+  padding: clamp(14px, 1.8cqmin, 24px);
   border: var(--learner-frame-border);
   border-radius: var(--learner-radius-panel);
-  background: var(--learner-frame-background);
+  background-color: #fffaf2;
+  background-image: url('../../assets/backgrounds/curriculum-background.png');
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
   box-shadow: var(--learner-shadow-panel);
+  transform: scale(var(--learner-main-selection-scale));
+  transform-origin: center;
 }
 
 .lesson-topbar--inside {
-  min-height: var(--learner-page-back-size);
+  min-height: clamp(154px, 17cqh, 184px);
   display: grid;
-  grid-template-columns: var(--learner-page-back-size) minmax(0, 1fr) var(--learner-page-back-size);
+  grid-template-columns: clamp(138px, 10.5cqw, 176px) minmax(0, 1fr) clamp(138px, 10.5cqw, 176px);
   align-items: center;
   gap: var(--learner-space-4);
 }
 
-.lesson-topbar-spacer {
-  width: var(--learner-page-back-size);
-  height: 1px;
+.lesson-topbar--inside > .learning-back-button {
+  justify-self: start;
+  margin-left: clamp(8px, 1.35cqw, 22px);
+}
+
+.lesson-topbar--inside > .learning-next-button {
+  justify-self: end;
+  margin-right: clamp(8px, 1.35cqw, 22px);
+}
+
+.question-scroll :deep(.shared-next-source) {
+  display: none !important;
+}
+
+.lesson-progress-board {
+  position: relative;
+  justify-self: center;
+  width: min(100%, 850px);
+  aspect-ratio: 1889 / 406;
+  color: var(--learner-color-text);
+}
+
+.lesson-progress-board-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.lesson-progress-board-content {
+  position: absolute;
+  inset: 10% 8% 8% 18%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(2px, .35cqh, 5px);
+}
+
+.lesson-progress-copy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(2px, .35cqh, 5px);
 }
 
 .topbar-progress {
   justify-self: center;
-  min-width: clamp(150px, 14vw, 210px);
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  gap: 7px;
-  padding: 8px 18px;
-  border: 2px solid #eadfbf;
-  border-radius: var(--learner-radius-pill);
-  background: rgb(255 255 255 / 82%);
-  box-shadow: var(--learner-shadow-small);
-  color: var(--learner-color-text);
+  justify-content: center;
+  gap: clamp(10px, 1.2cqw, 18px);
 }
 
 .topbar-progress strong {
-  font-size: clamp(18px, 1.6vw, 24px);
+  font-size: clamp(22px, 1.8cqw, 30px);
   font-weight: var(--learner-font-weight-heavy);
   line-height: 1;
+  white-space: nowrap;
 }
 
 .topbar-progress-dots {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: clamp(7px, .8cqw, 12px);
 }
 
 .prog-dot {
-  width: 8px;
-  height: 8px;
+  width: clamp(11px, 1cqw, 15px);
+  height: clamp(11px, 1cqw, 15px);
   border-radius: 50%;
-  background: #ded8c8;
+  border: 2px solid #e2ddcf;
+  background: #e8e3d7;
   transition:
     background var(--learner-duration-fast),
     transform var(--learner-duration-fast);
 }
 
 .prog-dot.active {
-  background: var(--learner-flow-accent);
-  transform: scale(1.12);
+  border-color: #f5a21a;
+  background: #ffc02e;
+}
+
+.prog-dot.current {
+  border-color: #e97600;
+  background: #ff8a00;
+  transform: scale(1.18);
 }
 
 .lesson-instruction {
-  max-width: 24ch;
+  max-width: none;
   justify-self: center;
-  padding-inline: var(--learner-space-4);
+  margin: 0;
+  padding: 0 var(--learner-space-4);
+  color: #102b60;
+  font-size: clamp(31px, 3cqw, 49px);
+  line-height: 1.05;
+  letter-spacing: -.035em;
+  white-space: nowrap;
+  text-shadow: 0 2px 0 rgb(255 255 255 / 94%);
+}
+
+.playing--first-sound {
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: clamp(2px, .5cqh, 7px);
 }
 
 .question-scroll {
+  position: relative;
   min-height: 0;
   overflow: auto;
   display: flex;
@@ -130,11 +198,305 @@
   width: 100%;
   min-height: 100%;
   margin: 0;
-  padding: clamp(8px, 1.2vmin, 18px);
+  padding: clamp(8px, 1.2cqmin, 18px);
   border: 0 !important;
   background: transparent !important;
   background-image: none !important;
   box-shadow: none !important;
+}
+
+/* 공통 학습 레이아웃 4종
+ * 기준 화면: GazeTraceActivity의 1180px 작업대와 1fr + 190~230px 기능 패널 */
+.question-scroll {
+  --activity-shell-width: 1180px;
+  --activity-shell-padding-block: 12px;
+  --activity-shell-padding-inline: 18px;
+  --activity-shell-gap: 20px;
+  --activity-side-width: clamp(185px, 19cqw, 230px);
+  --activity-panel-radius: 28px;
+  --activity-panel-border: 2px solid rgb(224 217 205 / 78%);
+  --activity-panel-background: #fff;
+  --activity-panel-shadow: 0 8px 20px rgb(70 63 50 / 9%);
+}
+
+.question-scroll[class*="activity-layout--"] :deep(.activity),
+.question-scroll[class*="activity-layout--"] :deep(.battle) {
+  position: relative;
+  width: 100% !important;
+  max-width: var(--activity-shell-width) !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  max-height: 100% !important;
+  margin: 0 auto !important;
+  padding:
+    var(--activity-shell-padding-block)
+    var(--activity-shell-padding-inline) !important;
+  gap: 0 !important;
+  overflow: hidden !important;
+}
+
+.question-scroll[class*="activity-layout--"] :deep(.activity-heading) {
+  display: none !important;
+}
+
+/* 1. 획순을 따라 보고 말하기 */
+.activity-layout--trace-speak :deep(.trace-layout) {
+  grid-template-columns: minmax(0, 1fr) var(--activity-side-width) !important;
+  gap: var(--activity-shell-gap) !important;
+}
+
+.activity-layout--trace-speak :deep(.trace-side) {
+  gap: var(--activity-shell-gap) !important;
+}
+
+/* 2. 그림·소리를 보고 세 카드 중 고르기 */
+.activity-layout--choice :deep(.learning-area),
+.activity-layout--choice :deep(.activity-main),
+.activity-layout--choice :deep(.choice-layout) {
+  display: grid !important;
+  grid-template-columns: var(--activity-side-width) minmax(0, 1fr) !important;
+  grid-template-rows: minmax(0, 1fr) !important;
+  align-items: stretch !important;
+  gap: var(--activity-shell-gap) !important;
+  flex: 1 !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+}
+
+.activity-layout--choice :deep(.activity--first-sound .learning-area) {
+  grid-template-columns: var(--activity-side-width) minmax(0, 1fr) !important;
+  grid-template-rows: minmax(0, 1fr) !important;
+}
+
+.activity-layout--choice :deep(.target-area),
+.activity-layout--choice :deep(.listen-panel),
+.activity-layout--choice :deep(.picture-panel) {
+  width: 100% !important;
+  height: 100% !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  border: var(--activity-panel-border) !important;
+  border-radius: var(--activity-panel-radius) !important;
+  background: var(--activity-panel-background) !important;
+  box-shadow: var(--activity-panel-shadow) !important;
+}
+
+.activity-layout--choice :deep(.listen-panel) {
+  display: grid !important;
+  place-items: center !important;
+  padding: clamp(14px, 1.8cqmin, 24px) !important;
+}
+
+.activity-layout--choice :deep(.listen-panel > .sound-button) {
+  width: var(--learner-sound-control-width) !important;
+  min-width: var(--learner-sound-control-width) !important;
+  max-width: var(--learner-sound-control-width) !important;
+  height: var(--learner-sound-control-height) !important;
+  min-height: var(--learner-sound-control-height) !important;
+}
+
+.activity-layout--choice :deep(.choices),
+.activity-layout--choice :deep(.choice-panel),
+.activity-layout--choice :deep(.sentence-target) {
+  min-width: 0 !important;
+  min-height: 0 !important;
+  border: var(--activity-panel-border) !important;
+  border-radius: var(--activity-panel-radius) !important;
+  background: var(--activity-panel-background) !important;
+  box-shadow: var(--activity-panel-shadow) !important;
+}
+
+.activity-layout--choice :deep(.choices) {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  align-items: center !important;
+  justify-items: center !important;
+  gap: clamp(16px, 2cqw, 28px) !important;
+  width: 100% !important;
+  height: 100% !important;
+  padding: clamp(18px, 2.2cqmin, 30px) !important;
+}
+
+.activity-layout--choice :deep(.activity--first-sound .choices) {
+  align-self: stretch !important;
+  min-height: 0 !important;
+  background: #fff !important;
+}
+
+.activity-layout--choice :deep(.word-choice),
+.activity-layout--choice :deep(.text-choice),
+.activity-layout--choice :deep(.choices .letter-card) {
+  width: min(100%, 220px) !important;
+  height: clamp(180px, 25cqh, 260px) !important;
+  max-height: 100% !important;
+}
+
+/* 3. 카드·퍼즐을 조립하거나 제거하기 */
+.activity-layout--manipulation :deep(.learning-area),
+.activity-layout--manipulation :deep(.task-row) {
+  display: grid !important;
+  grid-template-columns: var(--activity-side-width) minmax(0, 1fr) !important;
+  align-items: stretch !important;
+  gap: var(--activity-shell-gap) !important;
+  flex: 1 !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+}
+
+.activity-layout--manipulation :deep(.play-area),
+.activity-layout--manipulation :deep(.activity-main:has(.function-panel)) {
+  grid-template-columns: minmax(0, 1fr) var(--activity-side-width) !important;
+  gap: var(--activity-shell-gap) !important;
+}
+
+.activity-layout--manipulation :deep(.build-panel),
+.activity-layout--manipulation :deep(.manipulation-panel),
+.activity-layout--manipulation :deep(.puzzle-panel),
+.activity-layout--manipulation :deep(.sentence-card),
+.activity-layout--manipulation :deep(.slots) {
+  min-width: 0 !important;
+  min-height: 0 !important;
+  border: var(--activity-panel-border) !important;
+  border-radius: var(--activity-panel-radius) !important;
+  background: var(--activity-panel-background) !important;
+  box-shadow: var(--activity-panel-shadow) !important;
+}
+
+.activity-layout--manipulation :deep(.function-panel) {
+  grid-template-rows: minmax(0, 1fr) minmax(0, 1fr) !important;
+  gap: var(--activity-shell-gap) !important;
+}
+
+.activity-layout--manipulation :deep(.learning-area > .sound-button),
+.activity-layout--manipulation :deep(.task-row > .sound-button),
+.activity-layout--manipulation :deep(.sound-panel),
+.activity-layout--manipulation :deep(.sound-control-card),
+.activity-layout--manipulation :deep(.complete-button) {
+  min-width: 0 !important;
+  min-height: 0 !important;
+  border-radius: 25px !important;
+}
+
+.activity-layout--manipulation :deep(.action-row),
+.activity-layout--manipulation :deep(.action-bar) {
+  flex: 0 0 clamp(52px, 7cqh, 68px);
+  min-height: 0 !important;
+  margin: 0 !important;
+}
+
+/* 4. 완성된 낱말·문장을 읽고 말하기 */
+.activity-layout--reading-speak :deep(.activity-main) {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) var(--activity-side-width) !important;
+  grid-template-areas: "sentence side" !important;
+  align-items: stretch !important;
+  gap: var(--activity-shell-gap) !important;
+  flex: 1 !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+}
+
+.activity-layout--reading-speak :deep(.reading-layout) {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) var(--activity-side-width) !important;
+  align-items: stretch !important;
+  gap: var(--activity-shell-gap) !important;
+  flex: 1 !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+}
+
+.activity-layout--reading-speak :deep(.reading-side) {
+  display: grid !important;
+  grid-template-rows: minmax(0, 1fr) minmax(0, 1fr) !important;
+  gap: var(--activity-shell-gap) !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+}
+
+.activity-layout--reading-speak :deep(.activity-main > .reading-side) {
+  grid-area: side;
+}
+
+.activity-layout--reading-speak :deep(.reading-layout > .reading-side) {
+  grid-column: 2;
+}
+
+.activity-layout--reading-speak :deep(.reading-side > .listen-panel) {
+  display: grid !important;
+  place-items: center !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  padding: clamp(12px, 1.5cqmin, 20px) !important;
+  border: var(--activity-panel-border) !important;
+  border-radius: 25px !important;
+  background: #fff !important;
+  box-shadow: var(--activity-panel-shadow) !important;
+}
+
+.activity-layout--reading-speak :deep(.sentence-card),
+.activity-layout--reading-speak :deep(.sentence-stage),
+.activity-layout--reading-speak :deep(.word-grid) {
+  min-width: 0 !important;
+  min-height: 0 !important;
+  border: var(--activity-panel-border) !important;
+  border-radius: var(--activity-panel-radius) !important;
+  background: var(--activity-panel-background) !important;
+  box-shadow: var(--activity-panel-shadow) !important;
+}
+
+.activity-layout--reading-speak :deep(.record-area) {
+  min-width: 0 !important;
+  min-height: 0 !important;
+  border: var(--activity-panel-border) !important;
+  border-radius: 25px !important;
+  background: #fff !important;
+  box-shadow: var(--activity-panel-shadow) !important;
+}
+
+.activity-layout--reading-speak :deep(.reading-side > .reading-status),
+.activity-layout--reading-speak :deep(.reading-side > .action-bar) {
+  width: 100% !important;
+  height: 100% !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: clamp(12px, 1.5cqmin, 20px) !important;
+  border: var(--activity-panel-border) !important;
+  border-radius: 25px !important;
+  background: #fff !important;
+  box-shadow: var(--activity-panel-shadow) !important;
+}
+
+.activity-layout--reading-speak :deep(.reading-side .start-button),
+.activity-layout--reading-speak :deep(.reading-side .next-button) {
+  width: 100% !important;
+  min-width: 0 !important;
+}
+
+.activity-layout--reading-speak :deep(.word-grid),
+.activity-layout--reading-speak :deep(.sentence-stage) {
+  flex: 1 !important;
+  width: 100% !important;
+}
+
+.activity-layout--reading-speak :deep(.action-bar) {
+  flex: 0 0 clamp(46px, 6cqh, 58px);
+  min-height: 0 !important;
+  margin: 0 !important;
+}
+
+/* 고정 비율 프로젝트: 폭에 따라 세로 레이아웃으로 접지 않는다. */
+@container learner-canvas (max-height: 800px) {
+  .question-scroll {
+    --activity-shell-padding-block: 8px;
+    --activity-shell-padding-inline: 14px;
+    --activity-shell-gap: 14px;
+    --activity-side-width: 190px;
+  }
 }
 
 /* 모든 훈련의 선택 카드가 같은 표면과 상태 문법을 사용한다. */
@@ -148,6 +510,221 @@
 .lesson-view :deep(.target-card) {
   border-radius: var(--learner-radius-selection-card);
   box-shadow: var(--learner-shadow-card);
+}
+
+/* All three-choice exercises share one illustrated card system.
+ * The same two transparent resources are recolored per position so the
+ * yellow, mint, and purple cards keep identical shape and visual weight. */
+.lesson-view :deep(.choices > :is(
+  .letter-card--choice,
+  .text-choice,
+  .sound-card,
+  .part-card,
+  .replacement-card,
+  .letter-chip,
+  .word-choice,
+  .word-card,
+  .sentence-card
+)) {
+  --choice-card-image: url('../../assets/training/choice-cards/choice-card-letter-awning-yellow.webp');
+  --choice-card-word-image: url('../../assets/training/choice-cards/choice-card-word-yellow.png');
+  --choice-card-sentence-image: url('../../assets/training/choice-cards/choice-card-sentence-yellow.png');
+  position: relative;
+  isolation: isolate;
+  overflow: visible;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.lesson-view :deep(.choices > :is(
+  .letter-card--choice,
+  .text-choice,
+  .sound-card,
+  .part-card,
+  .replacement-card,
+  .letter-chip,
+  .word-choice,
+  .word-card,
+  .sentence-card
+)::before) {
+  position: absolute;
+  z-index: -1;
+  inset: -7%;
+  background-image: var(--choice-card-image);
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  content: '';
+  filter: drop-shadow(0 9px 8px rgb(86 65 28 / 16%));
+  pointer-events: none;
+}
+
+.lesson-view :deep(.choices > :is(
+  .word-choice,
+  .word-card
+)::before) {
+  inset: -9% -6%;
+  background-image: var(--choice-card-word-image);
+}
+
+.lesson-view :deep(.choices > .sentence-card::before) {
+  inset: -9% -4%;
+  background-image: var(--choice-card-sentence-image);
+}
+
+.lesson-view :deep(.choices > :nth-child(3n + 2)) {
+  --choice-card-image: url('../../assets/training/choice-cards/choice-card-letter-awning-mint.webp');
+  --choice-card-word-image: url('../../assets/training/choice-cards/choice-card-word-mint.png');
+  --choice-card-sentence-image: url('../../assets/training/choice-cards/choice-card-sentence-mint.png');
+}
+
+.lesson-view :deep(.choices > :nth-child(3n + 3)) {
+  --choice-card-image: url('../../assets/training/choice-cards/choice-card-letter-awning-purple.webp');
+  --choice-card-word-image: url('../../assets/training/choice-cards/choice-card-word-purple.png');
+  --choice-card-sentence-image: url('../../assets/training/choice-cards/choice-card-sentence-purple.png');
+}
+
+.lesson-view :deep(.choices > :is(
+  .letter-card--choice,
+  .text-choice,
+  .sound-card,
+  .part-card,
+  .replacement-card,
+  .letter-chip
+)) {
+  width: clamp(176px, 18cqw, 260px) !important;
+  min-width: 0 !important;
+  height: auto !important;
+  min-height: 0 !important;
+  aspect-ratio: var(--learner-choice-card-letter-ratio);
+  padding: clamp(44px, 4.8cqw, 68px) clamp(34px, 4cqw, 58px) clamp(28px, 3.2cqw, 48px) !important;
+}
+
+.lesson-view :deep(.choices > :is(
+  .word-choice,
+  .word-card
+)) {
+  width: min(100%, 330px) !important;
+  min-width: 0 !important;
+  height: auto !important;
+  min-height: 0 !important;
+  aspect-ratio: var(--learner-choice-card-word-ratio);
+  padding: clamp(25px, 3cqw, 42px) !important;
+}
+
+.lesson-view :deep(.choices > .sentence-card) {
+  width: min(100%, 430px) !important;
+  min-width: 0 !important;
+  height: auto !important;
+  min-height: 0 !important;
+  aspect-ratio: var(--learner-choice-card-sentence-ratio);
+  padding: clamp(22px, 2.5cqw, 36px) !important;
+}
+
+.lesson-view :deep(.choices--words > .word-choice) {
+  display: grid !important;
+  grid-template-columns: var(--learner-sound-control-width) minmax(0, 1fr) !important;
+  grid-template-rows: 1fr !important;
+  align-items: center;
+  gap: clamp(7px, 1cqw, 14px) !important;
+  padding: clamp(18px, 2cqw, 28px) !important;
+}
+
+.lesson-view :deep(.choices--words > .word-choice .word-select) {
+  min-width: 0;
+  min-height: var(--learner-sound-control-height);
+  padding: var(--learner-space-2);
+}
+
+.lesson-view :deep(.choices--words > .word-choice strong) {
+  font-size: clamp(23px, 2.2cqw, 32px);
+  overflow-wrap: anywhere;
+}
+
+.lesson-view :deep(.choices > :is(
+  .letter-card--choice,
+  .text-choice,
+  .sound-card,
+  .part-card,
+  .replacement-card,
+  .letter-chip,
+  .word-choice,
+  .word-card,
+  .sentence-card
+)::after) {
+  display: none !important;
+}
+
+.lesson-view :deep(.choices > :is(
+  .letter-card--choice,
+  .text-choice,
+  .sound-card,
+  .part-card,
+  .replacement-card,
+  .letter-chip,
+  .word-choice,
+  .word-card,
+  .sentence-card
+):hover:not(:disabled):not(.letter-card--disabled):not(.word-choice--disabled)) {
+  transform: translateY(-6px) rotate(-.35deg);
+}
+
+.lesson-view :deep(.choices > :is(
+  .letter-card--choice,
+  .text-choice,
+  .sound-card,
+  .part-card,
+  .replacement-card,
+  .letter-chip,
+  .word-choice,
+  .word-card,
+  .sentence-card
+):active:not(:disabled)) {
+  transform: translateY(-1px) scale(.985);
+}
+
+.lesson-view :deep(.choices > :is(
+  .letter-card--selected,
+  .text-choice--selected,
+  .word-choice--selected
+)) {
+  box-shadow:
+    0 0 0 6px rgb(255 255 255 / 92%),
+    0 0 0 12px color-mix(in srgb, var(--learner-flow-accent) 72%, #ffd54a) !important;
+}
+
+.lesson-view :deep(.choices > :is(
+  .letter-card--correct,
+  .text-choice--correct,
+  .word-choice--correct
+)) {
+  box-shadow:
+    0 0 0 6px rgb(255 255 255 / 92%),
+    0 0 0 12px var(--learner-color-success) !important;
+}
+
+.lesson-view :deep(.choices > :is(
+  .letter-card--wrong,
+  .text-choice--wrong,
+  .word-choice--wrong,
+  .word-card.wrong,
+  .sentence-card.wrong
+)) {
+  box-shadow:
+    0 0 0 6px rgb(255 255 255 / 92%),
+    0 0 0 12px var(--learner-color-error) !important;
+}
+
+.lesson-view :deep(.choices > :is(
+  .letter-card--hint,
+  .word-card.hint,
+  .sentence-card.hint
+)) {
+  box-shadow:
+    0 0 0 6px rgb(255 255 255 / 92%),
+    0 0 0 12px var(--learner-color-warning) !important;
 }
 
 .lesson-view :deep(button:not(:disabled):focus-visible),
@@ -175,7 +752,7 @@
   color: var(--learner-color-text-inverse);
   box-shadow: var(--learner-shadow-control);
   font-family: var(--learner-font-display);
-  font-size: clamp(19px, 1.6vw, 25px);
+  font-size: clamp(19px, 1.6cqw, 25px);
   font-weight: var(--learner-font-weight-heavy);
 }
 
@@ -230,6 +807,15 @@
   font-family: var(--learner-font-reading);
 }
 
+/* 선택지는 화면마다 작거나 가늘어지지 않도록 공통 표시 글꼴로 고정한다. */
+.lesson-view :deep(.word-choice strong),
+.lesson-view :deep(.text-choice),
+.lesson-view :deep(.sentence-card strong),
+.lesson-view :deep(.letter-card .letter) {
+  font-family: var(--learner-font-display);
+  font-weight: var(--learner-font-weight-heavy);
+}
+
 /* 공통 모달과 로딩 */
 .saving-overlay,
 .device-blocker,
@@ -252,7 +838,7 @@
   flex-direction: column;
   align-items: center;
   gap: var(--learner-space-4);
-  padding: clamp(28px, 3vw, 42px);
+  padding: clamp(28px, 3cqw, 42px);
   border: var(--learner-modal-border);
   border-radius: var(--learner-radius-panel);
   background: var(--learner-modal-background);
@@ -269,31 +855,16 @@
   color: var(--learner-color-text);
 }
 
-.device-blocker-icon svg {
+.device-blocker-icon img {
   width: 100%;
   height: 100%;
-  overflow: visible;
-  fill: var(--learner-color-surface);
-  stroke: currentColor;
-  stroke-width: 3;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.device-blocker-icon circle:not(.device-icon-shine) {
-  fill: var(--learner-color-text);
-  stroke: none;
-}
-
-.device-blocker-icon .device-icon-shine {
-  fill: var(--learner-color-surface);
-  stroke: none;
+  object-fit: contain;
 }
 
 .device-blocker-panel h2,
 .leave-confirmation-panel h2 {
   margin: 0;
-  font-size: clamp(30px, 3vw, 44px);
+  font-size: clamp(30px, 3cqw, 44px);
   font-weight: var(--learner-font-weight-heavy);
 }
 
@@ -302,9 +873,88 @@
 .saving-text {
   margin: 0;
   color: var(--learner-color-text-soft);
-  font-size: clamp(18px, 1.7vw, 24px);
+  font-size: clamp(18px, 1.7cqw, 24px);
   font-weight: var(--learner-font-weight-bold);
   line-height: 1.4;
+}
+
+.inline-voice-panel {
+  position: absolute;
+  z-index: 12;
+  right: max(18px, calc((100% - 1180px) / 2 + 18px));
+  top: 12px;
+  bottom: 12px;
+  width: var(--activity-side-width, clamp(185px, 19cqw, 230px));
+  display: grid;
+  grid-template-rows: auto 1fr;
+  place-items: center;
+  gap: clamp(12px, 2cqh, 22px);
+  padding: clamp(18px, 2cqmin, 28px);
+  border: var(--activity-panel-border, 2px solid rgb(224 217 205 / 78%));
+  border-radius: var(--activity-panel-radius, 28px);
+  background: #fff;
+  box-shadow: var(--activity-panel-shadow, 0 8px 20px rgb(70 63 50 / 9%));
+}
+
+.inline-voice-icon {
+  display: grid;
+  place-items: center;
+  width: clamp(66px, 7cqw, 88px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: #f6f9ff;
+}
+
+.inline-voice-icon img {
+  width: 68%;
+  height: 68%;
+  object-fit: contain;
+}
+
+.inline-voice-panel .automatic-voice-wave {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+
+.automatic-voice-wave {
+  width: min(76%, 320px);
+  min-height: 84px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border-radius: var(--learner-radius-control);
+  background: color-mix(in srgb, var(--learner-color-sky) 10%, #fff);
+}
+
+.automatic-voice-wave span {
+  width: 10px;
+  height: 20px;
+  border-radius: 999px;
+  background: var(--learner-color-sky);
+  opacity: 0.45;
+}
+
+.automatic-voice-wave.recording span {
+  opacity: 1;
+  animation: automatic-voice-wave 0.8s ease-in-out infinite alternate;
+}
+
+.automatic-voice-wave.evaluating span {
+  opacity: 0.75;
+  animation: automatic-voice-wave 0.55s ease-in-out infinite alternate;
+}
+
+.automatic-voice-wave span:nth-child(2),
+.automatic-voice-wave span:nth-child(6) { animation-delay: 0.1s; }
+.automatic-voice-wave span:nth-child(3),
+.automatic-voice-wave span:nth-child(5) { animation-delay: 0.2s; }
+.automatic-voice-wave span:nth-child(4) { animation-delay: 0.3s; }
+
+@keyframes automatic-voice-wave {
+  from { height: 18px; }
+  to { height: 58px; }
 }
 
 .device-blocker-panel button,
@@ -448,19 +1098,18 @@
   }
 }
 
-@media (max-width: 900px) {
+@container learner-canvas (max-width: 900px) {
   .playing {
     width: calc(100% - 28px);
     padding: 12px;
   }
 
-  .topbar-progress {
-    min-width: 128px;
-    padding-inline: 12px;
+  .lesson-progress-board {
+    width: 100%;
   }
 }
 
-@media (max-height: 800px) {
+@container learner-canvas (max-height: 800px) {
   .playing {
     margin-block: 5px 8px;
     gap: 8px;
@@ -468,11 +1117,19 @@
   }
 
   .lesson-topbar--inside {
-    min-height: 48px;
+    min-height: 144px;
+  }
+
+  .lesson-progress-board {
+    width: min(100%, 720px);
+  }
+
+  .lesson-progress-board-content {
+    inset-block: 11% 9%;
   }
 
   .lesson-instruction {
-    font-size: clamp(26px, 2.5vw, 36px);
+    font-size: clamp(27px, 2.7cqw, 38px);
   }
 
   .question-scroll {

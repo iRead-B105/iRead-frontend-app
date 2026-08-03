@@ -1,0 +1,201 @@
+<script setup lang="ts">
+import { computed, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { learnerDataSource } from '@/config/learnerDataSource'
+import { devPreviewLessons } from '@/mocks/trainingLessons'
+import { getCachedStudent } from '@/services/learnerDataRepository'
+import {
+  advanceDemoLearningDay,
+  resetDemoLearningProgress,
+  type DeveloperCheatResult,
+} from '@/services/developerCheatService'
+
+const route = useRoute()
+const router = useRouter()
+const open = ref(route.query.debugPanel === '1')
+const busyAction = ref<'reset' | 'next-day' | null>(null)
+const message = ref('')
+const errorMessage = ref('')
+const activeStudent = computed(() => getCachedStudent())
+const apiCheatsAvailable = learnerDataSource === 'api'
+
+watch(
+  () => route.query.debugPanel,
+  (value) => {
+    if (value === '1') open.value = true
+  },
+)
+
+const close = () => {
+  open.value = false
+}
+
+const openDebugLesson = (categoryId: string, lessonId: string) => {
+  close()
+  void router.push({
+    name: 'training-lesson',
+    params: { categoryId, lessonId },
+    query: { debug: '1' },
+  })
+}
+
+const navigate = (name: string) => {
+  close()
+  void router.push({ name })
+}
+
+const describeResult = (result: DeveloperCheatResult) =>
+  `커리큘럼 #${result.curriculumId} · ${result.trainingCount}개 훈련 · ${result.curriculumStatus}`
+
+const runServerCheat = async (
+  action: 'reset' | 'next-day',
+  request: (studentId: string) => Promise<DeveloperCheatResult>,
+) => {
+  if (!apiCheatsAvailable || busyAction.value) return
+  const prompt = action === 'reset'
+    ? `${activeStudent.value.name}의 데모 학습 진행을 처음 상태로 되돌릴까요?`
+    : `${activeStudent.value.name}의 현재 커리큘럼을 완료하고 다음날 커리큘럼을 실제 생성할까요?`
+  if (!window.confirm(prompt)) return
+
+  busyAction.value = action
+  message.value = ''
+  errorMessage.value = ''
+  try {
+    const result = await request(activeStudent.value.studentId)
+    message.value = action === 'reset'
+      ? `학습 진행을 초기화했습니다. ${describeResult(result)}`
+      : `다음날 커리큘럼을 생성했습니다. ${describeResult(result)}`
+  } catch (error) {
+    errorMessage.value = error instanceof Error
+      ? error.message
+      : '치트 요청을 처리하지 못했습니다.'
+  } finally {
+    busyAction.value = null
+  }
+}
+
+const applyAndOpenTraining = () => {
+  close()
+  void router.push({ name: 'training-home' }).then(() => window.location.reload())
+}
+
+const reloadPage = () => window.location.reload()
+</script>
+
+<template>
+  <button
+    class="developer-cheat-trigger"
+    type="button"
+    aria-label="개발자 치트 메뉴 열기"
+    aria-haspopup="dialog"
+    @click="open = true"
+  >
+    DEV
+  </button>
+
+  <div
+    v-if="open"
+    class="developer-cheat-backdrop"
+    role="presentation"
+    @click.self="close"
+  >
+    <section
+      class="developer-cheat-menu"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="developer-cheat-title"
+    >
+      <header class="developer-cheat-header">
+        <div>
+          <span>DEVELOPMENT ONLY</span>
+          <h2 id="developer-cheat-title">학습 테스트 치트 메뉴</h2>
+          <p>{{ activeStudent.name }} · #{{ activeStudent.studentId }}</p>
+        </div>
+        <button type="button" aria-label="치트 메뉴 닫기" @click="close">×</button>
+      </header>
+
+      <div class="developer-cheat-content">
+        <section class="developer-cheat-section">
+          <div class="developer-cheat-section-heading">
+            <div>
+              <h3>학습 상태</h3>
+              <p>demo 백엔드의 실제 커리큘럼 상태를 변경합니다.</p>
+            </div>
+            <span :class="{ unavailable: !apiCheatsAvailable }">
+              {{ apiCheatsAvailable ? 'API 연결' : 'MOCK 모드' }}
+            </span>
+          </div>
+
+          <div class="developer-cheat-action-grid">
+            <button
+              type="button"
+              class="danger"
+              :disabled="!apiCheatsAvailable || busyAction !== null"
+              @click="runServerCheat('reset', resetDemoLearningProgress)"
+            >
+              <strong>학습 진행 초기화</strong>
+              <span>선택 학습자의 데모 커리큘럼을 처음 상태로 복원</span>
+            </button>
+            <button
+              type="button"
+              :disabled="!apiCheatsAvailable || busyAction !== null"
+              @click="runServerCheat('next-day', advanceDemoLearningDay)"
+            >
+              <strong>다음날로 진행</strong>
+              <span>현재 학습 완료 → 다음 개인화 커리큘럼 생성</span>
+            </button>
+            <button type="button" @click="reloadPage">
+              <strong>현재 화면 새로고침</strong>
+              <span>서버 데이터와 화면 상태를 다시 불러오기</span>
+            </button>
+          </div>
+
+          <p v-if="message" class="developer-cheat-message success">
+            {{ message }}
+            <button type="button" @click="applyAndOpenTraining">생성된 학습 열기</button>
+          </p>
+          <p v-if="errorMessage" class="developer-cheat-message error">{{ errorMessage }}</p>
+        </section>
+
+        <section class="developer-cheat-section">
+          <div class="developer-cheat-section-heading">
+            <div>
+              <h3>화면 바로가기</h3>
+              <p>테스트할 학습자 화면으로 즉시 이동합니다.</p>
+            </div>
+          </div>
+          <div class="developer-cheat-shortcuts">
+            <button type="button" @click="navigate('learner-home')">메인</button>
+            <button type="button" @click="navigate('training-home')">글자 연습</button>
+            <button type="button" @click="navigate('story-selection')">이야기 나라</button>
+            <button type="button" @click="navigate('growth')">나의 성장</button>
+            <button type="button" @click="navigate('skill-challenge')">실력 검증</button>
+          </div>
+        </section>
+
+        <section class="developer-cheat-section">
+          <div class="developer-cheat-section-heading">
+            <div>
+              <h3>전체 학습 UI 미리보기</h3>
+              <p>서버 진도와 무관하게 개발된 학습을 하나씩 엽니다.</p>
+            </div>
+            <span>{{ devPreviewLessons.length }}개</span>
+          </div>
+          <div class="developer-cheat-lesson-grid">
+            <button
+              v-for="lesson in devPreviewLessons"
+              :key="lesson.id"
+              type="button"
+              @click="openDebugLesson(lesson.categoryId, lesson.id)"
+            >
+              <strong>{{ lesson.title }}</strong>
+              <span>{{ lesson.activityType }} · {{ lesson.questions.length }}문제</span>
+            </button>
+          </div>
+        </section>
+      </div>
+    </section>
+  </div>
+</template>
+
+<style scoped src="@/styles/developer/DeveloperCheatMenu.css"></style>

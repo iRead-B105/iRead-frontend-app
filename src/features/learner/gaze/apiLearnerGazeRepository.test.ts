@@ -63,7 +63,7 @@ describe('API learner gaze repository', () => {
 
     const result = await repository.end('81', '101', 'COMPLETED', data)
 
-    expect(request).toHaveBeenCalledWith('/api/app/gaze/sessions/81/end', {
+    expect(request).toHaveBeenNthCalledWith(1, '/api/app/gaze/sessions/81/end', {
       method: 'PATCH',
       body: JSON.stringify({
         studentId: 101,
@@ -71,6 +71,11 @@ describe('API learner gaze repository', () => {
         data,
       }),
     })
+    expect(request).toHaveBeenNthCalledWith(
+      2,
+      '/api/app/gaze/sessions/81/analysis-results',
+      expect.objectContaining({ method: 'POST' }),
+    )
     expect(result.collectionStatus).toBe('COMPLETED')
   })
 })

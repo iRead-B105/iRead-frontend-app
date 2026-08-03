@@ -1,15 +1,15 @@
 .challenge-complete {
   --learner-flow-accent: var(--learner-color-challenge);
   display: grid;
-  min-height: 100vh;
+  min-height: 100cqh;
   padding: 32px;
   place-items: center;
   background: #65bdf0 url('../../assets/backgrounds/challenge-section-background.png') center / cover no-repeat;
 }
 
 .challenge-complete__panel {
-  width: min(720px, 92vw);
-  padding: clamp(35px, 5vw, 62px);
+  width: min(720px, 92cqw);
+  padding: clamp(35px, 5cqw, 62px);
   border: var(--learner-frame-border);
   border-radius: var(--learner-radius-panel);
   background: var(--learner-frame-background);
@@ -19,7 +19,7 @@
 
 .challenge-complete__badge {
   display: grid;
-  width: clamp(170px, 16vw, 230px);
+  width: clamp(170px, 16cqw, 230px);
   aspect-ratio: 1;
   margin: 0 auto 20px;
   place-items: center;
@@ -38,21 +38,21 @@
 .challenge-complete__eyebrow {
   margin: 0;
   color: #4b78e6;
-  font-size: clamp(19px, 2vw, 27px);
+  font-size: clamp(19px, 2cqw, 27px);
   font-weight: 900;
 }
 
 .challenge-complete h1 {
   margin: 8px 0 10px;
   color: #1d356d;
-  font-size: clamp(38px, 4.4vw, 62px);
+  font-size: clamp(38px, 4.4cqw, 62px);
   line-height: 1.16;
 }
 
 .challenge-complete h1 + p {
   margin: 0;
   color: #606b82;
-  font-size: clamp(18px, 1.7vw, 24px);
+  font-size: clamp(18px, 1.7cqw, 24px);
   font-weight: 800;
 }
 
