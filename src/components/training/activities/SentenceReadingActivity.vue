@@ -280,7 +280,7 @@ const updateGaze = (clientX: number, clientY: number, emitWordHit = false) => {
     emitGazeWordHit(clientX, clientY, nextGazeIndex)
   }
 }
-const onPointerMove = (event: PointerEvent) => updateGaze(event.clientX, event.clientY)
+const onPointerMove = (event: PointerEvent) => updateGaze(event.clientX, event.clientY, true)
 const onPointerLeave = () => {
   gazeVisible.value = false
   gazeIndex.value = null

@@ -245,7 +245,7 @@ const updateGaze = (clientX: number, clientY: number, emitWordHit = false) => {
 }
 
 const onPointerMove = (event: PointerEvent) => {
-  if (!virtualEyeTrackerConnected.value) updateGaze(event.clientX, event.clientY)
+  if (!virtualEyeTrackerConnected.value) updateGaze(event.clientX, event.clientY, true)
 }
 const onPointerLeave = () => {
   gazeVisible.value = false

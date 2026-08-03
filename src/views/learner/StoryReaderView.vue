@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import storyChoiceScene from '../../assets/story/story-choice-turtle-crossroads.png'
 import {
   getCachedStudent,
@@ -11,10 +11,12 @@ import PageBackButton from '@/components/common/PageBackButton.vue'
 import type { VillageItem } from '@/types/village'
 import { learnerStoryRepository } from '@/features/learner/story'
 import type { LearnerStoryBranchPrompt } from '@/features/learner/model'
+import { learnerGazeRepository } from '@/features/learner/gaze'
 import {
   createMockVoiceFile,
   mockDeviceSubmissionsEnabled,
 } from '@/features/learner/training'
+import { learnerDataSource } from '@/config/learnerDataSource'
 import { useVoiceRecorder } from '@/composables/useVoiceRecorder'
 import { useLearnerErrorModalStore } from '@/stores/learnerErrorModal'
 import arrowRightIcon from '@/assets/icons/arrow-right.svg'
@@ -125,9 +127,23 @@ const branchSubmitting = ref(false)
 const mockBranchVoiceFile = ref<File | null>(null)
 const ttsLoading = ref(false)
 const ttsPlaying = ref(false)
+const storyGazeSessionId = ref<string | null>(null)
+const storyGazeSessionCompleted = ref(false)
+const storyGazeStartedAtMs = ref(0)
+type StoryGazeSample = {
+  readonly x: number
+  readonly y: number
+  readonly capturedAtMs: number
+  readonly pageNo: number
+  readonly storyLineId: number
+  readonly tokenIndex?: number
+  readonly text?: string
+}
+const storyGazeSamples: StoryGazeSample[] = []
 let leaveTimer: number | undefined
 let dwellTimer: number | undefined
 let lastExternalGazeAt = 0
+let lastStoryGazeSampleAt = 0
 let narrationAudio: HTMLAudioElement | null = null
 let narrationObjectUrl: string | null = null
 
@@ -177,6 +193,8 @@ function beginDwell(index: number) {
   if (dwellTargetIndex.value === index) return
 
   clearDwell()
+  clearLeaveTimer()
+  showReturnCue.value = false
   dwellTargetIndex.value = index
   dwellDurationMs.value = getDwellDuration(pageWords.value[index]?.word ?? '')
   dwellTimer = window.setTimeout(() => {
@@ -189,6 +207,16 @@ function scheduleReturnCue() {
   clearLeaveTimer()
   if (readThrough.value >= pageWords.value.length - 1) return
   leaveTimer = window.setTimeout(() => { showReturnCue.value = true }, 3000)
+}
+
+async function resetReadingProgressForPage() {
+  readThrough.value = -1
+  clearDwell()
+  showReturnCue.value = false
+  gaze.value.visible = false
+  clearLeaveTimer()
+  await nextTick()
+  scheduleReturnCue()
 }
 
 function setProgress(index: number) {
@@ -230,6 +258,55 @@ function wordIndexAt(clientX: number, clientY: number) {
   return candidates[0]?.index ?? null
 }
 
+function visibleWordIndexAt(clientX: number, clientY: number) {
+  const panel = textPanel.value
+  if (!panel) return null
+
+  const exactTarget = document.elementFromPoint(clientX, clientY)?.closest<HTMLElement>('[data-word-index]')
+  if (exactTarget && panel.contains(exactTarget)) {
+    const exactIndex = Number(exactTarget.dataset.wordIndex)
+    return Number.isInteger(exactIndex) ? exactIndex : null
+  }
+
+  const candidates = Array.from(panel.querySelectorAll<HTMLElement>('[data-word-index]'))
+    .map((element) => {
+      const rect = element.getBoundingClientRect()
+      return {
+        index: Number(element.dataset.wordIndex),
+        inside: (
+          clientX >= rect.left - WORD_HIT_PADDING_X
+          && clientX <= rect.right + WORD_HIT_PADDING_X
+          && clientY >= rect.top - WORD_HIT_PADDING_Y
+          && clientY <= rect.bottom + WORD_HIT_PADDING_Y
+        ),
+        distance: Math.hypot(clientX - (rect.left + rect.width / 2), clientY - (rect.top + rect.height / 2)),
+      }
+    })
+    .filter((candidate) => Number.isInteger(candidate.index) && candidate.inside)
+    .sort((a, b) => a.distance - b.distance)
+
+  return candidates[0]?.index ?? null
+}
+
+function recordStoryGazeSample(clientX: number, clientY: number, tokenIndex: number | null) {
+  if (learnerDataSource !== 'api' || !storyGazeSessionId.value) return
+  const lineId = Number(page.value.lineId)
+  if (!Number.isInteger(lineId) || lineId <= 0) return
+  const capturedAtMs = Date.now()
+  if (capturedAtMs - lastStoryGazeSampleAt < 80) return
+  lastStoryGazeSampleAt = capturedAtMs
+  const word = tokenIndex === null ? undefined : pageWords.value[tokenIndex]?.word
+  storyGazeSamples.push({
+    x: clientX,
+    y: clientY,
+    capturedAtMs,
+    pageNo: currentPage.value + 1,
+    storyLineId: lineId,
+    tokenIndex: tokenIndex ?? undefined,
+    text: word,
+  })
+}
+
 function updateGaze(clientX: number, clientY: number, canRead = true) {
   if (screen.value !== 'reading') return
   const panel = textPanel.value
@@ -237,10 +314,12 @@ function updateGaze(clientX: number, clientY: number, canRead = true) {
   const panelRect = panel.getBoundingClientRect()
   gaze.value = { x: clientX - panelRect.left, y: clientY - panelRect.top, visible: clientX >= panelRect.left && clientX <= panelRect.right && clientY >= panelRect.top && clientY <= panelRect.bottom }
   if (!gaze.value.visible) { clearDwell(); scheduleReturnCue(); return }
-  if (!canRead) { clearDwell(); return }
+  const visibleTokenIndex = visibleWordIndexAt(clientX, clientY)
+  recordStoryGazeSample(clientX, clientY, visibleTokenIndex)
+  if (!canRead) { clearDwell(); scheduleReturnCue(); return }
   const targetIndex = wordIndexAt(clientX, clientY)
   if (targetIndex !== null) beginDwell(targetIndex)
-  else clearDwell()
+  else { clearDwell(); scheduleReturnCue() }
 }
 
 function onPointerMove(event: PointerEvent) {
@@ -264,6 +343,305 @@ function onExternalGaze(event: Event) {
   }
 }
 
+function storyLineText(current: StoryPage) {
+  return current.lines.join(' ')
+}
+
+function sampleDwellMs(
+  sample: StoryGazeSample,
+  index: number,
+  samples: readonly StoryGazeSample[],
+) {
+  const next = samples[index + 1]
+  const previous = samples[index - 1]
+  const gap = next
+    ? next.capturedAtMs - sample.capturedAtMs
+    : previous
+      ? sample.capturedAtMs - previous.capturedAtMs
+      : 80
+  return Math.max(0, Math.min(Number.isFinite(gap) && gap > 0 ? gap : 80, 250))
+}
+
+const READ_DWELL_MS = 1_000
+const FIXATION_DWELL_MS = 2_000
+const MAX_SAMPLE_GAP_MS = 250
+
+interface StoryReadableSegment {
+  readonly tokenIndex: number
+  readonly startMs: number
+  readonly endMs: number
+  readonly dwellMs: number
+}
+
+interface StoryReplayWordMetric {
+  questionNo: number
+  storyLineId: number
+  tokenIndex: number
+  text: string
+  dwellMs: number
+  visitCount: number
+  skipped: boolean
+  regressionCount: number
+  firstSeenMs: number | null
+  lastSeenMs: number | null
+}
+
+function storyTokens(current: StoryPage): string[] {
+  return current.lines.flatMap((line) => line.trim().split(/\s+/).filter(Boolean))
+}
+
+function createStoryReadableSegments(
+  samples: readonly StoryGazeSample[],
+  tokenCount: number,
+): StoryReadableSegment[] {
+  const segments: StoryReadableSegment[] = []
+  let activeSegment: StoryReadableSegment | null = null
+
+  const finishSegment = () => {
+    if (!activeSegment || activeSegment.dwellMs < READ_DWELL_MS) return
+    segments.push(activeSegment)
+  }
+
+  samples.forEach((sample, sampleIndex) => {
+    const tokenIndex = Number.isInteger(sample.tokenIndex)
+      && Number(sample.tokenIndex) >= 0
+      && Number(sample.tokenIndex) < tokenCount
+      ? Number(sample.tokenIndex)
+      : null
+    const dwellMs = sampleDwellMs(sample, sampleIndex, samples)
+    if (tokenIndex === null) {
+      finishSegment()
+      activeSegment = null
+      return
+    }
+    const shouldContinueSegment =
+      activeSegment
+      && activeSegment.tokenIndex === tokenIndex
+      && sample.capturedAtMs - activeSegment.endMs <= MAX_SAMPLE_GAP_MS
+
+    if (!shouldContinueSegment) {
+      finishSegment()
+      activeSegment = {
+        tokenIndex,
+        startMs: sample.capturedAtMs,
+        endMs: sample.capturedAtMs + dwellMs,
+        dwellMs,
+      }
+      return
+    }
+
+    const currentSegment = activeSegment
+    if (!currentSegment) return
+    activeSegment = {
+      tokenIndex: currentSegment.tokenIndex,
+      startMs: currentSegment.startMs,
+      endMs: sample.capturedAtMs + dwellMs,
+      dwellMs: currentSegment.dwellMs + dwellMs,
+    }
+  })
+  finishSegment()
+
+  return segments
+}
+
+function createStoryPageWordMetrics(
+  current: StoryPage,
+  pageIndex: number,
+): {
+  lineId: number
+  lineSamples: StoryGazeSample[]
+  pageStartMs: number
+  segments: StoryReadableSegment[]
+  metrics: StoryReplayWordMetric[]
+} | null {
+  const lineId = Number(current.lineId)
+  if (!Number.isInteger(lineId) || lineId <= 0) return null
+  const tokens = storyTokens(current)
+  const lineSamples = storyGazeSamples
+    .filter((sample) => sample.storyLineId === lineId)
+    .sort((first, second) => first.capturedAtMs - second.capturedAtMs)
+  const metrics = tokens.map<StoryReplayWordMetric>((text, tokenIndex) => ({
+    questionNo: pageIndex + 1,
+    storyLineId: lineId,
+    tokenIndex,
+    text,
+    dwellMs: 0,
+    visitCount: 0,
+    skipped: true,
+    regressionCount: 0,
+    firstSeenMs: null,
+    lastSeenMs: null,
+  }))
+  if (lineSamples.length === 0 || tokens.length === 0) {
+    return { lineId, lineSamples, pageStartMs: lineSamples[0]?.capturedAtMs ?? storyGazeStartedAtMs.value, segments: [], metrics }
+  }
+
+  const pageStartMs = lineSamples[0]!.capturedAtMs
+  const segments = createStoryReadableSegments(lineSamples, tokens.length)
+  let previousReadTokenIndex: number | null = null
+  const skippedByJump = new Set<number>()
+
+  const markSkippedWordsBefore = (tokenIndex: number) => {
+    const startIndex = previousReadTokenIndex === null ? 0 : previousReadTokenIndex + 1
+    if (tokenIndex <= startIndex) return
+    for (let skippedIndex = startIndex; skippedIndex < tokenIndex; skippedIndex += 1) {
+      const skippedMetric = metrics[skippedIndex]
+      if (skippedMetric && skippedMetric.firstSeenMs === null) {
+        skippedMetric.skipped = true
+        skippedByJump.add(skippedIndex)
+      }
+    }
+  }
+
+  segments.forEach((segment) => {
+    const metric = metrics[segment.tokenIndex]
+    if (!metric) return
+    const firstSeenMs = Math.max(0, Math.round(segment.startMs - pageStartMs))
+    const lastSeenMs = Math.max(firstSeenMs, Math.round(segment.endMs - pageStartMs))
+    markSkippedWordsBefore(segment.tokenIndex)
+    metric.firstSeenMs = metric.firstSeenMs === null
+      ? firstSeenMs
+      : Math.min(metric.firstSeenMs, firstSeenMs)
+    metric.lastSeenMs = metric.lastSeenMs === null
+      ? lastSeenMs
+      : Math.max(metric.lastSeenMs, lastSeenMs)
+    metric.skipped = skippedByJump.has(segment.tokenIndex)
+    if (previousReadTokenIndex !== null && segment.tokenIndex < previousReadTokenIndex) {
+      metric.regressionCount += 1
+    }
+    previousReadTokenIndex = segment.tokenIndex
+    if (segment.dwellMs >= FIXATION_DWELL_MS) {
+      metric.dwellMs += Math.round(segment.dwellMs)
+      metric.visitCount += 1
+    }
+  })
+
+  return { lineId, lineSamples, pageStartMs, segments, metrics }
+}
+
+function createStoryGazeSubmission() {
+  const storyNumericId = Number(storyId.value)
+  const regressions: {
+    fromTargetIndex: number
+    fromTokenIndex: number
+    toTargetIndex: number
+    toTokenIndex: number
+    offsetMs: number
+  }[] = []
+  const sentenceMetrics = story.value.pages.flatMap((current, index) => {
+    const pageAnalysis = createStoryPageWordMetrics(current, index)
+    if (!pageAnalysis || pageAnalysis.lineSamples.length === 0) return []
+    const { lineId, lineSamples, pageStartMs, segments, metrics } = pageAnalysis
+    let previousReadTokenIndex: number | null = null
+
+    segments.forEach((segment) => {
+      if (previousReadTokenIndex !== null && segment.tokenIndex < previousReadTokenIndex) {
+        regressions.push({
+          fromTargetIndex: index + 1,
+          fromTokenIndex: previousReadTokenIndex,
+          toTargetIndex: index + 1,
+          toTokenIndex: segment.tokenIndex,
+          offsetMs: Math.max(0, segment.startMs - pageStartMs),
+        })
+      }
+      previousReadTokenIndex = segment.tokenIndex
+    })
+
+    const dwellDurationMs = metrics.reduce((sum, metric) => sum + metric.dwellMs, 0)
+    const fixationCount = metrics.reduce((sum, metric) => sum + metric.visitCount, 0)
+    const regressionCount = metrics.reduce((sum, metric) => sum + metric.regressionCount, 0)
+
+    return [{
+      storyLineId: lineId,
+      sequenceNo: index + 1,
+      surfaceText: storyLineText(current),
+      dwellDurationMs,
+      fixationCount,
+      regressionCount,
+      averageFixationTimeMs: fixationCount > 0 ? Math.round(dwellDurationMs / fixationCount) : 0,
+      firstGazeOffsetMs: 0,
+      lastGazeOffsetMs: Math.max(0, lineSamples[lineSamples.length - 1]!.capturedAtMs - pageStartMs),
+    }]
+  })
+
+  return {
+    schemaVersion: 1,
+    contentType: 'STORY' as const,
+    storyId: Number.isInteger(storyNumericId) ? storyNumericId : undefined,
+    gazeSessionDurationMs: storyGazeStartedAtMs.value > 0
+      ? Math.max(0, Date.now() - storyGazeStartedAtMs.value)
+      : undefined,
+    samples: storyGazeSamples,
+    replayWords: createStoryReplayWords(),
+    sentenceMetrics,
+    regressions,
+  }
+}
+
+function createStoryReplayWords() {
+  return story.value.pages.flatMap((current, pageIndex) => {
+    return createStoryPageWordMetrics(current, pageIndex)?.metrics ?? []
+  })
+}
+
+function resetStoryGazeState() {
+  storyGazeSessionId.value = null
+  storyGazeSessionCompleted.value = false
+  storyGazeStartedAtMs.value = 0
+  storyGazeSamples.splice(0)
+  lastStoryGazeSampleAt = 0
+}
+
+async function startStoryGazeSession() {
+  if (learnerDataSource !== 'api' || storyGazeSessionId.value) return
+  const storyNumericId = Number(storyId.value)
+  if (!Number.isInteger(storyNumericId) || storyNumericId <= 0) return
+  try {
+    const session = await learnerGazeRepository.start({
+      studentId: getCachedStudent().studentId,
+      contentType: 'STORY',
+      storyId: storyId.value,
+      calibrationStatus: 'SKIPPED',
+    })
+    storyGazeSessionId.value = session.gazeSessionId
+    storyGazeStartedAtMs.value = Date.now()
+  } catch (error) {
+    errorModal.show(
+      error instanceof Error ? error : new Error('?댁빞湲??쒖꽑 ?섏쭛???쒖옉?섏? 紐삵뻽?듬땲??'),
+      '?댁빞湲??쒖꽑 ?곌껐 ?ㅻ쪟',
+    )
+  }
+}
+
+async function finishStoryGazeSession() {
+  if (
+    learnerDataSource !== 'api'
+    || !storyGazeSessionId.value
+    || storyGazeSessionCompleted.value
+  ) return
+  const sessionId = storyGazeSessionId.value
+  const studentId = getCachedStudent().studentId
+  storyGazeSessionCompleted.value = true
+  try {
+    if (storyGazeSamples.length === 0) {
+      await learnerGazeRepository.fail(sessionId, studentId)
+      return
+    }
+    await learnerGazeRepository.end(
+      sessionId,
+      studentId,
+      'COMPLETED',
+      createStoryGazeSubmission(),
+    )
+  } catch (error) {
+    storyGazeSessionCompleted.value = false
+    errorModal.show(
+      error instanceof Error ? error : new Error('?댁빞湲??쒖꽑 遺꾩꽍????ν븯吏 紐삵뻽?듬땲??'),
+      '?댁빞湲??쒖꽑 ???ㅻ쪟',
+    )
+  }
+}
+
 async function goNext() {
   const current = page.value
   if (!current.lineId) return
@@ -277,6 +655,7 @@ async function goNext() {
     current.readAt = new Date().toISOString()
 
     if (current.requiresBranchInput) {
+      await finishStoryGazeSession()
       clearDwell()
       clearLeaveTimer()
       gaze.value.visible = false
@@ -289,6 +668,7 @@ async function goNext() {
     }
 
     if (isLastPage.value) {
+      await finishStoryGazeSession()
       clearDwell()
       clearLeaveTimer()
       gaze.value.visible = false
@@ -307,12 +687,7 @@ async function goNext() {
     }
 
     currentPage.value += 1
-    readThrough.value = -1
-    clearDwell()
-    showReturnCue.value = false
-    gaze.value.visible = false
-    clearLeaveTimer()
-    await nextTick()
+    await resetReadingProgressForPage()
   } catch (error) {
     errorModal.show(
       error instanceof Error ? error : new Error('읽기 진행 상태를 저장하지 못했습니다.'),
@@ -394,12 +769,12 @@ async function submitBranchAnswer(optionNo?: number) {
     currentPage.value = nextPageIndex >= 0
       ? nextPageIndex
       : Math.max(story.value.pages.length - 1, 0)
-    readThrough.value = -1
-    showReturnCue.value = false
+    resetStoryGazeState()
+    await startStoryGazeSession()
+    await resetReadingProgressForPage()
     mockBranchVoiceFile.value = null
     voiceRecorder.reset()
     screen.value = 'reading'
-    await nextTick()
   } catch (error) {
     screen.value = 'question'
     // 버튼 선택 실패는 녹음 오류가 아니므로 음성 제출에만 재녹음을 안내한다.
@@ -457,22 +832,30 @@ async function playNarration() {
 }
 
 watch(storyId, async () => {
+  await finishStoryGazeSession()
+  resetStoryGazeState()
   await loadStory()
   currentPage.value = initialPage()
   screen.value = 'reading'
   rewardedFriend.value = null
-  readThrough.value = -1
   voiceRecorder.reset()
   clearNarration()
-  clearDwell()
+  await startStoryGazeSession()
+  await resetReadingProgressForPage()
 })
 onMounted(async () => {
   await loadStory()
   currentPage.value = initialPage()
+  await startStoryGazeSession()
+  await resetReadingProgressForPage()
   window.addEventListener('pointermove', onPointerMove)
   window.addEventListener('iread:gaze', onExternalGaze)
 })
+onBeforeRouteLeave(async () => {
+  await finishStoryGazeSession()
+})
 onBeforeUnmount(() => {
+  void finishStoryGazeSession()
   clearLeaveTimer()
   clearDwell()
   clearNarration()
