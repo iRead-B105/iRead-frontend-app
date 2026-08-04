@@ -11,10 +11,6 @@ const trainingTypeMappings = {
   SYLLABLE_TRACE: { categoryId: 'phonics', lessonId: 'trace-syllable' },
   CONSONANT_SOUND_CHOICE: { categoryId: 'phonics', lessonId: 'letter-sound-choice' },
   VOWEL_SOUND_CHOICE: { categoryId: 'phonics', lessonId: 'letter-sound-choice' },
-  CONSONANT_VOWEL_CLASSIFICATION: {
-    categoryId: 'phonological-awareness',
-    lessonId: 'same-sound',
-  },
   SYLLABLE_INITIAL_CHOICE: {
     categoryId: 'phonological-awareness',
     lessonId: 'first-sound',
@@ -34,7 +30,6 @@ const trainingTypeMappings = {
   },
   FINAL_CONSONANT_COMPARISON: { categoryId: 'phonics', lessonId: 'batchim-sound' },
   SIMILAR_SOUND_CHOICE: { categoryId: 'phonics', lessonId: 'similar-sound' },
-  PHONEME_BLEND: { categoryId: 'phonological-awareness', lessonId: 'sound-combine' },
   SYLLABLE_BLEND: { categoryId: 'phonological-awareness', lessonId: 'sound-combine' },
   BASIC_SYLLABLE_BUILD: { categoryId: 'phonics', lessonId: 'build-basic-letter' },
   FINAL_SYLLABLE_BUILD: { categoryId: 'phonics', lessonId: 'build-batchim-letter' },
@@ -47,7 +42,6 @@ const trainingTypeMappings = {
   SYLLABLE_REPLACE: { categoryId: 'phonological-awareness', lessonId: 'replace-syllable' },
   WORD_READING: { categoryId: 'fluency', lessonId: 'read-real-words' },
   NONWORD_READING: { categoryId: 'fluency', lessonId: 'read-nonwords' },
-  DIFFICULT_WORD_PREVIEW: { categoryId: 'short-text', lessonId: 'hard-word' },
   SENTENCE_READING: { categoryId: 'fluency', lessonId: 'read-sentences' },
   SHORT_PASSAGE_READING: { categoryId: 'fluency', lessonId: 'read-short-passage' },
   SENTENCE_ASSEMBLY: { categoryId: 'short-text', lessonId: 'sentence-order' },
@@ -62,13 +56,14 @@ const trainingTypeMappings = {
 
 export type LearnerTrainingType = keyof typeof trainingTypeMappings
 
+// 은퇴 템플릿(6 자음·모음 구별하기, 14 음소 합쳐 음절 만들기, 24 어려운 단어 먼저 읽기)은
+// 백엔드 TrainingCatalogPolicy가 모든 경로에서 제외하므로 매핑에서도 제거했다.
 const legacyTemplateTypes: Readonly<Record<number, LearnerTrainingType>> = {
   1: 'VOWEL_TRACE',
   2: 'CONSONANT_TRACE',
   3: 'SYLLABLE_TRACE',
   4: 'CONSONANT_SOUND_CHOICE',
   5: 'VOWEL_SOUND_CHOICE',
-  6: 'CONSONANT_VOWEL_CLASSIFICATION',
   7: 'SYLLABLE_INITIAL_CHOICE',
   8: 'WORD_INITIAL_CHOICE',
   9: 'SAME_INITIAL_WORD_CHOICE',
@@ -76,7 +71,6 @@ const legacyTemplateTypes: Readonly<Record<number, LearnerTrainingType>> = {
   11: 'WORD_FINAL_SOUND_CHOICE',
   12: 'FINAL_CONSONANT_COMPARISON',
   13: 'SIMILAR_SOUND_CHOICE',
-  14: 'PHONEME_BLEND',
   15: 'SYLLABLE_BLEND',
   16: 'BASIC_SYLLABLE_BUILD',
   17: 'FINAL_SYLLABLE_BUILD',
@@ -86,7 +80,6 @@ const legacyTemplateTypes: Readonly<Record<number, LearnerTrainingType>> = {
   21: 'SYLLABLE_REPLACE',
   22: 'WORD_READING',
   23: 'NONWORD_READING',
-  24: 'DIFFICULT_WORD_PREVIEW',
   25: 'SENTENCE_READING',
   26: 'SHORT_PASSAGE_READING',
   27: 'SENTENCE_ASSEMBLY',

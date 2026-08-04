@@ -23,7 +23,6 @@ const fixtures: readonly TrainingTypeFixture[] = [
   { templateId: 3, questionType: 'SYLLABLE_TRACE', responseType: 'TRACE', activityType: 'gaze-trace', content: { target: '가', soundText: '가', traceAssetKey: 'syllable_0' }, answer: { target: '가' } },
   { templateId: 4, questionType: 'CONSONANT_SOUND_CHOICE', responseType: 'SINGLE_CHOICE', activityType: 'audio-letter-choice', content: { audioText: 'ㄱ', choices: ['ㄱ', 'ㄴ', 'ㄷ'] }, answer: { answerIndex: 0 } },
   { templateId: 5, questionType: 'VOWEL_SOUND_CHOICE', responseType: 'SINGLE_CHOICE', activityType: 'audio-letter-choice', content: { audioText: 'ㅏ', choices: ['ㅏ', 'ㅓ', 'ㅗ'] }, answer: { answerIndex: 0 } },
-  { templateId: 6, questionType: 'CONSONANT_VOWEL_CLASSIFICATION', responseType: 'SINGLE_CHOICE', activityType: 'listen-and-select', content: { audioText: 'ㄱ', choices: ['CONSONANT', 'VOWEL'] }, answer: { answerIndex: 0 } },
   { templateId: 7, questionType: 'SYLLABLE_INITIAL_CHOICE', responseType: 'SINGLE_CHOICE', activityType: 'audio-letter-choice', content: { audioText: '가', choices: ['ㄱ', 'ㄴ', 'ㄷ'] }, answer: { answerIndex: 0 } },
   { templateId: 8, questionType: 'WORD_INITIAL_CHOICE', responseType: 'SINGLE_CHOICE', activityType: 'audio-letter-choice', content: { audioText: '사과', choices: ['ㅅ', 'ㄱ', 'ㄴ'] }, answer: { answerIndex: 0 } },
   { templateId: 9, questionType: 'SAME_INITIAL_WORD_CHOICE', responseType: 'SINGLE_CHOICE', activityType: 'listen-and-select', content: { targetAudioText: '사과', choices: [{ text: '수박' }, { text: '기차' }, { text: '연필' }] }, answer: { answerIndex: 0 } },
@@ -31,7 +30,6 @@ const fixtures: readonly TrainingTypeFixture[] = [
   { templateId: 11, questionType: 'WORD_FINAL_SOUND_CHOICE', responseType: 'SINGLE_CHOICE', activityType: 'listen-and-select', content: { audioText: '산', choices: ['ㄴ', 'ㄱ', 'ㅁ'] }, answer: { answerIndex: 0 } },
   { templateId: 12, questionType: 'FINAL_CONSONANT_COMPARISON', responseType: 'SINGLE_CHOICE', activityType: 'listen-and-select', content: { audioText: '각', choices: ['각', '간', '갈'] }, answer: { answerIndex: 0 } },
   { templateId: 13, questionType: 'SIMILAR_SOUND_CHOICE', responseType: 'SINGLE_CHOICE', activityType: 'sound-choice', content: { audioText: '가', choices: ['가', '카', '까'] }, answer: { answerIndex: 0 } },
-  { templateId: 14, questionType: 'PHONEME_BLEND', responseType: 'ORDERING', activityType: 'sound-blend', content: { audioParts: ['ㄱ', 'ㅏ'], cards: ['ㄱ', 'ㅏ', 'ㄴ'] }, answer: { answerOrder: [0, 1], result: '가' } },
   { templateId: 15, questionType: 'SYLLABLE_BLEND', responseType: 'ORDERING', activityType: 'sound-blend', content: { audioParts: ['사', '과'], cards: ['사', '과', '나'] }, answer: { answerOrder: [0, 1], result: '사과' } },
   { templateId: 16, questionType: 'BASIC_SYLLABLE_BUILD', responseType: 'COMPONENT_BUILD', activityType: 'letter-build', content: { targetAudioText: '가', initialChoices: ['ㄱ', 'ㄴ'], medialChoices: ['ㅏ', 'ㅓ'] }, answer: { initialAnswerIndex: 0, medialAnswerIndex: 0, result: '가' } },
   { templateId: 17, questionType: 'FINAL_SYLLABLE_BUILD', responseType: 'COMPONENT_BUILD', activityType: 'letter-build', content: { targetAudioText: '각', initialChoices: ['ㄱ', 'ㄴ'], medialChoices: ['ㅏ', 'ㅓ'], finalChoices: ['ㄱ', 'ㄴ'] }, answer: { initialAnswerIndex: 0, medialAnswerIndex: 0, finalAnswerIndex: 0, result: '각' } },
@@ -41,7 +39,6 @@ const fixtures: readonly TrainingTypeFixture[] = [
   { templateId: 21, questionType: 'SYLLABLE_REPLACE', responseType: 'SINGLE_CHOICE', activityType: 'sound-manipulation', content: { source: '사과', targetAudioText: '나과', replaceIndex: 0, choices: ['나', '다'] }, answer: { replaceIndex: 0, answerIndex: 0, result: '나과' } },
   { templateId: 22, questionType: 'WORD_READING', responseType: 'AUDIO', activityType: 'word-reading-grid', content: { words: ['사과', '나무', '바다'] }, answer: { expectedText: '사과 나무 바다' } },
   { templateId: 23, questionType: 'NONWORD_READING', responseType: 'AUDIO', activityType: 'word-reading-grid', content: { words: [{ text: '나무' }, { text: '두미' }] }, answer: { expectedText: '나무 두미' } },
-  { templateId: 24, questionType: 'DIFFICULT_WORD_PREVIEW', responseType: 'AUDIO', activityType: 'word-reading-grid', content: { difficultWords: [{ word: '사과', syllables: ['사', '과'] }], sentence: '아기는 사과를 먹는다.' }, answer: { expectedText: '아기는 사과를 먹는다.' } },
   { templateId: 25, questionType: 'SENTENCE_READING', responseType: 'AUDIO', activityType: 'word-reading-grid', content: { sentence: '아기는 사과를 먹는다.', tokens: ['아기는', '사과를', '먹는다'] }, answer: { expectedText: '아기는 사과를 먹는다.' } },
   { templateId: 26, questionType: 'SHORT_PASSAGE_READING', responseType: 'AUDIO', activityType: 'word-reading-grid', content: { sentences: ['아기는 사과를 먹는다.', '나무 위에서 새가 노래한다.'] }, answer: { expectedText: '아기는 사과를 먹는다. 나무 위에서 새가 노래한다.' } },
   { templateId: 27, questionType: 'SENTENCE_ASSEMBLY', responseType: 'ORDERING', activityType: 'sentence-order', content: { cards: ['사과를', '먹는다.', '아기는'] }, answer: { answerOrder: [2, 0, 1], completedSentence: '아기는 사과를 먹는다.' } },
@@ -96,9 +93,11 @@ describe('all backend training types', () => {
       .toBe(trainingActivityComponents['audio-letter-choice'])
   })
 
-  it('34개 템플릿을 빠짐없이 포함한다', () => {
+  it('은퇴 템플릿(6, 14, 24)을 제외한 31개 템플릿을 빠짐없이 포함한다', () => {
+    const retired = [6, 14, 24]
     expect(fixtures.map((fixture) => fixture.templateId)).toEqual(
-      Array.from({ length: 34 }, (_, index) => index + 1),
+      Array.from({ length: 34 }, (_, index) => index + 1)
+        .filter((id) => !retired.includes(id)),
     )
     expect(fixtures.every((fixture) => (
       getTrainingTemplateMapping(fixture.templateId) !== null
