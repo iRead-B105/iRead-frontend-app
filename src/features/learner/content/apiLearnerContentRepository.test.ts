@@ -14,6 +14,7 @@ describe('API learner content repository', () => {
           storyId: 31,
           storyTemplateId: 4,
           createdAt: '2026-07-29T10:00:00',
+          entryImageUrl: '/uploads/story/31/entry.png',
           latestBranchSubtitle: '달빛 문을 찾아서',
           storyStatus: 'IN_PROGRESS',
           progress: 65,
@@ -40,6 +41,7 @@ describe('API learner content repository', () => {
       status: 'IN_PROGRESS',
       progress: 65,
       coverImageUrl: '/images/brave-rabbit.png',
+      entryImageUrl: '/uploads/story/31/entry.png',
     })
     expect(result.templates[0]).toMatchObject({
       templateId: '4',
@@ -214,6 +216,18 @@ describe('API learner content repository', () => {
       { signal: undefined },
     )
     expect(result.calibrationRequired).toBe(true)
+  })
+
+  it('진행 중 이야기 삭제를 학생과 이야기 식별자로 요청한다', async () => {
+    const request = vi.spyOn(learnerApiClient, 'request').mockResolvedValue(undefined)
+    const repository = new ApiLearnerContentRepository()
+
+    await repository.deleteStory('101', '31')
+
+    expect(request).toHaveBeenCalledWith(
+      '/api/app/story/101/sessions/31',
+      { method: 'DELETE' },
+    )
   })
 
   it('marks the first incomplete lesson as current when only NOT_READY remains', async () => {

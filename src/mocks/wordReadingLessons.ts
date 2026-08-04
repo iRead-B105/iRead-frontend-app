@@ -5,7 +5,7 @@ const words = (items: string[]): WordReadingItem[] =>
 
 const question = (id: string, items: string[]) => ({
   id,
-  instruction: '왼쪽부터 읽어봐요',
+  instruction: '문장을 읽어봐요',
   answer: id,
   readingWords: words(items),
   feedback: {

@@ -1,16 +1,17 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
-import storyChoiceScene from '../../assets/story/story-choice-turtle-crossroads.png'
 import storySceneFallback from '../../assets/story/story-reader-turtle-scene-mock.png'
 import {
   getCachedStudent,
   getStoryDetail,
+  markStoryLibraryCacheStale,
   unlockStoryFriend,
 } from '@/services/learnerDataRepository'
 import PageBackButton from '@/components/common/PageBackButton.vue'
 import type { VillageItem } from '@/types/village'
 import { learnerStoryRepository } from '@/features/learner/story'
+import { preloadStoryImage } from '@/features/learner/story/storyImagePreloader'
 import type { LearnerStoryBranchPrompt } from '@/features/learner/model'
 import { learnerGazeRepository } from '@/features/learner/gaze'
 import {
@@ -71,7 +72,7 @@ const story = ref<Story>({
   dayComplete: false,
   pages: [{
     lineId: '',
-    image: storyChoiceScene,
+    image: '',
     lines: ['이야기를 준비하고 있어요.'],
     readAt: null,
     requiresBranchInput: false,
@@ -79,46 +80,55 @@ const story = ref<Story>({
   }],
 })
 const loadError = ref('')
+const storyReady = ref(false)
 
-async function loadStory() {
+function initialPageFor(nextStory: Story) {
+  if (route.query.continue !== '1') return 0
+  const firstUnreadPage = nextStory.pages.findIndex((item) => item.readAt === null)
+  return firstUnreadPage >= 0
+    ? firstUnreadPage
+    : Math.max(nextStory.pages.length - 1, 0)
+}
+
+async function loadStory(): Promise<boolean> {
   loadError.value = ''
   try {
     const detail = await getStoryDetail(storyId.value)
-    story.value = {
-    title: detail.title,
-    character: detail.character,
-    question: detail.branchQuestion,
-    status: detail.status,
-    currentDay: detail.currentDay,
-    availableDay: detail.availableDay,
-    totalDays: detail.totalDays,
-    pagesPerDay: detail.pagesPerDay,
-    dayComplete: detail.dayComplete,
-    pages: detail.pages.map((page) => ({
-      lineId: page.lineId,
-      image: resolveStoryScene(page.imageUrl),
-      imagePosition: page.imagePosition,
-      lines: [...page.lines],
-      readAt: page.readAt,
-      requiresBranchInput: page.requiresBranchInput,
-      branchPrompt: page.branchPrompt,
-    })),
+    const nextStory: Story = {
+      title: detail.title,
+      character: detail.character,
+      question: detail.branchQuestion,
+      status: detail.status,
+      currentDay: detail.currentDay,
+      availableDay: detail.availableDay,
+      totalDays: detail.totalDays,
+      pagesPerDay: detail.pagesPerDay,
+      dayComplete: detail.dayComplete,
+      pages: detail.pages.map((page) => ({
+        lineId: page.lineId,
+        image: resolveStoryScene(page.imageUrl),
+        imagePosition: page.imagePosition,
+        lines: [...page.lines],
+        readAt: page.readAt,
+        requiresBranchInput: page.requiresBranchInput,
+        branchPrompt: page.branchPrompt,
+      })),
     }
+    await preloadStoryImage(nextStory.pages[initialPageFor(nextStory)]?.image)
+    story.value = nextStory
+    return true
   } catch (error) {
     loadError.value = '이야기를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.'
     errorModal.show(
       error instanceof Error ? error : new Error(loadError.value),
       '이야기 연결 오류',
     )
+    return false
   }
 }
 
 function initialPage() {
-  if (route.query.continue !== '1') return 0
-  const firstUnreadPage = story.value.pages.findIndex((item) => item.readAt === null)
-  return firstUnreadPage >= 0
-    ? firstUnreadPage
-    : Math.max(story.value.pages.length - 1, 0)
+  return initialPageFor(story.value)
 }
 
 const currentPage = ref(0)
@@ -132,11 +142,12 @@ const dwellTargetIndex = ref<number | null>(null)
 const dwellDurationMs = ref(100)
 const transcript = ref('')
 const recognizedBranchIntent = ref('')
+const recognizedBranchReviewToken = ref('')
+const branchReviewMessage = ref('')
+const branchVoiceAttemptCount = ref(0)
 const speechError = ref(false)
 const branchSubmitting = ref(false)
 const mockBranchVoiceFile = ref<File | null>(null)
-const ttsLoading = ref(false)
-const ttsPlaying = ref(false)
 const storyGazeSessionId = ref<string | null>(null)
 const storyGazeSessionCompleted = ref(false)
 const storyGazeStartedAtMs = ref(0)
@@ -149,16 +160,22 @@ type StoryGazeSample = {
   readonly tokenIndex?: number
   readonly text?: string
 }
+type StoryGazeSource = 'cursor' | 'tracker'
 const storyGazeSamples: StoryGazeSample[] = []
+// Keep the input source only while deriving the local replay metrics.  The
+// submitted sample contract stays unchanged for the backend.
+const storyGazeSampleSources = new Map<number, StoryGazeSource>()
 let leaveTimer: number | undefined
 let dwellTimer: number | undefined
 let lastExternalGazeAt = 0
 let lastStoryGazeSampleAt = 0
-let narrationAudio: HTMLAudioElement | null = null
-let narrationObjectUrl: string | null = null
+let cursorGazeSampleTimer: number | undefined
+let lastCursorPoint: { x: number; y: number } | null = null
+let lastStoryGazePoint: { x: number; y: number; source: StoryGazeSource } | null = null
 
 const WORD_HIT_PADDING_X = 18
 const WORD_HIT_PADDING_Y = 24
+const CURSOR_GAZE_SAMPLE_INTERVAL_MS = 80
 
 const allPages = computed(() => story.value.pages)
 const page = computed<StoryPage>(() => allPages.value[currentPage.value] ?? story.value.pages[0]!)
@@ -174,6 +191,19 @@ const isListening = computed(() =>
 const hasBranchRecording = computed(() =>
   mockBranchVoiceFile.value !== null || voiceRecorder.state.hasRecording,
 )
+const branchVoiceFallbackRequired = computed(() => branchVoiceAttemptCount.value >= 3)
+
+watch(hasBranchRecording, (hasRecording, hadRecording) => {
+  if (
+    !hasRecording
+    || hadRecording
+    || branchVoiceFallbackRequired.value
+    || recognizedBranchIntent.value
+    || branchSubmitting.value
+  ) return
+
+  void reviewBranchRecording()
+})
 
 function exitToStorySelection() {
   void router.push({ name: 'story-selection' })
@@ -190,9 +220,9 @@ function clearDwell() {
   dwellTargetIndex.value = null
 }
 
-function getDwellDuration(word: string) {
-  const readableCharacterCount = Array.from(word).filter((character) => /[\p{L}\p{N}]/u.test(character)).length
-  return Math.max(450, Math.max(readableCharacterCount, 1) * 180)
+function getDwellDuration(_word: string) {
+  // 아동 화면의 읽음 진행 기준을 시선 분석·리플레이 기준과 동일하게 맞춘다.
+  return 1_000
 }
 
 function beginDwell(index: number) {
@@ -230,7 +260,20 @@ async function resetReadingProgressForPage() {
 }
 
 function setProgress(index: number) {
-  if (index === readThrough.value + 1) readThrough.value += 1
+  if (index === readThrough.value + 1) {
+    // 읽음 타이머가 완료된 시점 자체를 원시 시선 샘플로 남겨, 진행 상태와
+    // 리플레이의 연속 응시 시간이 어긋나지 않게 한다.
+    if (lastStoryGazePoint) {
+      recordStoryGazeSample(
+        lastStoryGazePoint.x,
+        lastStoryGazePoint.y,
+        index,
+        lastStoryGazePoint.source,
+        true,
+      )
+    }
+    readThrough.value += 1
+  }
   clearDwell()
   showReturnCue.value = false
   clearLeaveTimer()
@@ -298,12 +341,18 @@ function visibleWordIndexAt(clientX: number, clientY: number) {
   return candidates[0]?.index ?? null
 }
 
-function recordStoryGazeSample(clientX: number, clientY: number, tokenIndex: number | null) {
+function recordStoryGazeSample(
+  clientX: number,
+  clientY: number,
+  tokenIndex: number | null,
+  source: StoryGazeSource,
+  force = false,
+) {
   if (learnerDataSource !== 'api' || !storyGazeSessionId.value) return
   const lineId = Number(page.value.lineId)
   if (!Number.isInteger(lineId) || lineId <= 0) return
   const capturedAtMs = Date.now()
-  if (capturedAtMs - lastStoryGazeSampleAt < 80) return
+  if (!force && capturedAtMs - lastStoryGazeSampleAt < 80) return
   lastStoryGazeSampleAt = capturedAtMs
   const word = tokenIndex === null ? undefined : pageWords.value[tokenIndex]?.word
   storyGazeSamples.push({
@@ -315,9 +364,15 @@ function recordStoryGazeSample(clientX: number, clientY: number, tokenIndex: num
     tokenIndex: tokenIndex ?? undefined,
     text: word,
   })
+  storyGazeSampleSources.set(capturedAtMs, source)
 }
 
-function updateGaze(clientX: number, clientY: number, canRead = true) {
+function updateGaze(
+  clientX: number,
+  clientY: number,
+  canRead = true,
+  source: StoryGazeSource = 'tracker',
+) {
   if (screen.value !== 'reading') return
   const panel = textPanel.value
   if (!panel) return
@@ -325,7 +380,8 @@ function updateGaze(clientX: number, clientY: number, canRead = true) {
   gaze.value = { x: clientX - panelRect.left, y: clientY - panelRect.top, visible: clientX >= panelRect.left && clientX <= panelRect.right && clientY >= panelRect.top && clientY <= panelRect.bottom }
   if (!gaze.value.visible) { clearDwell(); scheduleReturnCue(); return }
   const visibleTokenIndex = visibleWordIndexAt(clientX, clientY)
-  recordStoryGazeSample(clientX, clientY, visibleTokenIndex)
+  lastStoryGazePoint = { x: clientX, y: clientY, source }
+  recordStoryGazeSample(clientX, clientY, visibleTokenIndex, source)
   if (!canRead) { clearDwell(); scheduleReturnCue(); return }
   const targetIndex = wordIndexAt(clientX, clientY)
   if (targetIndex !== null) beginDwell(targetIndex)
@@ -333,10 +389,22 @@ function updateGaze(clientX: number, clientY: number, canRead = true) {
 }
 
 function onPointerMove(event: PointerEvent) {
+  lastCursorPoint = { x: event.clientX, y: event.clientY }
   if (Date.now() - lastExternalGazeAt < 1500) return
-  updateGaze(event.clientX, event.clientY)
+  updateGaze(event.clientX, event.clientY, true, 'cursor')
 }
-function onPointerLeave() { gaze.value.visible = false; clearDwell(); scheduleReturnCue() }
+function onPointerLeave() {
+  lastCursorPoint = null
+  gaze.value.visible = false
+  clearDwell()
+  scheduleReturnCue()
+}
+
+function sampleCursorGaze() {
+  if (!lastCursorPoint || Date.now() - lastExternalGazeAt < 1500) return
+  updateGaze(lastCursorPoint.x, lastCursorPoint.y, true, 'cursor')
+}
+
 function onExternalGaze(event: Event) {
   const detail = (event as CustomEvent<{
     x?: number
@@ -349,7 +417,7 @@ function onExternalGaze(event: Event) {
   const clientY = typeof detail?.clientY === 'number' ? detail.clientY : detail?.y
   if (typeof clientX === 'number' && typeof clientY === 'number') {
     lastExternalGazeAt = Date.now()
-    updateGaze(clientX, clientY, detail.headPoseStable !== false)
+    updateGaze(clientX, clientY, detail.headPoseStable !== false, 'tracker')
   }
 }
 
@@ -372,12 +440,16 @@ function sampleDwellMs(
   return Math.max(0, Math.min(Number.isFinite(gap) && gap > 0 ? gap : 80, 250))
 }
 
-const READ_DWELL_MS = 1_000
-const FIXATION_DWELL_MS = 2_000
+const TRACKER_READ_DWELL_MS = 1_000
+const TRACKER_FIXATION_DWELL_MS = 2_000
+// 마우스와 아이트래커는 같은 읽음/체류 기준을 사용한다.
+const CURSOR_READ_DWELL_MS = 1_000
+const CURSOR_FIXATION_DWELL_MS = 2_000
 const MAX_SAMPLE_GAP_MS = 250
 
 interface StoryReadableSegment {
   readonly tokenIndex: number
+  readonly source: StoryGazeSource
   readonly startMs: number
   readonly endMs: number
   readonly dwellMs: number
@@ -408,7 +480,11 @@ function createStoryReadableSegments(
   let activeSegment: StoryReadableSegment | null = null
 
   const finishSegment = () => {
-    if (!activeSegment || activeSegment.dwellMs < READ_DWELL_MS) return
+    if (!activeSegment) return
+    const minimumDwellMs = activeSegment.source === 'cursor'
+      ? CURSOR_READ_DWELL_MS
+      : TRACKER_READ_DWELL_MS
+    if (activeSegment.dwellMs < minimumDwellMs) return
     segments.push(activeSegment)
   }
 
@@ -418,6 +494,7 @@ function createStoryReadableSegments(
       && Number(sample.tokenIndex) < tokenCount
       ? Number(sample.tokenIndex)
       : null
+    const source = storyGazeSampleSources.get(sample.capturedAtMs) ?? 'tracker'
     const dwellMs = sampleDwellMs(sample, sampleIndex, samples)
     if (tokenIndex === null) {
       finishSegment()
@@ -427,12 +504,14 @@ function createStoryReadableSegments(
     const shouldContinueSegment =
       activeSegment
       && activeSegment.tokenIndex === tokenIndex
+      && activeSegment.source === source
       && sample.capturedAtMs - activeSegment.endMs <= MAX_SAMPLE_GAP_MS
 
     if (!shouldContinueSegment) {
       finishSegment()
       activeSegment = {
         tokenIndex,
+        source,
         startMs: sample.capturedAtMs,
         endMs: sample.capturedAtMs + dwellMs,
         dwellMs,
@@ -444,6 +523,7 @@ function createStoryReadableSegments(
     if (!currentSegment) return
     activeSegment = {
       tokenIndex: currentSegment.tokenIndex,
+      source: currentSegment.source,
       startMs: currentSegment.startMs,
       endMs: sample.capturedAtMs + dwellMs,
       dwellMs: currentSegment.dwellMs + dwellMs,
@@ -488,39 +568,33 @@ function createStoryPageWordMetrics(
 
   const pageStartMs = lineSamples[0]!.capturedAtMs
   const segments = createStoryReadableSegments(lineSamples, tokens.length)
-  let previousReadTokenIndex: number | null = null
-  const skippedByJump = new Set<number>()
-
-  const markSkippedWordsBefore = (tokenIndex: number) => {
-    const startIndex = previousReadTokenIndex === null ? 0 : previousReadTokenIndex + 1
-    if (tokenIndex <= startIndex) return
-    for (let skippedIndex = startIndex; skippedIndex < tokenIndex; skippedIndex += 1) {
-      const skippedMetric = metrics[skippedIndex]
-      if (skippedMetric && skippedMetric.firstSeenMs === null) {
-        skippedMetric.skipped = true
-        skippedByJump.add(skippedIndex)
-      }
-    }
-  }
+  // 직전 시선의 이동 방향이 아니라 다음에 순서대로 읽어야 할 단어를 기준으로 한다.
+  let nextExpectedTokenIndex = 0
 
   segments.forEach((segment) => {
     const metric = metrics[segment.tokenIndex]
     if (!metric) return
     const firstSeenMs = Math.max(0, Math.round(segment.startMs - pageStartMs))
     const lastSeenMs = Math.max(firstSeenMs, Math.round(segment.endMs - pageStartMs))
-    markSkippedWordsBefore(segment.tokenIndex)
     metric.firstSeenMs = metric.firstSeenMs === null
       ? firstSeenMs
       : Math.min(metric.firstSeenMs, firstSeenMs)
     metric.lastSeenMs = metric.lastSeenMs === null
       ? lastSeenMs
       : Math.max(metric.lastSeenMs, lastSeenMs)
-    metric.skipped = skippedByJump.has(segment.tokenIndex)
-    if (previousReadTokenIndex !== null && segment.tokenIndex < previousReadTokenIndex) {
+    if (segment.tokenIndex > nextExpectedTokenIndex) {
+      metric.skipped = true
+    } else if (segment.tokenIndex < nextExpectedTokenIndex) {
+      metric.skipped = false
       metric.regressionCount += 1
+    } else {
+      metric.skipped = false
+      nextExpectedTokenIndex += 1
     }
-    previousReadTokenIndex = segment.tokenIndex
-    if (segment.dwellMs >= FIXATION_DWELL_MS) {
+    const fixationDwellMs = segment.source === 'cursor'
+      ? CURSOR_FIXATION_DWELL_MS
+      : TRACKER_FIXATION_DWELL_MS
+    if (segment.dwellMs >= fixationDwellMs) {
       metric.dwellMs += Math.round(segment.dwellMs)
       metric.visitCount += 1
     }
@@ -542,19 +616,22 @@ function createStoryGazeSubmission() {
     const pageAnalysis = createStoryPageWordMetrics(current, index)
     if (!pageAnalysis || pageAnalysis.lineSamples.length === 0) return []
     const { lineId, lineSamples, pageStartMs, segments, metrics } = pageAnalysis
-    let previousReadTokenIndex: number | null = null
+    let nextExpectedTokenIndex = 0
 
     segments.forEach((segment) => {
-      if (previousReadTokenIndex !== null && segment.tokenIndex < previousReadTokenIndex) {
+      if (segment.tokenIndex < nextExpectedTokenIndex) {
         regressions.push({
           fromTargetIndex: index + 1,
-          fromTokenIndex: previousReadTokenIndex,
+          fromTokenIndex: nextExpectedTokenIndex,
           toTargetIndex: index + 1,
           toTokenIndex: segment.tokenIndex,
           offsetMs: Math.max(0, segment.startMs - pageStartMs),
         })
+        return
       }
-      previousReadTokenIndex = segment.tokenIndex
+      if (segment.tokenIndex === nextExpectedTokenIndex) {
+        nextExpectedTokenIndex += 1
+      }
     })
 
     const dwellDurationMs = metrics.reduce((sum, metric) => sum + metric.dwellMs, 0)
@@ -599,7 +676,9 @@ function resetStoryGazeState() {
   storyGazeSessionCompleted.value = false
   storyGazeStartedAtMs.value = 0
   storyGazeSamples.splice(0)
+  storyGazeSampleSources.clear()
   lastStoryGazeSampleAt = 0
+  lastStoryGazePoint = null
 }
 
 async function startStoryGazeSession() {
@@ -663,13 +742,20 @@ async function goNext() {
       current.lineId,
     )
     current.readAt = new Date().toISOString()
+    markStoryLibraryCacheStale()
+    // 페이지 단위 리플레이를 위해, 다음 화면으로 넘어가기 전에 현재 페이지의
+    // 시선 세션을 반드시 종료·분석 전송한다.
+    await finishStoryGazeSession()
 
     if (current.requiresBranchInput) {
-      await finishStoryGazeSession()
       clearDwell()
       clearLeaveTimer()
       gaze.value.visible = false
       transcript.value = ''
+      recognizedBranchIntent.value = ''
+      recognizedBranchReviewToken.value = ''
+      branchReviewMessage.value = ''
+      branchVoiceAttemptCount.value = 0
       speechError.value = false
       mockBranchVoiceFile.value = null
       voiceRecorder.reset()
@@ -678,7 +764,6 @@ async function goNext() {
     }
 
     if (isLastPage.value) {
-      await finishStoryGazeSession()
       clearDwell()
       clearLeaveTimer()
       gaze.value.visible = false
@@ -697,6 +782,8 @@ async function goNext() {
     }
 
     currentPage.value += 1
+    resetStoryGazeState()
+    await startStoryGazeSession()
     await resetReadingProgressForPage()
   } catch (error) {
     errorModal.show(
@@ -707,8 +794,15 @@ async function goNext() {
 }
 
 async function startListening() {
+  if (branchVoiceFallbackRequired.value) {
+    speechError.value = true
+    branchReviewMessage.value = '위의 선택지에서 하나를 골라 주세요.'
+    return
+  }
   speechError.value = false
+  branchReviewMessage.value = ''
   recognizedBranchIntent.value = ''
+  recognizedBranchReviewToken.value = ''
   voiceRecorder.reset()
   if (mockDeviceSubmissionsEnabled) {
     mockBranchVoiceFile.value = createMockVoiceFile(5)
@@ -771,10 +865,33 @@ async function reviewBranchRecording() {
       audioFile,
     )
     transcript.value = result.transcript
-    recognizedBranchIntent.value = result.accepted ? result.transcript : ''
-    speechError.value = !result.accepted
+    if (
+      (result.decision === 'ALLOW' || result.decision === 'CONFIRM')
+      && result.reviewToken
+    ) {
+      recognizedBranchIntent.value = result.transcript
+      recognizedBranchReviewToken.value = result.reviewToken
+      speechError.value = false
+      branchReviewMessage.value = result.decision === 'CONFIRM'
+        ? '말한 내용이 맞는지 한 번 확인해 주세요.'
+        : ''
+    } else {
+      branchVoiceAttemptCount.value += 1
+      recognizedBranchIntent.value = ''
+      recognizedBranchReviewToken.value = ''
+      speechError.value = true
+      branchReviewMessage.value = branchVoiceFallbackRequired.value
+        ? '위의 선택지에서 하나를 골라 주세요.'
+        : result.decision === 'BLOCK'
+          ? '다른 방법으로 이야기해 볼까요?'
+          : '질문에 대한 생각을 다시 말해 볼까요?'
+    }
   } catch (error) {
+    branchVoiceAttemptCount.value += 1
     speechError.value = true
+    branchReviewMessage.value = branchVoiceFallbackRequired.value
+      ? '위의 선택지에서 하나를 골라 주세요.'
+      : '다시 녹음해 볼까요?'
     errorModal.show(
       error instanceof Error ? error : new Error('말한 내용을 확인하지 못했습니다.'),
       '음성 선택 확인 오류',
@@ -784,9 +901,17 @@ async function reviewBranchRecording() {
   }
 }
 
-async function submitBranchAnswer(optionNo?: number, freeIntent?: string) {
+async function submitBranchAnswer(
+  optionNo?: number,
+  freeIntent?: string,
+  reviewToken?: string,
+) {
   const current = page.value
-  const answer = optionNo ?? freeIntent
+  const answer = optionNo ?? (
+    freeIntent && reviewToken
+      ? { branchIntent: freeIntent, reviewToken }
+      : undefined
+  )
   if (!current.lineId || !answer || branchSubmitting.value) {
     speechError.value = true
     return
@@ -819,6 +944,9 @@ async function submitBranchAnswer(optionNo?: number, freeIntent?: string) {
     await resetReadingProgressForPage()
     mockBranchVoiceFile.value = null
     recognizedBranchIntent.value = ''
+    recognizedBranchReviewToken.value = ''
+    branchReviewMessage.value = ''
+    branchVoiceAttemptCount.value = 0
     voiceRecorder.reset()
     screen.value = 'reading'
   } catch (error) {
@@ -834,68 +962,28 @@ async function submitBranchAnswer(optionNo?: number, freeIntent?: string) {
   }
 }
 
-function clearNarration() {
-  narrationAudio?.pause()
-  narrationAudio = null
-  if (narrationObjectUrl) {
-    URL.revokeObjectURL(narrationObjectUrl)
-    narrationObjectUrl = null
-  }
-  ttsPlaying.value = false
-}
-
-async function playNarration() {
-  if (!page.value.lineId || ttsLoading.value) return
-  clearNarration()
-  ttsLoading.value = true
-  try {
-    const result = await learnerStoryRepository.synthesizeLine(
-      getCachedStudent().studentId,
-      storyId.value,
-      page.value.lineId,
-    )
-    const audioBlob = await learnerStoryRepository.downloadAudio(result.audioUrl)
-    narrationObjectUrl = URL.createObjectURL(audioBlob)
-    narrationAudio = new Audio(narrationObjectUrl)
-    narrationAudio.onended = () => {
-      ttsPlaying.value = false
-    }
-    narrationAudio.onerror = () => {
-      ttsPlaying.value = false
-      errorModal.show(new Error('이야기 음성을 재생하지 못했습니다.'), '이야기 듣기 오류')
-    }
-    ttsPlaying.value = true
-    await narrationAudio.play()
-  } catch (error) {
-    clearNarration()
-    errorModal.show(
-      error instanceof Error ? error : new Error('이야기 음성을 불러오지 못했습니다.'),
-      '이야기 듣기 오류',
-    )
-  } finally {
-    ttsLoading.value = false
-  }
-}
-
 watch(storyId, async () => {
   await finishStoryGazeSession()
   resetStoryGazeState()
-  await loadStory()
+  storyReady.value = false
+  storyReady.value = await loadStory()
+  if (!storyReady.value) return
   currentPage.value = initialPage()
   screen.value = 'reading'
   rewardedFriend.value = null
   voiceRecorder.reset()
-  clearNarration()
   await startStoryGazeSession()
   await resetReadingProgressForPage()
 })
 onMounted(async () => {
-  await loadStory()
+  storyReady.value = await loadStory()
+  if (!storyReady.value) return
   currentPage.value = initialPage()
   await startStoryGazeSession()
   await resetReadingProgressForPage()
   window.addEventListener('pointermove', onPointerMove)
   window.addEventListener('iread:gaze', onExternalGaze)
+  cursorGazeSampleTimer = window.setInterval(sampleCursorGaze, CURSOR_GAZE_SAMPLE_INTERVAL_MS)
 })
 onBeforeRouteLeave(async () => {
   await finishStoryGazeSession()
@@ -904,7 +992,9 @@ onBeforeUnmount(() => {
   void finishStoryGazeSession()
   clearLeaveTimer()
   clearDwell()
-  clearNarration()
+  if (cursorGazeSampleTimer !== undefined) window.clearInterval(cursorGazeSampleTimer)
+  cursorGazeSampleTimer = undefined
+  lastCursorPoint = null
   window.removeEventListener('pointermove', onPointerMove)
   window.removeEventListener('iread:gaze', onExternalGaze)
 })
@@ -913,7 +1003,11 @@ onBeforeUnmount(() => {
 <template>
   <main class="story-reader">
     <section class="reader-frame" :aria-label="`${story.title} 읽기`">
-      <div v-if="screen === 'reading'" class="story-scene">
+      <div v-if="!storyReady" class="story-loading" role="status" aria-live="polite">
+        <span class="story-loading__spinner" aria-hidden="true" />
+        <strong>{{ loadError || '이야기 장면을 준비하고 있어요.' }}</strong>
+      </div>
+      <div v-else-if="screen === 'reading'" class="story-scene">
         <PageBackButton
           class="reader-back"
           label="이야기 나라로 돌아가기"
@@ -922,14 +1016,6 @@ onBeforeUnmount(() => {
         <div class="story-progress" role="status" :aria-label="`${story.currentDay}일차 ${(currentPage % story.pagesPerDay) + 1}페이지`">
           {{ story.currentDay }}일차 · {{ (currentPage % story.pagesPerDay) + 1 }} / {{ story.pagesPerDay }}
         </div>
-        <button
-          class="story-listen"
-          type="button"
-          :disabled="ttsLoading"
-          @click="playNarration"
-        >
-          {{ ttsLoading ? '음성 준비 중…' : ttsPlaying ? '다시 듣기' : '이야기 듣기' }}
-        </button>
         <img :src="page.image" :alt="`${story.title} 이야기 장면`" :style="{ objectPosition: page.imagePosition ?? 'center' }" />
         <div class="scene-shade" aria-hidden="true" />
         <div ref="textPanel" class="reading-panel" aria-live="polite" @pointerleave="onPointerLeave">
@@ -955,13 +1041,24 @@ onBeforeUnmount(() => {
         />
         <img :src="page.image" alt="" :style="{ objectPosition: page.imagePosition ?? 'center' }" />
         <div class="question-backdrop" aria-hidden="true" />
-        <section class="question-card" :class="{ 'question-card--generating': screen === 'generating' }" aria-live="polite">
+        <section
+          class="question-card"
+          :class="{
+            'question-card--choice': screen === 'question',
+            'question-card--review': screen === 'question'
+              && hasBranchRecording
+              && !branchVoiceFallbackRequired,
+            'question-card--generating': screen === 'generating',
+          }"
+          aria-live="polite"
+        >
           <template v-if="screen === 'question'">
-            <div class="choice-illustration">
-              <img :src="storyChoiceScene" alt="갈림길 앞에서 어느 길로 갈지 고민하는 거북이" />
-            </div>
             <h1>{{ branchQuestion }}</h1>
-            <div v-if="branchOptions.length === 3" class="branch-options" aria-label="이야기 선택지">
+            <div
+              v-if="branchOptions.length === 3 && (!hasBranchRecording || branchVoiceFallbackRequired)"
+              class="branch-options"
+              aria-label="이야기 선택지"
+            >
               <button
                 v-for="option in branchOptions"
                 :key="option.optionNo"
@@ -969,11 +1066,23 @@ onBeforeUnmount(() => {
                 :disabled="branchSubmitting"
                 @click="submitBranchAnswer(option.optionNo)"
               >
-                {{ option.label }}
+                <span class="branch-option-number" aria-hidden="true">{{ option.optionNo }}</span>
+                <span class="branch-option-label">{{ option.label }}</span>
+                <span class="branch-option-arrow" aria-hidden="true">›</span>
               </button>
             </div>
-            <p class="branch-or">버튼을 누르거나 말로 이야기해 주세요.</p>
-            <section class="voice-answer" aria-label="말로 대답하기">
+            <p
+              v-if="!hasBranchRecording || branchVoiceFallbackRequired"
+              class="branch-or"
+            ><span>또는 직접 이야기하기</span></p>
+            <section
+              class="voice-answer"
+              :class="{
+                'voice-answer--recorded': hasBranchRecording && !branchVoiceFallbackRequired,
+                'voice-answer--error': speechError,
+              }"
+              aria-label="말로 대답하기"
+            >
               <button
                 class="listening-mic"
                 :class="{ 'listening-mic--active': isListening }"
@@ -992,25 +1101,32 @@ onBeforeUnmount(() => {
                       : isListening
                         ? '이야기를 듣고 있어요!'
                         : hasBranchRecording
-                          ? (recognizedBranchIntent ? '말한 내용을 확인해 주세요' : '대답을 녹음했어요')
+                          ? (recognizedBranchIntent ? '말한 내용을 확인해 주세요' : '말한 내용을 확인하고 있어요')
                           : '이야기를 들려주세요!'
                   }}
                 </strong>
-                <p>
-                  {{
-                    speechError
-                      ? (voiceRecorder.state.errorMessage ?? '다시 녹음해 볼까요?')
-                      : isListening
-                        ? '말을 마치면 마이크를 눌러 주세요.'
-                        : hasBranchRecording
-                          ? (recognizedBranchIntent || '먼저 말한 내용을 글자로 확인해요.')
-                          : '마이크를 누르고 대답해 주세요.'
-                  }}
+                <p
+                  :class="{
+                    'voice-transcript': hasBranchRecording && Boolean(recognizedBranchIntent),
+                    'voice-message--error': speechError,
+                  }"
+                >
+                  <template v-if="speechError">
+                    {{ branchReviewMessage || voiceRecorder.state.errorMessage || '다시 녹음해 볼까요?' }}
+                  </template>
+                  <template v-else-if="isListening">말을 마치면 마이크를 눌러 주세요.</template>
+                  <template v-else-if="recognizedBranchIntent">“{{ recognizedBranchIntent }}”</template>
+                  <template v-else-if="hasBranchRecording">잠시만 기다려 주세요.</template>
+                  <template v-else>마이크를 누르고 대답해 주세요.</template>
                 </p>
               </div>
-              <div class="voice-actions">
+              <div
+                v-if="hasBranchRecording && !branchVoiceFallbackRequired && (!branchSubmitting || speechError)"
+                class="voice-actions"
+                :class="{ 'voice-actions--single': !recognizedBranchIntent }"
+                aria-label="녹음한 대답 확인"
+              >
                 <button
-                  v-if="hasBranchRecording"
                   class="retry-button"
                   type="button"
                   :disabled="branchSubmitting"
@@ -1019,15 +1135,17 @@ onBeforeUnmount(() => {
                   다시 말하기
                 </button>
                 <button
-                  v-if="hasBranchRecording"
+                  v-if="recognizedBranchIntent"
                   class="confirm-answer"
                   type="button"
                   :disabled="branchSubmitting"
-                  @click="recognizedBranchIntent
-                    ? submitBranchAnswer(undefined, recognizedBranchIntent)
-                    : reviewBranchRecording()"
+                  @click="submitBranchAnswer(
+                    undefined,
+                    recognizedBranchIntent,
+                    recognizedBranchReviewToken,
+                  )"
                 >
-                  <span>{{ recognizedBranchIntent ? '이 내용으로 이어 만들기' : '말한 내용 확인하기' }}</span>
+                  <span>이 내용으로 이어 만들기</span>
                   <span class="confirm-answer-icon" aria-hidden="true">
                     <img :src="checkIcon" alt="" />
                   </span>

@@ -75,75 +75,33 @@ describe('API learner gaze repository', () => {
       2,
       '/api/app/gaze/sessions/81/analysis-results',
       expect.objectContaining({ method: 'POST' }),
+      { suppressErrorHandler: true },
     )
+    const analysisBody = JSON.parse(request.mock.calls[1]?.[1]?.body as string) as Record<string, unknown>
+    expect(analysisBody).not.toHaveProperty('sentenceMetrics')
     expect(result.collectionStatus).toBe('COMPLETED')
   })
 
-  it('sends null sentenceMetrics for non-story sessions (backend STORY-only policy)', async () => {
-    const request = vi.spyOn(learnerApiClient, 'request').mockResolvedValue({
-      gazeSessionId: 81,
-      collectionStatus: 'COMPLETED',
-      calibrationStatus: 'SUCCESS',
-      startedAt: '2026-07-29T10:00:00',
-      endedAt: '2026-07-29T10:05:00',
-    })
+  it('keeps the completed session result when analysis storage fails', async () => {
+    const request = vi.spyOn(learnerApiClient, 'request')
+      .mockResolvedValueOnce({
+        gazeSessionId: 81,
+        collectionStatus: 'COMPLETED',
+        calibrationStatus: 'SUCCESS',
+        startedAt: '2026-07-29T10:00:00',
+        endedAt: '2026-07-29T10:05:00',
+      })
+      .mockRejectedValueOnce(new Error('analysis failed'))
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined)
     const repository = new ApiLearnerGazeRepository()
-    const data = {
-      schemaVersion: 1,
+
+    const result = await repository.end('81', '101', 'COMPLETED', {
       contentType: 'TEST',
-      samples: [{ x: 120, y: 240, capturedAtMs: 1, questionNumber: 1 }],
-      words: [{
-        questionNo: 1,
-        targetIndex: 0,
-        tokenIndex: 0,
-        text: '가',
-        dwellMs: 120,
-        visitCount: 1,
-        regressionCount: 0,
-        firstSeenMs: 0,
-        lastSeenMs: 120,
-      }],
-    }
-
-    await repository.end('81', '101', 'COMPLETED', data)
-
-    const analysisBody = request.mock.calls[1]?.[1]?.body
-    expect(typeof analysisBody).toBe('string')
-    const analysis = JSON.parse(analysisBody as string)
-    expect(analysis.sentenceMetrics).toBeNull()
-  })
-
-  it('sends sentenceMetrics array for story sessions', async () => {
-    const request = vi.spyOn(learnerApiClient, 'request').mockResolvedValue({
-      gazeSessionId: 82,
-      collectionStatus: 'COMPLETED',
-      calibrationStatus: 'SUCCESS',
-      startedAt: '2026-07-29T10:00:00',
-      endedAt: '2026-07-29T10:05:00',
-    })
-    const repository = new ApiLearnerGazeRepository()
-    const data = {
-      schemaVersion: 1,
-      contentType: 'STORY',
-      storyId: 9,
-      samples: [],
+      testId: 55,
       words: [],
-      sentenceMetrics: [{
-        storyLineId: 1,
-        sequenceNo: 1,
-        surfaceText: '안녕',
-        dwellDurationMs: 500,
-        fixationCount: 2,
-        regressionCount: 0,
-      }],
-    }
+    })
 
-    await repository.end('82', '101', 'COMPLETED', data)
-
-    const analysisBody = request.mock.calls[1]?.[1]?.body
-    expect(typeof analysisBody).toBe('string')
-    const analysis = JSON.parse(analysisBody as string)
-    expect(analysis.sentenceMetrics).toHaveLength(1)
-    expect(analysis.sentenceMetrics[0].surfaceText).toBe('안녕')
+    expect(result.collectionStatus).toBe('COMPLETED')
+    expect(request).toHaveBeenCalledTimes(2)
   })
 })

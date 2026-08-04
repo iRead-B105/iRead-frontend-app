@@ -6,6 +6,7 @@
  */
 import { learnerDataSource } from '@/config/learnerDataSource'
 import { learnerContentRepository } from '@/features/learner/content'
+import { preloadStoryImages } from '@/features/learner/story/storyImagePreloader'
 import type {
   LearnerCurrentCurriculum,
   LearnerDeviceStatus,
@@ -32,6 +33,17 @@ function activeStudentId(): string {
   return getCachedStudent().studentId
 }
 
+let storyLibraryCache: {
+  studentId: string
+  library: LearnerStoryLibrary
+  stale: boolean
+} | null = null
+let storyLibraryRequest: { studentId: string; pending: Promise<LearnerStoryLibrary> } | null = null
+
+function invalidateStoryLibraryCache(studentId: string) {
+  if (storyLibraryCache?.studentId === studentId) storyLibraryCache = null
+}
+
 export const getCachedStudent = (): LearnerStudent => {
   try {
     const student = useLearnerSessionStore().student
@@ -47,14 +59,64 @@ export const fetchCurrentCurriculum = (
 ): Promise<LearnerCurrentCurriculum> =>
   learnerContentRepository.getCurrentCurriculum(studentId)
 
-export const fetchStoryLibrary = (): Promise<LearnerStoryLibrary> =>
-  learnerContentRepository.getStoryLibrary(activeStudentId())
+export const getCachedStoryLibrary = (): LearnerStoryLibrary | null => {
+  const studentId = activeStudentId()
+  return storyLibraryCache?.studentId === studentId ? storyLibraryCache.library : null
+}
+
+export const fetchStoryLibrary = (): Promise<LearnerStoryLibrary> => {
+  const studentId = activeStudentId()
+  if (storyLibraryCache?.studentId === studentId && !storyLibraryCache.stale) {
+    return Promise.resolve(storyLibraryCache.library)
+  }
+  if (storyLibraryRequest?.studentId === studentId) return storyLibraryRequest.pending
+
+  const pending = learnerContentRepository.getStoryLibrary(studentId)
+    .then((library) => {
+      storyLibraryCache = { studentId, library, stale: false }
+      return library
+    })
+    .finally(() => {
+      if (storyLibraryRequest?.studentId === studentId) storyLibraryRequest = null
+    })
+  storyLibraryRequest = { studentId, pending }
+  return pending
+}
+
+export const markStoryLibraryCacheStale = () => {
+  const studentId = activeStudentId()
+  if (storyLibraryCache?.studentId === studentId) storyLibraryCache.stale = true
+}
+
+export const preloadSelectedStudentStoryLibrary = async (): Promise<void> => {
+  const library = await fetchStoryLibrary()
+  await preloadStoryImages(library.stories.map((story) => story.entryImageUrl))
+}
 
 export const getStoryDetail = (storyId: string): Promise<LearnerStoryDetail> =>
   learnerContentRepository.getStoryDetail(activeStudentId(), storyId)
 
-export const startStorySession = (storyTemplateId: string): Promise<string> =>
-  learnerContentRepository.startStory(activeStudentId(), storyTemplateId)
+export const startStorySession = async (storyTemplateId: string): Promise<string> => {
+  const studentId = activeStudentId()
+  const storyId = await learnerContentRepository.startStory(studentId, storyTemplateId)
+  invalidateStoryLibraryCache(studentId)
+  return storyId
+}
+
+export const deleteStorySession = async (storyId: string): Promise<void> => {
+  const studentId = activeStudentId()
+  await learnerContentRepository.deleteStory(studentId, storyId)
+  if (storyLibraryCache?.studentId === studentId) {
+    storyLibraryCache = {
+      studentId,
+      stale: storyLibraryCache.stale,
+      library: {
+        ...storyLibraryCache.library,
+        stories: storyLibraryCache.library.stories.filter((story) => story.storyId !== storyId),
+      },
+    }
+  }
+}
 
 export const fetchGrowthAreas = (): Promise<readonly LearnerGrowthArea[]> =>
   learnerContentRepository.getGrowthAreas(activeStudentId())

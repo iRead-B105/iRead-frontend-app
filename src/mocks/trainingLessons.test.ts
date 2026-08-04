@@ -23,13 +23,20 @@ describe('DEV 훈련 화면 미리보기', () => {
     ])
   })
 
-  it('소리 빼기와 바꾸기는 각 훈련의 첫 문제만 한 번씩 보여준다', () => {
+  it('소리 바꾸기는 음절 바꾸기 훈련의 첫 문제만 보여준다', () => {
     const lesson = getLessonById('dev-preview-sound-manipulation')
 
     expect(lesson?.questions.map((question) => question.id)).toEqual([
-      'dev-sound-manipulation-remove-batchim',
-      'dev-sound-manipulation-remove-syllable',
       'dev-sound-manipulation-replace-syllable',
+    ])
+  })
+
+  it('소리 빼기는 받침 빼기와 음절 빼기의 첫 문제만 한 번씩 보여준다', () => {
+    const lesson = getLessonById('dev-preview-sound-omit')
+
+    expect(lesson?.questions.map((question) => question.id)).toEqual([
+      'dev-sound-omit-remove-batchim',
+      'dev-sound-omit-sound-split',
     ])
   })
 
