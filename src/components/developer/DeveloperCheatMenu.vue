@@ -215,21 +215,6 @@ const reloadPage = () => window.location.reload()
 
 <template>
   <button
-    class="virtual-eye-tracker-trigger"
-    :class="{ connected: virtualEyeTrackerConnected }"
-    type="button"
-    :disabled="physicalEyeTrackerConnected"
-    :aria-pressed="virtualEyeTrackerConnected"
-    @click="toggleVirtualEyeTracker"
-  >
-    {{ physicalEyeTrackerConnected
-      ? '실제 아이트래커 연결됨'
-      : virtualEyeTrackerConnected
-        ? '가상 아이트래커 해제'
-        : '가상 아이트래커 연결' }}
-  </button>
-
-  <button
     class="developer-cheat-trigger"
     type="button"
     aria-label="개발자 치트 메뉴 열기"
@@ -297,6 +282,23 @@ const reloadPage = () => window.location.reload()
             >
               <strong>다음날로 진행</strong>
               <span>현재 학습 완료 → 다음 개인화 커리큘럼 생성</span>
+            </button>
+            <button
+              type="button"
+              class="eye-tracker"
+              :class="{ connected: virtualEyeTrackerConnected }"
+              :disabled="physicalEyeTrackerConnected"
+              :aria-pressed="virtualEyeTrackerConnected"
+              @click="toggleVirtualEyeTracker"
+            >
+              <strong>{{ physicalEyeTrackerConnected
+                ? '실제 아이트래커 연결됨'
+                : virtualEyeTrackerConnected
+                  ? '가상 아이트래커 해제'
+                  : '가상 아이트래커 연결' }}</strong>
+              <span>{{ virtualEyeTrackerConnected
+                ? '마우스 포인터를 시선으로 보내는 중'
+                : '마우스 포인터를 시선처럼 사용' }}</span>
             </button>
             <button type="button" @click="reloadPage">
               <strong>현재 화면 새로고침</strong>

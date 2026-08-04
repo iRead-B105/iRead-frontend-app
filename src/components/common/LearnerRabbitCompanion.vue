@@ -89,6 +89,10 @@ const onGaze = (event: Event) => {
 watch(() => route.fullPath, () => void nextTick(refreshState))
 
 onMounted(() => {
+  // 상태 전환 시 로딩 깜빡임 없이 즉시 바뀌도록 모든 상태 이미지를 미리 받아 둔다
+  Object.values(rabbitAssets).forEach((src) => {
+    new Image().src = src
+  })
   observer = new MutationObserver(refreshState)
   observer.observe(document.body, {
     subtree: true,
@@ -124,9 +128,7 @@ onBeforeUnmount(() => {
       @focus="greet"
       @blur="restore"
     >
-      <Transition name="rabbit-swap" mode="out-in">
-        <img :key="state" :src="currentAsset" alt="" aria-hidden="true" />
-      </Transition>
+      <img :src="currentAsset" alt="" aria-hidden="true" />
     </button>
   </aside>
 </template>
