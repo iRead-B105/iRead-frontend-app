@@ -39,7 +39,7 @@
   background-size: cover;
   background-repeat: no-repeat;
   box-shadow: var(--learner-frame-shadow);
-  transform: scale(var(--learner-main-selection-scale));
+  transform: translateY(clamp(24px, 3.5cqh, 40px)) scale(var(--learner-main-selection-scale));
   transform-origin: center;
 }
 
@@ -66,6 +66,52 @@
   color: #a63d4b;
   font-size: 16px;
   font-weight: 900;
+}
+
+.story-creation-overlay {
+  position: absolute;
+  z-index: 20;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+  border-radius: inherit;
+  background: rgb(255 250 242 / 94%);
+  color: #263b73;
+  text-align: center;
+  backdrop-filter: blur(8px);
+}
+
+.story-creation-spinner {
+  width: clamp(72px, 7cqw, 98px);
+  height: clamp(72px, 7cqw, 98px);
+  margin-bottom: 22px;
+  border: 10px solid #e8e0f8;
+  border-top-color: var(--learner-color-story);
+  border-radius: 50%;
+  animation: story-library-spin .8s linear infinite;
+}
+
+.story-creation-overlay small {
+  color: #e0912f;
+  font-size: clamp(19px, 1.8cqw, 25px);
+  font-weight: 900;
+}
+
+.story-creation-overlay strong {
+  margin-top: 8px;
+  font-family: var(--learner-font-display);
+  font-size: clamp(36px, 4cqw, 56px);
+  font-weight: var(--learner-font-weight-heavy);
+}
+
+.story-creation-overlay p {
+  margin: 12px 0 0;
+  color: #667494;
+  font-size: clamp(18px, 1.7cqw, 24px);
+  font-weight: 800;
 }
 
 .library-loading {
@@ -488,7 +534,12 @@ button {
   align-items: center;
   align-self: stretch;
   gap: 22px;
-  min-height: 82px;
+  min-height: 74px;
+  padding-inline: 4px;
+}
+
+.catalog-heading .shelf-tabs {
+  margin-left: auto;
 }
 
 .catalog-heading small {
@@ -498,7 +549,8 @@ button {
 }
 
 .catalog-heading h1 {
-  font-size: clamp(34px, 4cqw, 56px);
+  margin: 0;
+  font-size: clamp(34px, 3.6cqw, 52px);
   line-height: 1;
 }
 
@@ -508,13 +560,15 @@ button {
   min-height: 0;
   flex-direction: column;
   gap: clamp(10px, 1.2cqh, 14px);
+  overflow: visible;
+  padding: 5px 8px 12px;
 }
 
 .shelf-tabs {
   display: flex;
   flex: 0 0 auto;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-end;
   gap: 10px;
 }
 
@@ -577,8 +631,9 @@ button {
   height: auto;
   min-height: 0;
   overflow: visible;
-  align-self: start;
+  align-self: stretch;
   margin-inline: auto;
+  padding: 4px 8px 12px;
 }
 
 .book-card-shell {
@@ -600,7 +655,7 @@ button {
   align-items: stretch;
   min-width: 0;
   min-height: 0;
-  height: 100%;
+  height: min(100%, 520px);
   overflow: hidden;
   padding: clamp(10px, 1.3cqh, 14px) clamp(12px, 1.5cqw, 16px) clamp(14px, 1.8cqh, 18px);
   border: var(--learner-card-border);
@@ -654,6 +709,7 @@ button {
   position: relative;
   display: block;
   flex: 1 1 0;
+  max-height: 390px;
   min-height: 0;
   height: auto;
   overflow: hidden;

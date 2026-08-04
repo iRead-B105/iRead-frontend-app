@@ -8,7 +8,6 @@ import {
   markStoryLibraryCacheStale,
   unlockStoryFriend,
 } from '@/services/learnerDataRepository'
-import PageBackButton from '@/components/common/PageBackButton.vue'
 import type { VillageItem } from '@/types/village'
 import { learnerStoryRepository } from '@/features/learner/story'
 import { preloadStoryImage } from '@/features/learner/story/storyImagePreloader'
@@ -21,7 +20,6 @@ import {
 import { learnerDataSource } from '@/config/learnerDataSource'
 import { useVoiceRecorder } from '@/composables/useVoiceRecorder'
 import { useLearnerErrorModalStore } from '@/stores/learnerErrorModal'
-import arrowRightIcon from '@/assets/icons/arrow-right.svg'
 import microphoneIcon from '@/assets/icons/microphone.svg'
 import checkIcon from '@/assets/icons/check.svg'
 
@@ -181,7 +179,17 @@ const allPages = computed(() => story.value.pages)
 const page = computed<StoryPage>(() => allPages.value[currentPage.value] ?? story.value.pages[0]!)
 const branchQuestion = computed(() => page.value.lines.join(' ').trim() || story.value.question)
 const branchOptions = computed(() => page.value.branchPrompt?.options ?? [])
-const pageWords = computed(() => page.value.lines.flatMap((line, lineIndex) => line.split(' ').map((word) => ({ word, lineIndex }))))
+const displayTextLines = computed(() => {
+  const text = page.value.lines.join(' ').trim()
+  if (!text) return []
+  return text
+    .split(/(?<=[.!?。？！])\s+/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+})
+const pageWords = computed(() => displayTextLines.value.flatMap((line, lineIndex) =>
+  line.split(/\s+/).filter(Boolean).map((word) => ({ word, lineIndex })),
+))
 const isLastPage = computed(() => currentPage.value === allPages.value.length - 1)
 const isPageRead = computed(() => readThrough.value >= pageWords.value.length - 1)
 const isListening = computed(() =>
@@ -244,13 +252,34 @@ function scheduleReturnCue() {
 }
 
 async function resetReadingProgressForPage() {
-  readThrough.value = -1
+  readThrough.value = page.value.readAt ? pageWords.value.length - 1 : -1
   clearDwell()
   showReturnCue.value = false
   gaze.value.visible = false
   clearLeaveTimer()
   await nextTick()
   scheduleReturnCue()
+}
+
+async function moveToPage(index: number) {
+  if (index < 0 || index >= allPages.value.length || index === currentPage.value) return
+  await finishStoryGazeSession()
+  currentPage.value = index
+  resetStoryGazeState()
+  await startStoryGazeSession()
+  await resetReadingProgressForPage()
+}
+
+async function goPreviousPage() {
+  await moveToPage(currentPage.value - 1)
+}
+
+async function goForwardPage() {
+  if (page.value.readAt && !isLastPage.value) {
+    await moveToPage(currentPage.value + 1)
+    return
+  }
+  if (isPageRead.value) await goNext()
 }
 
 function setProgress(index: number) {
@@ -1001,38 +1030,47 @@ onBeforeUnmount(() => {
         <span class="story-loading__spinner" aria-hidden="true" />
         <strong>{{ loadError || '이야기 장면을 준비하고 있어요.' }}</strong>
       </div>
-      <div v-else-if="screen === 'reading'" class="story-scene">
-        <PageBackButton
-          class="reader-back"
-          label="이야기 나라로 돌아가기"
-          @back="exitToStorySelection"
-        />
-        <div class="story-progress" role="status" :aria-label="`${story.currentDay}일차 ${(currentPage % story.pagesPerDay) + 1}페이지`">
-          {{ story.currentDay }}일차 · {{ (currentPage % story.pagesPerDay) + 1 }} / {{ story.pagesPerDay }}
-        </div>
+      <div
+        v-else-if="screen === 'reading'"
+        class="story-scene story-scene--image"
+        :class="{ 'story-scene--text-focused': gaze.visible }"
+      >
+        <button class="reader-back reader-exit" type="button" @click="exitToStorySelection">
+          그만 보기
+        </button>
         <img :src="page.image" :alt="`${story.title} 이야기 장면`" :style="{ objectPosition: page.imagePosition ?? 'center' }" />
         <div class="scene-shade" aria-hidden="true" />
         <div ref="textPanel" class="reading-panel" aria-live="polite" @pointerleave="onPointerLeave">
           <div class="story-lines">
-            <p v-for="(line, lineIndex) in page.lines" :key="line">
+            <p v-for="(line, lineIndex) in displayTextLines" :key="`${lineIndex}-${line}`">
               <template v-for="(item, index) in pageWords" :key="`${lineIndex}-${index}`">
-                <span v-if="item.lineIndex === lineIndex" class="story-word" :class="{ 'story-word--read': index <= readThrough, 'story-word--next': showReturnCue && index === readThrough + 1 }" :data-word-index="index">{{ item.word }}</span>
+                <span
+                  v-if="item.lineIndex === lineIndex"
+                  class="story-word"
+                  :class="{
+                    'story-word--read': gaze.visible && index <= readThrough,
+                    'story-word--next': gaze.visible && showReturnCue && index === readThrough + 1,
+                  }"
+                  :data-word-index="index"
+                >{{ item.word }}</span>
               </template>
             </p>
           </div>
         </div>
-        <button v-if="isPageRead" class="next-page story-next" type="button" @click="goNext">
-          <span>{{ page.requiresBranchInput ? '이야기 이어 만들기' : isLastPage ? '이야기 마치기' : '다음 페이지' }}</span>
-          <img :src="arrowRightIcon" alt="" aria-hidden="true" />
+        <button v-if="currentPage > 0" class="story-page-nav story-page-nav--previous" type="button" @click="goPreviousPage">
+          <span aria-hidden="true">‹</span>
+          이전 페이지
+        </button>
+        <button v-if="page.readAt || isPageRead" class="story-page-nav story-page-nav--next" type="button" @click="goForwardPage">
+          <span>{{ page.readAt && !isLastPage ? '다음 페이지' : page.requiresBranchInput ? '이야기 이어 만들기' : isLastPage ? '이야기 마치기' : '다음 페이지' }}</span>
+          <span aria-hidden="true">›</span>
         </button>
       </div>
 
       <div v-else-if="screen === 'question' || screen === 'generating'" class="question-scene">
-        <PageBackButton
-          class="reader-back"
-          label="이야기 나라로 돌아가기"
-          @back="exitToStorySelection"
-        />
+        <button class="reader-back reader-exit" type="button" @click="exitToStorySelection">
+          그만 보기
+        </button>
         <img :src="page.image" alt="" :style="{ objectPosition: page.imagePosition ?? 'center' }" />
         <div class="question-backdrop" aria-hidden="true" />
         <section

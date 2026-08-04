@@ -58,4 +58,57 @@ describe('LearnerLoginView 학습 진입 흐름', () => {
     expect(resolveLearningEntry).toHaveBeenCalledWith(true)
     expect(router.currentRoute.value.name).toBe('skill-challenge')
   })
+
+  it('연결된 아동을 한 페이지에 세 명씩 보여주고 이전과 다음으로 이동한다', async () => {
+    const pinia = createPinia()
+    setActivePinia(pinia)
+    const session = useLearnerSessionStore(pinia)
+    const students = Array.from({ length: 7 }, (_, index) => ({
+      studentId: String(index + 1),
+      name: `학습자${index + 1}`,
+      age: index === 0 ? null : 8,
+      profileColor: '#71a9ef',
+      profileImageUrl: index === 0 ? '/images/student-profile.png' : null,
+    }))
+    vi.spyOn(session, 'loginTeacher').mockImplementation(async () => {
+      session.linkedStudents = students
+      return true
+    })
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [{ path: '/login', name: 'learner-login', component: LearnerLoginView }],
+    })
+    await router.push('/login')
+    await router.isReady()
+    const wrapper = mount(
+      { template: '<RouterView />' },
+      { global: { plugins: [pinia, router] } },
+    )
+
+    await wrapper.get('input[aria-label="선생님 아이디"]').setValue('teacher@example.com')
+    await wrapper.get('input[aria-label="비밀번호"]').setValue('password')
+    await wrapper.get('form.login-form').trigger('submit')
+    await flushPromises()
+
+    expect(wrapper.get('#login-title').text()).toBe('학습할 친구를골라 주세요.')
+    expect(wrapper.get('#login-title').find('br').exists()).toBe(true)
+    expect(wrapper.findAll('.student-card small').map((item) => item.text())).not.toContain('학습자')
+    expect(wrapper.get('.student-avatar img').attributes('src')).toBe('/images/student-profile.png')
+    expect(wrapper.findAll('[role="radio"]')).toHaveLength(3)
+    expect(wrapper.text()).toContain('1 / 3')
+
+    await wrapper.get('.student-page-button:last-child').trigger('click')
+    expect(wrapper.findAll('[role="radio"]')).toHaveLength(3)
+    expect(wrapper.text()).toContain('학습자4')
+    expect(wrapper.text()).toContain('2 / 3')
+
+    await wrapper.get('.student-page-button:last-child').trigger('click')
+    expect(wrapper.findAll('[role="radio"]')).toHaveLength(1)
+    expect(wrapper.text()).toContain('학습자7')
+    expect(wrapper.text()).toContain('3 / 3')
+
+    await wrapper.get('.student-page-button:first-child').trigger('click')
+    expect(wrapper.text()).toContain('학습자4')
+    expect(wrapper.text()).toContain('2 / 3')
+  })
 })

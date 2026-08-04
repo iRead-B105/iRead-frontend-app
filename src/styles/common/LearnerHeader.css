@@ -115,6 +115,9 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.avatar img.avatar-image--fallback {
   transform: scale(1.12) translateY(3%);
 }
 
