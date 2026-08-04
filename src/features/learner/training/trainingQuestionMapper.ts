@@ -389,8 +389,22 @@ function withReadingItems(
   source: StudentQuestionDto,
   layout: 'cards' | 'segments',
 ): TrainingQuestion {
+  if (question.readingSentences?.length) {
+    let tokenIndex = 0
+    const readingItems = question.readingSentences.flatMap((sentence, sentenceIndex) => {
+      const sentenceText = sentence.chunks.join(' ')
+      const targetIndex = source.recordingTargets.find((target) => target.text === sentenceText)?.targetIndex
+        ?? sentenceIndex
+      return sentence.chunks.map((text) => ({
+        id: `reading-${tokenIndex}`,
+        text,
+        targetIndex,
+        tokenIndex: tokenIndex++,
+      }))
+    })
+    return { ...question, readingItems, readingLayout: layout }
+  }
   const chunks: string[] = question.readingWords?.map((word) => word.text)
-    ?? question.readingSentences?.flatMap((sentence) => sentence.chunks)
     ?? question.phraseChunks
     ?? (question.targetText ? [question.targetText] : [])
   const readingItems: ReadingItem[] = chunks.map((text, index) => ({
@@ -423,7 +437,7 @@ function mapAudio(number: number, source: StudentQuestionDto): {
       ? [{ id: 'sentence-0', chunks: stringArray(source.content, 'tokens') }]
       : stringArray(source.content, 'sentences').map((text, index) => ({
         id: `sentence-${index}`,
-        chunks: text.split(/\s+/),
+        chunks: text.split(/\s+/).map((word) => word.replace(/[.,!?。！？]/g, '')),
       }))
     return {
       activityType: 'word-reading-grid',

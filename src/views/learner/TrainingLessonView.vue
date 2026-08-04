@@ -49,6 +49,7 @@ import { useLearnerSessionStore } from '@/stores/learnerSession'
 import { learnerGazeRepository } from '@/features/learner/gaze'
 import { learnerTestRepository } from '@/features/learner/test'
 import { presentTrainingHint } from '@/features/learner/training/hintPresentation'
+import { getTrainingTemplateMapping } from '@/features/learner/content/trainingTemplateMapping'
 import { isApiError } from '@/lib/api'
 
 const route = useRoute()
@@ -500,10 +501,12 @@ onMounted(async () => {
         ) {
           throw new TypeError('한 훈련 안의 문항 화면 유형이 서로 다릅니다.')
         }
-        const presentation = fallbackLesson.value
+        const templateMapping = getTrainingTemplateMapping(Number(intro.trainingTemplateId))
+        const resolvedLessonId = templateMapping?.lessonId ?? lessonId.value
+        const presentation = getLessonById(resolvedLessonId) ?? fallbackLesson.value
         const loadedLesson: TrainingLesson = {
-          id: lessonId.value,
-          categoryId: presentation?.categoryId ?? 'phonics',
+          id: resolvedLessonId,
+          categoryId: templateMapping?.categoryId ?? presentation?.categoryId ?? 'phonics',
           title: intro.trainingName,
           description: presentation?.description ?? '오늘의 맞춤 훈련을 시작해요.',
           activityType,
@@ -922,12 +925,19 @@ const isPronunciationAttemptLimitError = (error: unknown): boolean =>
 const evaluateActivityVoice = async (
   blob: Blob,
   controls: ActivityVoiceEvaluationControls,
-  word?: { expectedText: string; targetIndex: number; completesQuestion: boolean },
+  word?: {
+    expectedText: string
+    targetIndex: number
+    tokenIndex?: number
+    completesQuestion: boolean
+  },
 ) => {
   const mapped = serverQuestions.value[session.progressState.currentQuestionIndex]
   const itemId = learningItemId.value
 
-  if (learnerDataSource !== 'api' || debugMode.value) {
+  // DEV는 진입/표시용 도구일 뿐 평가 실행 모드가 아니다.
+  // API 학습에서는 DEV가 켜져 있어도 실제 음성 평가를 반드시 수행한다.
+  if (learnerDataSource !== 'api') {
     controls.success()
     return
   }
@@ -946,6 +956,7 @@ const evaluateActivityVoice = async (
         mapped.questionNumber,
         {
           targetIndex: word.targetIndex,
+          tokenIndex: word.tokenIndex,
           expectedText: word.expectedText,
           audioFile: new File([blob], `training-${mapped.questionNumber}-${word.targetIndex}.${extension}`, {
             type: blob.type || 'audio/webm',

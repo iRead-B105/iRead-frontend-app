@@ -13,7 +13,12 @@ type VoiceEvaluationControls = {
   success: (message?: string) => void
   retry: (message?: string) => void
 }
-type WordEval = { expectedText: string; targetIndex: number; completesQuestion: boolean }
+type WordEval = {
+  expectedText: string
+  targetIndex: number
+  tokenIndex?: number
+  completesQuestion: boolean
+}
 const emit = defineEmits<{
   next: []
   voiceRecorded: [blob: Blob, controls: VoiceEvaluationControls, word: WordEval]
@@ -160,7 +165,12 @@ watch(() => recorder.state.status, (status) => {
   emit('voiceRecorded', blob, {
     success: () => finishWord(wordIndex, false, blob),
     retry: () => setRetry(wordIndex),
-  }, { expectedText: word.text, targetIndex: word.targetIndex, completesQuestion })
+  }, {
+    expectedText: word.text,
+    targetIndex: word.targetIndex,
+    tokenIndex: word.tokenIndex,
+    completesQuestion,
+  })
 })
 
 const cardIndexAt = (clientX: number, clientY: number) => {
