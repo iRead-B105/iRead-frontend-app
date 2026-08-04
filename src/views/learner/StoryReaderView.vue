@@ -173,6 +173,7 @@ let lastExternalGazeAt = 0
 let lastStoryGazeSampleAt = 0
 let cursorGazeSampleTimer: number | undefined
 let lastCursorPoint: { x: number; y: number } | null = null
+let lastStoryGazePoint: { x: number; y: number; source: StoryGazeSource } | null = null
 let narrationAudio: HTMLAudioElement | null = null
 let narrationObjectUrl: string | null = null
 
@@ -251,7 +252,20 @@ async function resetReadingProgressForPage() {
 }
 
 function setProgress(index: number) {
-  if (index === readThrough.value + 1) readThrough.value += 1
+  if (index === readThrough.value + 1) {
+    // 읽음 타이머가 완료된 시점 자체를 원시 시선 샘플로 남겨, 진행 상태와
+    // 리플레이의 연속 응시 시간이 어긋나지 않게 한다.
+    if (lastStoryGazePoint) {
+      recordStoryGazeSample(
+        lastStoryGazePoint.x,
+        lastStoryGazePoint.y,
+        index,
+        lastStoryGazePoint.source,
+        true,
+      )
+    }
+    readThrough.value += 1
+  }
   clearDwell()
   showReturnCue.value = false
   clearLeaveTimer()
@@ -324,12 +338,13 @@ function recordStoryGazeSample(
   clientY: number,
   tokenIndex: number | null,
   source: StoryGazeSource,
+  force = false,
 ) {
   if (learnerDataSource !== 'api' || !storyGazeSessionId.value) return
   const lineId = Number(page.value.lineId)
   if (!Number.isInteger(lineId) || lineId <= 0) return
   const capturedAtMs = Date.now()
-  if (capturedAtMs - lastStoryGazeSampleAt < 80) return
+  if (!force && capturedAtMs - lastStoryGazeSampleAt < 80) return
   lastStoryGazeSampleAt = capturedAtMs
   const word = tokenIndex === null ? undefined : pageWords.value[tokenIndex]?.word
   storyGazeSamples.push({
@@ -357,6 +372,7 @@ function updateGaze(
   gaze.value = { x: clientX - panelRect.left, y: clientY - panelRect.top, visible: clientX >= panelRect.left && clientX <= panelRect.right && clientY >= panelRect.top && clientY <= panelRect.bottom }
   if (!gaze.value.visible) { clearDwell(); scheduleReturnCue(); return }
   const visibleTokenIndex = visibleWordIndexAt(clientX, clientY)
+  lastStoryGazePoint = { x: clientX, y: clientY, source }
   recordStoryGazeSample(clientX, clientY, visibleTokenIndex, source)
   if (!canRead) { clearDwell(); scheduleReturnCue(); return }
   const targetIndex = wordIndexAt(clientX, clientY)
@@ -654,6 +670,7 @@ function resetStoryGazeState() {
   storyGazeSamples.splice(0)
   storyGazeSampleSources.clear()
   lastStoryGazeSampleAt = 0
+  lastStoryGazePoint = null
 }
 
 async function startStoryGazeSession() {
@@ -718,9 +735,11 @@ async function goNext() {
     )
     current.readAt = new Date().toISOString()
     markStoryLibraryCacheStale()
+    // 페이지 단위 리플레이를 위해, 다음 화면으로 넘어가기 전에 현재 페이지의
+    // 시선 세션을 반드시 종료·분석 전송한다.
+    await finishStoryGazeSession()
 
     if (current.requiresBranchInput) {
-      await finishStoryGazeSession()
       clearDwell()
       clearLeaveTimer()
       gaze.value.visible = false
@@ -737,7 +756,6 @@ async function goNext() {
     }
 
     if (isLastPage.value) {
-      await finishStoryGazeSession()
       clearDwell()
       clearLeaveTimer()
       gaze.value.visible = false
@@ -756,6 +774,8 @@ async function goNext() {
     }
 
     currentPage.value += 1
+    resetStoryGazeState()
+    await startStoryGazeSession()
     await resetReadingProgressForPage()
   } catch (error) {
     errorModal.show(
