@@ -11,12 +11,19 @@ import cinderellaCover from '../../assets/story/covers/cinderella.png'
 import oldManAndSeaCover from '../../assets/story/covers/old-man-and-sea.png'
 import rabbitAndTurtleCover from '../../assets/story/covers/rabbit-and-turtle.png'
 import threeLittlePigsCover from '../../assets/story/covers/three-little-pigs.png'
-import { fetchStoryLibrary, startStorySession } from '@/services/learnerDataRepository'
+import {
+  deleteStorySession,
+  fetchStoryLibrary,
+  getCachedStoryLibrary,
+  startStorySession,
+} from '@/services/learnerDataRepository'
 import PageBackButton from '@/components/common/PageBackButton.vue'
 import progressStar from '@/assets/training/ui/progress-star.png'
+import { preloadStoryImages } from '@/features/learner/story/storyImagePreloader'
 
 type StoryStatus = 'UNREAD' | 'IN_PROGRESS' | 'COMPLETED'
 type LibraryMode = 'home' | 'other' | 'new'
+type ShelfTab = 'in-progress' | 'completed'
 
 interface StoryTemplate {
   id: string
@@ -32,15 +39,21 @@ interface StorySession extends StoryTemplate {
   latestBranchSubtitle: string
   status: StoryStatus
   progress: number
+  entryImageUrl: string | null
 }
 
 const router = useRouter()
 const mode = ref<LibraryMode>('home')
+const shelfTab = ref<ShelfTab>('in-progress')
 
 const storySessions = ref<StorySession[]>([])
 const storyTemplates = ref<StoryTemplate[]>([])
 const requestError = ref('')
+const libraryReady = ref(false)
 const openingBookId = ref<string | null>(null)
+const pendingDelete = ref<StorySession | null>(null)
+const deletingStoryId = ref<string | null>(null)
+const deleteError = ref('')
 const currentPage = ref(1)
 const booksPerPage = 3
 const storyCoverByTitle: Record<string, string> = {
@@ -59,10 +72,8 @@ function resolveStoryCover(title: string, fallbackCover: string) {
   return fallbackCover
 }
 
-onMounted(async () => {
-  try {
-    const library = await fetchStoryLibrary()
-    storySessions.value = library.stories.map((story) => ({
+function applyStoryLibrary(library: Awaited<ReturnType<typeof fetchStoryLibrary>>) {
+  storySessions.value = library.stories.map((story) => ({
     id: story.templateId,
     sessionId: story.storyId,
     sessionNumber: story.sessionNumber,
@@ -73,14 +84,30 @@ onMounted(async () => {
     coverImage: resolveStoryCover(story.title, story.coverImageUrl),
     status: story.status,
     progress: story.progress,
-    }))
-    storyTemplates.value = library.templates.map((template) => ({
+    entryImageUrl: story.entryImageUrl,
+  }))
+  storyTemplates.value = library.templates.map((template) => ({
     id: template.templateId,
     title: template.title,
     coverImage: resolveStoryCover(template.title, template.coverImageUrl),
-    }))
+  }))
+}
+
+const cachedStoryLibrary = getCachedStoryLibrary()
+if (cachedStoryLibrary) {
+  applyStoryLibrary(cachedStoryLibrary)
+  libraryReady.value = true
+}
+
+onMounted(async () => {
+  try {
+    const library = await fetchStoryLibrary()
+    applyStoryLibrary(library)
+    void preloadStoryImages(library.stories.map((story) => story.entryImageUrl))
   } catch {
     requestError.value = '이야기 목록을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.'
+  } finally {
+    libraryReady.value = true
   }
 })
 
@@ -93,17 +120,24 @@ const currentBook = computed(() =>
       return bTime - aTime
     })[0],
 )
-const startedBooks = computed(() =>
+const inProgressBooks = computed(() =>
   [...storySessions.value]
-    .filter((book) => book.status !== 'UNREAD')
+    .filter((book) => book.status === 'IN_PROGRESS')
     .sort((a, b) => {
       const aTime = Date.parse(a.lastReadAt ?? a.createdAt)
       const bTime = Date.parse(b.lastReadAt ?? b.createdAt)
       return bTime - aTime
     }),
 )
+const completedBooks = computed(() =>
+  [...storySessions.value]
+    .filter((book) => book.status === 'COMPLETED')
+    .sort((a, b) => Date.parse(b.lastReadAt ?? b.createdAt) - Date.parse(a.lastReadAt ?? a.createdAt)),
+)
 const visibleLibraryBooks = computed(() =>
-  mode.value === 'other' ? startedBooks.value : storyTemplates.value,
+  mode.value === 'other'
+    ? shelfTab.value === 'in-progress' ? inProgressBooks.value : completedBooks.value
+    : storyTemplates.value,
 )
 const pageCount = computed(() => Math.max(1, Math.ceil(visibleLibraryBooks.value.length / booksPerPage)))
 const paginatedLibraryBooks = computed(() => {
@@ -111,14 +145,20 @@ const paginatedLibraryBooks = computed(() => {
   return visibleLibraryBooks.value.slice(start, start + booksPerPage)
 })
 
-watch([mode, pageCount], () => {
+watch([mode, shelfTab, pageCount], () => {
   currentPage.value = Math.min(currentPage.value, pageCount.value)
   if (currentPage.value < 1) currentPage.value = 1
 })
 
 function openCatalog(nextMode: Exclude<LibraryMode, 'home'>) {
   currentPage.value = 1
+  if (nextMode === 'other') shelfTab.value = 'in-progress'
   mode.value = nextMode
+}
+
+function selectShelfTab(nextTab: ShelfTab) {
+  currentPage.value = 1
+  shelfTab.value = nextTab
 }
 
 function closeCatalog() {
@@ -150,6 +190,11 @@ async function openBook(book: StoryTemplate | StorySession) {
     return
   }
 
+  if (inProgressBooks.value.length >= 15) {
+    requestError.value = '읽고 있는 책은 최대 15권까지 보관할 수 있어요. 한 권을 다 읽거나 지운 뒤 다시 시작해 주세요.'
+    return
+  }
+
   openingBookId.value = book.id
   requestError.value = ''
   try {
@@ -163,6 +208,34 @@ async function openBook(book: StoryTemplate | StorySession) {
     requestError.value = '새 이야기를 시작하지 못했어요. 잠시 후 다시 시도해 주세요.'
   } finally {
     openingBookId.value = null
+  }
+}
+
+function requestDelete(book: StorySession) {
+  deleteError.value = ''
+  pendingDelete.value = book
+}
+
+function cancelDelete() {
+  if (deletingStoryId.value) return
+  pendingDelete.value = null
+  deleteError.value = ''
+}
+
+async function confirmDelete() {
+  const book = pendingDelete.value
+  if (!book || book.status !== 'IN_PROGRESS') return
+
+  deletingStoryId.value = book.sessionId
+  deleteError.value = ''
+  try {
+    await deleteStorySession(book.sessionId)
+    storySessions.value = storySessions.value.filter((story) => story.sessionId !== book.sessionId)
+    pendingDelete.value = null
+  } catch {
+    deleteError.value = '책을 지우지 못했어요. 잠시 후 다시 시도해 주세요.'
+  } finally {
+    deletingStoryId.value = null
   }
 }
 
@@ -187,7 +260,12 @@ function sessionTitle(book: StorySession) {
       :class="{ 'library-panel--catalog': mode !== 'home' }"
       aria-labelledby="story-library-title"
     >
-      <template v-if="mode === 'home'">
+      <p v-if="requestError" class="library-error" role="alert">{{ requestError }}</p>
+      <div v-if="!libraryReady" class="library-loading" role="status" aria-live="polite">
+        <span aria-hidden="true" />
+        <strong>이야기 책장을 준비하고 있어요.</strong>
+      </div>
+      <template v-else-if="mode === 'home'">
         <header class="library-heading">
           <img class="library-heading-star" :src="progressStar" alt="" aria-hidden="true" />
           <h1 id="story-library-title">이야기 나라</h1>
@@ -248,42 +326,84 @@ function sessionTitle(book: StorySession) {
           </div>
         </header>
 
-        <div
-          v-if="visibleLibraryBooks.length"
-          class="book-grid"
-          :class="{
-            'book-grid--partial': paginatedLibraryBooks.length < booksPerPage,
-            'book-grid--new': mode === 'new',
-          }"
-        >
-          <button
-            v-for="book in paginatedLibraryBooks"
-            :key="mode === 'other' ? (book as StorySession).sessionId : book.id"
-            class="book-card"
-            type="button"
-            :disabled="openingBookId === book.id"
-            @click="openBook(book)"
+        <div class="catalog-content">
+          <nav v-if="mode === 'other'" class="shelf-tabs" aria-label="책장 분류">
+            <button
+              type="button"
+              :class="{ 'shelf-tab--active': shelfTab === 'in-progress' }"
+              :aria-pressed="shelfTab === 'in-progress'"
+              @click="selectShelfTab('in-progress')"
+            >
+              <span>읽는 중</span>
+              <b>{{ inProgressBooks.length }}</b>
+            </button>
+            <button
+              type="button"
+              :class="{ 'shelf-tab--active': shelfTab === 'completed' }"
+              :aria-pressed="shelfTab === 'completed'"
+              @click="selectShelfTab('completed')"
+            >
+              <span>다 읽은 책</span>
+              <b>{{ completedBooks.length }}</b>
+            </button>
+          </nav>
+
+          <div
+            v-if="visibleLibraryBooks.length"
+            class="book-grid"
+            :class="{
+              'book-grid--partial': paginatedLibraryBooks.length < booksPerPage,
+              'book-grid--new': mode === 'new',
+            }"
           >
-            <span class="book-cover">
-              <img
-                :src="book.coverImage"
-                :alt="`${mode === 'other' ? sessionTitle(book as StorySession) : book.title} 표지`"
-                loading="lazy"
-                decoding="async"
-              />
-              <span
-                v-if="mode === 'other' && (book as StorySession).status === 'COMPLETED'"
-                class="status-badge status-badge--completed"
+            <article
+              v-for="book in paginatedLibraryBooks"
+              :key="mode === 'other' ? (book as StorySession).sessionId : book.id"
+              class="book-card-shell"
+            >
+              <button
+                class="book-card"
+                type="button"
+                :disabled="openingBookId === book.id"
+                @click="openBook(book)"
               >
-                완독
-              </span>
-            </span>
-            <strong>{{ mode === 'other' ? sessionTitle(book as StorySession) : book.title }}</strong>
-            <span v-if="mode === 'other'" class="mini-progress" aria-hidden="true">
-              <i :style="{ width: `${(book as StorySession).progress}%` }" />
-            </span>
-            <small v-if="mode === 'other'">{{ progressLabel(book as StorySession) }}</small>
-          </button>
+                <span class="book-cover">
+                  <img
+                    :src="book.coverImage"
+                    :alt="`${mode === 'other' ? sessionTitle(book as StorySession) : book.title} 표지`"
+                    loading="lazy"
+                    decoding="async"
+                  />
+                  <span
+                    v-if="mode === 'other' && (book as StorySession).status === 'COMPLETED'"
+                    class="status-badge status-badge--completed"
+                  >
+                    완독
+                  </span>
+                </span>
+                <strong>{{ mode === 'other' ? sessionTitle(book as StorySession) : book.title }}</strong>
+                <span v-if="mode === 'other'" class="mini-progress" aria-hidden="true">
+                  <i :style="{ width: `${(book as StorySession).progress}%` }" />
+                </span>
+                <small v-if="mode === 'other'">{{ progressLabel(book as StorySession) }}</small>
+              </button>
+              <button
+                v-if="mode === 'other' && (book as StorySession).status === 'IN_PROGRESS'"
+                class="book-delete-button"
+                type="button"
+                :aria-label="`${sessionTitle(book as StorySession)} 삭제`"
+                @click="requestDelete(book as StorySession)"
+              >
+                삭제
+              </button>
+            </article>
+          </div>
+
+          <div v-else class="catalog-empty">
+            <img :src="otherBooksIcon" alt="" aria-hidden="true" />
+            <strong>{{ shelfTab === 'completed' ? '아직 다 읽은 책이 없어!' : '아직 보여 줄 책이 없어!' }}</strong>
+            <button type="button" @click="openCatalog('new')">새로운 책 고르기</button>
+          </div>
         </div>
 
         <nav
@@ -292,45 +412,80 @@ function sessionTitle(book: StorySession) {
           aria-label="이야기 책 페이지"
         >
           <button
-            class="pagination-arrow"
+            class="pagination-arrow pagination-arrow--previous"
             type="button"
             :disabled="currentPage === 1"
             aria-label="이전 책 페이지"
             @click="currentPage -= 1"
           >
-            ‹
+            <span class="pagination-arrow-icon" aria-hidden="true">‹</span>
           </button>
+          <span class="pagination-pages">
+            <button
+              v-for="pageNumber in pageCount"
+              :key="pageNumber"
+              class="pagination-page"
+              :class="{ 'pagination-page--active': pageNumber === currentPage }"
+              type="button"
+              :aria-label="`${pageNumber}번째 책 페이지${pageNumber === currentPage ? ', 현재 페이지' : ''}`"
+              :aria-current="pageNumber === currentPage ? 'page' : undefined"
+              @click="currentPage = pageNumber"
+            >
+              {{ pageNumber }}
+            </button>
+          </span>
           <button
-            v-for="pageNumber in pageCount"
-            :key="pageNumber"
-            class="pagination-page"
-            :class="{ 'pagination-page--active': pageNumber === currentPage }"
-            type="button"
-            :aria-label="`${pageNumber}번째 책 페이지`"
-            :aria-current="pageNumber === currentPage ? 'page' : undefined"
-            @click="currentPage = pageNumber"
-          >
-            {{ pageNumber }}
-          </button>
-          <button
-            class="pagination-arrow"
+            class="pagination-arrow pagination-arrow--next"
             type="button"
             :disabled="currentPage === pageCount"
             aria-label="다음 책 페이지"
             @click="currentPage += 1"
           >
-            ›
+            <span class="pagination-arrow-icon" aria-hidden="true">›</span>
           </button>
         </nav>
 
-        <div v-else class="catalog-empty">
-          <img :src="otherBooksIcon" alt="" aria-hidden="true" />
-          <strong>아직 보여 줄 책이 없어!</strong>
-          <button type="button" @click="openCatalog('new')">새로운 책 고르기</button>
-        </div>
       </template>
     </section>
   </main>
+
+  <Teleport to="body">
+    <div
+      v-if="pendingDelete"
+      class="delete-dialog-backdrop"
+      @click.self="cancelDelete"
+    >
+      <section
+        class="delete-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="delete-dialog-title"
+        aria-describedby="delete-dialog-description"
+      >
+        <span class="delete-dialog-icon" aria-hidden="true">×</span>
+        <h2 id="delete-dialog-title">이 책을 지울까요?</h2>
+        <p id="delete-dialog-description">지우면 지금까지 읽은 내용은 다시 볼 수 없어요.</p>
+        <strong>{{ sessionTitle(pendingDelete) }}</strong>
+        <div class="delete-progress">
+          <span>읽은 만큼</span>
+          <b>{{ pendingDelete.progress }}%</b>
+          <i aria-hidden="true"><em :style="{ width: `${pendingDelete.progress}%` }" /></i>
+        </div>
+        <p v-if="deleteError" class="delete-dialog-error" role="alert">{{ deleteError }}</p>
+        <div class="delete-dialog-actions">
+          <button type="button" :disabled="Boolean(deletingStoryId)" @click="cancelDelete">계속 읽을래</button>
+          <button
+            class="delete-dialog-confirm"
+            type="button"
+            :disabled="Boolean(deletingStoryId)"
+            @click="confirmDelete"
+          >
+            {{ deletingStoryId ? '지우는 중…' : '책 지우기' }}
+          </button>
+        </div>
+      </section>
+    </div>
+  </Teleport>
 </template>
 
 <style scoped src="@/styles/story/StorySelectionView.css"></style>

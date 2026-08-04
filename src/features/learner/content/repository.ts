@@ -28,6 +28,10 @@ export interface LearnerContentRepository {
     studentId: string,
     storyTemplateId: string,
   ) => Promise<string>
+  readonly deleteStory: (
+    studentId: string,
+    storyId: string,
+  ) => Promise<void>
   readonly getGrowthAreas: (
     studentId: string,
     options?: LearnerRequestOptions,

@@ -11,7 +11,10 @@ describe('API learner story repository', () => {
     const request = vi.spyOn(learnerApiClient, 'request').mockResolvedValue({
       transcript: '오른쪽 길로 갈래요',
       confidence: 0.98,
-      accepted: true,
+      decision: 'ALLOW',
+      reasonCode: 'OK',
+      policyVersion: 'story-branch-input-v1',
+      reviewToken: 'review-token',
     })
     const repository = new ApiLearnerStoryRepository()
     const audioFile = new File(['voice'], 'branch.webm', { type: 'audio/webm' })
@@ -28,10 +31,19 @@ describe('API learner story repository', () => {
   it('확인된 자유 음성 선택을 backend JSON 계약으로 전송한다', async () => {
     const request = vi.spyOn(learnerApiClient, 'request').mockResolvedValue({ nextLineId: 12 })
     const repository = new ApiLearnerStoryRepository()
-    await repository.chooseDirection('101', '31', '9', '오른쪽 길로 갈래요')
+    await repository.chooseDirection('101', '31', '9', {
+      branchIntent: '오른쪽 길로 갈래요',
+      reviewToken: 'review-token',
+    })
     expect(request).toHaveBeenCalledWith(
       '/api/app/story/101/31/lines/9/branches',
-      { method: 'POST', body: JSON.stringify({ branchIntent: '오른쪽 길로 갈래요' }) },
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          branchIntent: '오른쪽 길로 갈래요',
+          reviewToken: 'review-token',
+        }),
+      },
     )
   })
 
