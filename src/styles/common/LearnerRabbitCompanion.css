@@ -48,7 +48,7 @@
 .rabbit-companion__character {
   position: absolute;
   right: -78px;
-  bottom: -48px;
+  bottom: -12px;
   width: 343px;
   height: 470px;
   padding: 0;
@@ -70,6 +70,12 @@
   height: 100%;
   object-fit: contain;
   filter: drop-shadow(0 10px 9px rgb(58 65 105 / 17%));
+}
+
+/* 마이크 그림은 원본에서 몸이 오른쪽으로 치우쳐 있어(왼쪽에 마이크 공간)
+   상태 전환 시 토끼가 오른쪽으로 점프해 보인다. 눈 위치 기준으로 되돌린다 */
+.rabbit-companion--microphone .rabbit-companion__character img {
+  transform: translateX(-38px);
 }
 
 .rabbit-companion--microphone .rabbit-companion__character,
