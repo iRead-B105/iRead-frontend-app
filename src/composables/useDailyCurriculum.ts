@@ -97,7 +97,8 @@ const loadCurrentCurriculum = (preserveCurrentState = false) => {
             ? [{
                 trainingId: training.trainingId,
                 categoryId: training.categoryId,
-                lesson,
+                // 서버 훈련명을 우선 표시해 백엔드·교수자 웹과 표기를 일치시킨다
+                lesson: training.name ? { ...lesson, title: training.name } : lesson,
                 status: training.status,
               }]
             : []
