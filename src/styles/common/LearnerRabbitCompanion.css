@@ -9,6 +9,7 @@
 }
 
 .rabbit-companion__bubble {
+  display: none;
   position: absolute;
   z-index: 2;
   top: 12px;
