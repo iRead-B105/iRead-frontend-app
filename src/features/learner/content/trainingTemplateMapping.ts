@@ -43,7 +43,7 @@ const trainingTypeMappings = {
     categoryId: 'phonological-awareness',
     lessonId: 'remove-batchim',
   },
-  SYLLABLE_DELETE: { categoryId: 'phonological-awareness', lessonId: 'remove-syllable' },
+  SYLLABLE_DELETE: { categoryId: 'phonological-awareness', lessonId: 'sound-split' },
   SYLLABLE_REPLACE: { categoryId: 'phonological-awareness', lessonId: 'replace-syllable' },
   WORD_READING: { categoryId: 'fluency', lessonId: 'read-real-words' },
   NONWORD_READING: { categoryId: 'fluency', lessonId: 'read-nonwords' },

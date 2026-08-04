@@ -7,7 +7,7 @@ import { personalizeRuntimeValue } from '@/services/learnerDataRepository'
 import { traceConsonantLesson, traceSyllableLesson, traceVowelLesson } from './gazeTraceLessons'
 import { letterSoundChoiceLesson, wordFirstSoundChoiceLesson } from './audioChoiceLessons'
 import { basicLetterBuildLesson, batchimLetterBuildLesson, doubleBatchimLetterBuildLesson } from './letterBuildLessons'
-import { removeBatchimLesson, removeSyllableLesson, replaceSyllableLesson } from './soundManipulationLessons'
+import { removeBatchimLesson, replaceSyllableLesson } from './soundManipulationLessons'
 import {
   batchimWordReadingLesson,
   nonwordReadingLesson,
@@ -364,11 +364,11 @@ export const lastSoundLesson: TrainingLesson = {
   ],
 }
 
-// 음운 인식 - 소리 나누기(음절 생략): 원래 낱말에서 한 소리를 빼 목표 낱말 만들기
+// 음운 인식 - 음절 빼기(음절 생략): 원래 낱말에서 한 소리를 빼 목표 낱말 만들기
 export const soundSplitLesson: TrainingLesson = {
   id: 'sound-split',
   categoryId: 'phonological-awareness',
-  title: '소리 나누기',
+  title: '음절 빼기',
   description: '낱말에서 소리 하나를 빼고 들은 낱말을 만들어요.',
   activityType: 'sound-omit',
   estimatedMinutes: 12,
@@ -584,7 +584,6 @@ export const lessonMap: Record<string, TrainingLesson> = {
   'build-batchim-letter': batchimLetterBuildLesson,
   'build-double-batchim-letter': doubleBatchimLetterBuildLesson,
   'remove-batchim': removeBatchimLesson,
-  'remove-syllable': removeSyllableLesson,
   'replace-syllable': replaceSyllableLesson,
   'read-real-words': realWordReadingLesson,
   'read-batchim-words': batchimWordReadingLesson,
@@ -651,13 +650,13 @@ const devPreviewDefinitions: DevPreviewDefinition[] = [
   },
   {
     id: 'sound-manipulation',
-    title: '소리 빼기·바꾸기 UI',
-    sourceLessonIds: ['remove-batchim', 'remove-syllable', 'replace-syllable'],
+    title: '소리 바꾸기 UI',
+    sourceLessonIds: ['replace-syllable'],
   },
   {
     id: 'sound-omit',
-    title: '소리 나누기 UI',
-    sourceLessonIds: ['sound-split'],
+    title: '소리 빼기 UI',
+    sourceLessonIds: ['remove-batchim', 'sound-split'],
   },
   {
     id: 'word-reading-grid',

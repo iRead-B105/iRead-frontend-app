@@ -225,7 +225,7 @@ const conciseInstructions: Partial<Record<TrainingActivityType, string>> = {
   'listen-and-select': '비슷한 소리를 찾아봐!',
   'sound-choice': '소리를 찾아봐!',
   'letter-build': '소리 듣고 글자를 만들어봐!',
-  'sound-manipulation': '낱말을 바꿔봐!',
+  'sound-manipulation': '단어를 소리에 맞게 바꿔봐!',
   'sound-omit': '잘 듣고 글자를 잘라봐!',
   'sound-blend': '소리를 합쳐봐!',
   'word-reading-grid': '낱말을 읽어봐!',

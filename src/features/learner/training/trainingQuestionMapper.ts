@@ -334,39 +334,21 @@ function mapComponentBuild(number: number, source: StudentQuestionDto): Training
 function mapManipulation(number: number, source: StudentQuestionDto): TrainingQuestion {
   const sourceText = requiredString(source.content, 'source')
   const targetResult = requiredString(source.answer, 'result')
-  if (source.questionType === 'SYLLABLE_REPLACE') {
-    const units = [...sourceText].map((text, index) => ({ id: unitId(index), text }))
-    const replacements = choicesFromStrings(stringArray(source.content, 'choices'))
-    const replaceIndex = requiredInteger(source.answer, 'replaceIndex')
-    const answerIndex = requiredInteger(source.answer, 'answerIndex')
-    const answer = `${unitId(replaceIndex)}:${choiceId(answerIndex)}`
-    return {
-      ...baseQuestion(number, '바꿀 음절과 새 음절을 골라요', answer),
-      targetText: sourceText,
-      audioText: requiredString(source.content, 'targetAudioText'),
-      audioPromptEnabled: true,
-      manipulationMode: 'replace',
-      manipulationUnits: units,
-      manipulationTargetUnitIds: [unitId(replaceIndex)],
-      replacementChoices: replacements,
-      replacementAnswerId: choiceId(answerIndex),
-      targetResult,
-    }
-  }
-  const values = source.questionType === 'SYLLABLE_DELETE'
-    ? stringArray(source.content, 'syllables')
-    : stringArray(source.content, 'removableUnits')
-  const deleteIndex = source.questionType === 'SYLLABLE_DELETE'
-    ? requiredInteger(source.answer, 'deleteIndex')
-    : requiredInteger(source.answer, 'answerIndex')
+  const units = [...sourceText].map((text, index) => ({ id: unitId(index), text }))
+  const replacements = choicesFromStrings(stringArray(source.content, 'choices'))
+  const replaceIndex = requiredInteger(source.answer, 'replaceIndex')
+  const answerIndex = requiredInteger(source.answer, 'answerIndex')
+  const answer = `${unitId(replaceIndex)}:${choiceId(answerIndex)}`
   return {
-    ...baseQuestion(number, '빼야 할 소리를 골라요', unitId(deleteIndex)),
+    ...baseQuestion(number, '바꿀 음절과 새 음절을 골라요', answer),
     targetText: sourceText,
     audioText: requiredString(source.content, 'targetAudioText'),
     audioPromptEnabled: true,
-    manipulationMode: 'remove',
-    manipulationUnits: values.map((text, index) => ({ id: unitId(index), text })),
-    manipulationTargetUnitIds: [unitId(deleteIndex)],
+    manipulationMode: 'replace',
+    manipulationUnits: units,
+    manipulationTargetUnitIds: [unitId(replaceIndex)],
+    replacementChoices: replacements,
+    replacementAnswerId: choiceId(answerIndex),
     targetResult,
   }
 }
