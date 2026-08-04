@@ -40,6 +40,79 @@
   transform: translate(-50%,10px);
 }
 
+/* 완료된 메뉴(글자 연습·실력 도전) 접근을 막는 안내 모달.
+   훈련 화면의 공통 모달(device-blocker 계열)과 같은 디자인을 쓴다. 아이콘은 없음 */
+.complete-notice-backdrop {
+  position: absolute;
+  z-index: 40;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: var(--learner-page-padding);
+  background: var(--learner-modal-backdrop);
+  backdrop-filter: blur(var(--learner-modal-blur));
+}
+
+.complete-notice {
+  width: min(92%, 780px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--learner-space-4);
+  padding: clamp(28px, 3cqw, 42px);
+  border: var(--learner-modal-border);
+  border-radius: var(--learner-radius-panel);
+  background: var(--learner-modal-background);
+  box-shadow: var(--learner-shadow-floating);
+  color: var(--learner-color-text);
+  text-align: center;
+}
+
+.complete-notice h2 {
+  margin: 0;
+  font-size: clamp(30px, 3cqw, 44px);
+  font-weight: var(--learner-font-weight-heavy);
+}
+
+.complete-notice p {
+  margin: 0;
+  color: var(--learner-color-text-soft);
+  font-size: clamp(18px, 1.7cqw, 24px);
+  font-weight: var(--learner-font-weight-bold);
+  line-height: 1.4;
+}
+
+.complete-notice-actions {
+  width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--learner-space-3);
+  margin-top: var(--learner-space-2);
+}
+
+.complete-notice-actions button {
+  min-height: var(--learner-control-height-medium);
+  padding-inline: var(--learner-space-6);
+  border: 0;
+  border-radius: var(--learner-radius-control);
+  /* 홈 화면에는 flow-accent 변수가 없으므로 학습 색을 기본값으로 쓴다 */
+  background: var(--learner-flow-accent, var(--learner-color-learning));
+  box-shadow: var(--learner-shadow-control);
+  color: #fff;
+  font-size: var(--learner-type-body);
+  font-weight: var(--learner-font-weight-heavy);
+  cursor: pointer;
+}
+
+.notice-enter-active,.notice-leave-active {
+  transition: opacity var(--learner-duration-normal) var(--learner-easing-standard);
+}
+
+.notice-enter-from,.notice-leave-to {
+  opacity: 0;
+}
+
 @container learner-canvas (max-width:800px) {
   .learner-home {
     display: block;

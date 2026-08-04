@@ -126,10 +126,10 @@ export class ApiLearnerContentRepository implements LearnerContentRepository {
     ))
     const allCompleted = orderedTrainings.length > 0
       && orderedTrainings.every((training) => training.status === 'COMPLETED')
+    // 진행 가능한 훈련이 없으면(예: 오늘 완료 후 생성된 다음날 커리큘럼이
+    // 아직 문항 생성 전이라 전부 NOT_READY) 현재 훈련 없음으로 둔다.
+    // currentOrder가 목록 길이를 넘어가 오늘 학습 완료로 취급된다.
     const current = explicitlyCurrent
-      ?? (allCompleted
-        ? undefined
-        : orderedTrainings.find((training) => training.status !== 'COMPLETED'))
 
     return {
       curriculumId: String(response.curriculumId),

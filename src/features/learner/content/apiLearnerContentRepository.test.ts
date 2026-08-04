@@ -230,7 +230,7 @@ describe('API learner content repository', () => {
     )
   })
 
-  it('marks the first incomplete lesson as current when only NOT_READY remains', async () => {
+  it('NOT_READY만 남으면 진행 훈련 없이 오늘 학습 완료로 취급한다', async () => {
     vi.spyOn(learnerApiClient, 'request').mockResolvedValue({
       curriculumId: 72,
       curriculumStatus: 'IN_PROGRESS',
@@ -259,10 +259,12 @@ describe('API learner content repository', () => {
 
     const curriculum = await repository.getCurrentCurriculum('101')
 
-    expect(curriculum.currentOrder).toBe(2)
+    // 문항이 생성되지 않은 NOT_READY 훈련은 진행 대상이 아니다.
+    // currentOrder가 목록 길이를 넘어가 오늘 학습 완료(진입 차단)로 이어진다.
+    expect(curriculum.currentOrder).toBe(3)
     expect(curriculum.trainings.map((training) => training.status)).toEqual([
       'COMPLETED',
-      'CURRENT',
+      'LOCKED',
     ])
   })
 })
