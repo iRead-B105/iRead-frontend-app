@@ -4,7 +4,11 @@ import { useRoute, useRouter } from 'vue-router'
 import { useDailyCurriculum } from '@/composables/useDailyCurriculum'
 import { useDeviceStatus } from '@/composables/useDeviceStatus'
 import { learnerDataSource } from '@/config/learnerDataSource'
-import { devPreviewLessons } from '@/mocks/trainingLessons'
+import {
+  getTrainingTypeMapping,
+  selectableTrainingTemplates,
+} from '@/features/learner/content/trainingTemplateMapping'
+import { getLessonById } from '@/mocks/trainingLessons'
 import { getCachedStudent } from '@/services/learnerDataRepository'
 import { useDeveloperMode } from '@/composables/useDeveloperMode'
 import {
@@ -30,6 +34,24 @@ const {
   virtualEyeTrackerConnected,
   setVirtualEyeTrackerConnected,
 } = useDeviceStatus()
+
+// 진행 가능 템플릿 31개 각각을 미리보기 버튼으로 만든다 (레슨 화면은 공유될 수 있음)
+const templatePreviews = selectableTrainingTemplates
+  .flatMap((template) => {
+    const mapping = getTrainingTypeMapping(template.trainingType)
+    if (!mapping) return []
+    const lesson = getLessonById(mapping.lessonId)
+    return lesson
+      ? [{
+          templateId: template.templateId,
+          name: template.name,
+          categoryId: mapping.categoryId,
+          lessonId: mapping.lessonId,
+          activityType: lesson.activityType,
+        }]
+      : []
+  })
+  .map((preview, index) => ({ ...preview, order: index + 1 }))
 let pendingGazePoint: { clientX: number; clientY: number } | null = null
 let gazeAnimationFrame = 0
 
@@ -71,10 +93,13 @@ const forceMoveToNextTraining = async () => {
     const isDebugPreview = route.query.debug === '1'
 
     if (isDebugPreview) {
-      const currentPreviewIndex = devPreviewLessons.findIndex(
-        (lesson) => lesson.id === currentLessonId,
+      const currentPreviewIndex = templatePreviews.findIndex(
+        (preview) => preview.lessonId === currentLessonId,
       )
-      const nextPreview = devPreviewLessons[currentPreviewIndex + 1]
+      // 같은 레슨 화면을 공유하는 템플릿은 건너뛰고 다음 화면으로 이동한다
+      const nextPreview = templatePreviews
+        .slice(Math.max(currentPreviewIndex, 0) + 1)
+        .find((preview) => preview.lessonId !== currentLessonId)
 
       if (!nextPreview) {
         window.alert('다음 미리보기 훈련이 없습니다.')
@@ -83,7 +108,7 @@ const forceMoveToNextTraining = async () => {
 
       await router.push({
         name: 'training-lesson',
-        params: { categoryId: nextPreview.categoryId, lessonId: nextPreview.id },
+        params: { categoryId: nextPreview.categoryId, lessonId: nextPreview.lessonId },
         query: { debug: '1' },
       })
       return
@@ -337,19 +362,19 @@ const reloadPage = () => window.location.reload()
           <div class="developer-cheat-section-heading">
             <div>
               <h3>전체 학습 UI 미리보기</h3>
-              <p>서버 진도와 무관하게 개발된 학습을 하나씩 엽니다.</p>
+              <p>서버 진도와 무관하게 진행 가능 훈련 {{ templatePreviews.length }}종을 하나씩 엽니다.</p>
             </div>
-            <span>{{ devPreviewLessons.length }}개</span>
+            <span>{{ templatePreviews.length }}개</span>
           </div>
           <div class="developer-cheat-lesson-grid">
             <button
-              v-for="lesson in devPreviewLessons"
-              :key="lesson.id"
+              v-for="preview in templatePreviews"
+              :key="preview.templateId"
               type="button"
-              @click="openDebugLesson(lesson.categoryId, lesson.id)"
+              @click="openDebugLesson(preview.categoryId, preview.lessonId)"
             >
-              <strong>{{ lesson.title }}</strong>
-              <span>{{ lesson.activityType }} · {{ lesson.questions.length }}문제</span>
+              <strong>{{ preview.order }}. {{ preview.name }}</strong>
+              <span>{{ preview.activityType }} · {{ preview.lessonId }}</span>
             </button>
           </div>
         </section>
