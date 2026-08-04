@@ -54,15 +54,38 @@ const deriveState = (): RabbitState => {
   return 'idle'
 }
 
+// DOM 클래스가 갈리는 찰나(듣는 중→평가 중→성공)에 idle로 튕겼다 돌아오며
+// 이미지가 파바밧 깜빡이지 않도록, 새 상태가 잠시 유지될 때만 반영한다
+const STATE_STABLE_MS = 160
+let pendingState: RabbitState | null = null
+let stateTimer = 0
+
+const applyDerivedState = () => {
+  if (hovered.value) return
+  const next = deriveState()
+  if (next === state.value) {
+    pendingState = null
+    window.clearTimeout(stateTimer)
+    return
+  }
+  if (next === pendingState) return
+  pendingState = next
+  window.clearTimeout(stateTimer)
+  stateTimer = window.setTimeout(() => {
+    if (pendingState && !hovered.value) state.value = pendingState
+    pendingState = null
+  }, STATE_STABLE_MS)
+}
+
 const refreshState = () => {
   cancelAnimationFrame(refreshFrame)
-  refreshFrame = requestAnimationFrame(() => {
-    if (!hovered.value) state.value = deriveState()
-  })
+  refreshFrame = requestAnimationFrame(applyDerivedState)
 }
 
 const greet = () => {
   hovered.value = true
+  pendingState = null
+  window.clearTimeout(stateTimer)
   state.value = 'greeting'
 }
 
@@ -108,6 +131,7 @@ onBeforeUnmount(() => {
   observer?.disconnect()
   cancelAnimationFrame(refreshFrame)
   window.clearTimeout(gazeLeaveTimer)
+  window.clearTimeout(stateTimer)
   window.removeEventListener('iread:gaze', onGaze)
 })
 </script>
