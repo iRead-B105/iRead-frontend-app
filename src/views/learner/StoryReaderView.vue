@@ -148,8 +148,6 @@ const branchVoiceAttemptCount = ref(0)
 const speechError = ref(false)
 const branchSubmitting = ref(false)
 const mockBranchVoiceFile = ref<File | null>(null)
-const ttsLoading = ref(false)
-const ttsPlaying = ref(false)
 const storyGazeSessionId = ref<string | null>(null)
 const storyGazeSessionCompleted = ref(false)
 const storyGazeStartedAtMs = ref(0)
@@ -174,8 +172,6 @@ let lastStoryGazeSampleAt = 0
 let cursorGazeSampleTimer: number | undefined
 let lastCursorPoint: { x: number; y: number } | null = null
 let lastStoryGazePoint: { x: number; y: number; source: StoryGazeSource } | null = null
-let narrationAudio: HTMLAudioElement | null = null
-let narrationObjectUrl: string | null = null
 
 const WORD_HIT_PADDING_X = 18
 const WORD_HIT_PADDING_Y = 24
@@ -196,6 +192,18 @@ const hasBranchRecording = computed(() =>
   mockBranchVoiceFile.value !== null || voiceRecorder.state.hasRecording,
 )
 const branchVoiceFallbackRequired = computed(() => branchVoiceAttemptCount.value >= 3)
+
+watch(hasBranchRecording, (hasRecording, hadRecording) => {
+  if (
+    !hasRecording
+    || hadRecording
+    || branchVoiceFallbackRequired.value
+    || recognizedBranchIntent.value
+    || branchSubmitting.value
+  ) return
+
+  void reviewBranchRecording()
+})
 
 function exitToStorySelection() {
   void router.push({ name: 'story-selection' })
@@ -954,49 +962,6 @@ async function submitBranchAnswer(
   }
 }
 
-function clearNarration() {
-  narrationAudio?.pause()
-  narrationAudio = null
-  if (narrationObjectUrl) {
-    URL.revokeObjectURL(narrationObjectUrl)
-    narrationObjectUrl = null
-  }
-  ttsPlaying.value = false
-}
-
-async function playNarration() {
-  if (!page.value.lineId || ttsLoading.value) return
-  clearNarration()
-  ttsLoading.value = true
-  try {
-    const result = await learnerStoryRepository.synthesizeLine(
-      getCachedStudent().studentId,
-      storyId.value,
-      page.value.lineId,
-    )
-    const audioBlob = await learnerStoryRepository.downloadAudio(result.audioUrl)
-    narrationObjectUrl = URL.createObjectURL(audioBlob)
-    narrationAudio = new Audio(narrationObjectUrl)
-    narrationAudio.onended = () => {
-      ttsPlaying.value = false
-    }
-    narrationAudio.onerror = () => {
-      ttsPlaying.value = false
-      errorModal.show(new Error('이야기 음성을 재생하지 못했습니다.'), '이야기 듣기 오류')
-    }
-    ttsPlaying.value = true
-    await narrationAudio.play()
-  } catch (error) {
-    clearNarration()
-    errorModal.show(
-      error instanceof Error ? error : new Error('이야기 음성을 불러오지 못했습니다.'),
-      '이야기 듣기 오류',
-    )
-  } finally {
-    ttsLoading.value = false
-  }
-}
-
 watch(storyId, async () => {
   await finishStoryGazeSession()
   resetStoryGazeState()
@@ -1007,7 +972,6 @@ watch(storyId, async () => {
   screen.value = 'reading'
   rewardedFriend.value = null
   voiceRecorder.reset()
-  clearNarration()
   await startStoryGazeSession()
   await resetReadingProgressForPage()
 })
@@ -1028,7 +992,6 @@ onBeforeUnmount(() => {
   void finishStoryGazeSession()
   clearLeaveTimer()
   clearDwell()
-  clearNarration()
   if (cursorGazeSampleTimer !== undefined) window.clearInterval(cursorGazeSampleTimer)
   cursorGazeSampleTimer = undefined
   lastCursorPoint = null
@@ -1053,14 +1016,6 @@ onBeforeUnmount(() => {
         <div class="story-progress" role="status" :aria-label="`${story.currentDay}일차 ${(currentPage % story.pagesPerDay) + 1}페이지`">
           {{ story.currentDay }}일차 · {{ (currentPage % story.pagesPerDay) + 1 }} / {{ story.pagesPerDay }}
         </div>
-        <button
-          class="story-listen"
-          type="button"
-          :disabled="ttsLoading"
-          @click="playNarration"
-        >
-          {{ ttsLoading ? '음성 준비 중…' : ttsPlaying ? '다시 듣기' : '이야기 듣기' }}
-        </button>
         <img :src="page.image" :alt="`${story.title} 이야기 장면`" :style="{ objectPosition: page.imagePosition ?? 'center' }" />
         <div class="scene-shade" aria-hidden="true" />
         <div ref="textPanel" class="reading-panel" aria-live="polite" @pointerleave="onPointerLeave">
@@ -1090,13 +1045,20 @@ onBeforeUnmount(() => {
           class="question-card"
           :class="{
             'question-card--choice': screen === 'question',
+            'question-card--review': screen === 'question'
+              && hasBranchRecording
+              && !branchVoiceFallbackRequired,
             'question-card--generating': screen === 'generating',
           }"
           aria-live="polite"
         >
           <template v-if="screen === 'question'">
             <h1>{{ branchQuestion }}</h1>
-            <div v-if="branchOptions.length === 3" class="branch-options" aria-label="이야기 선택지">
+            <div
+              v-if="branchOptions.length === 3 && (!hasBranchRecording || branchVoiceFallbackRequired)"
+              class="branch-options"
+              aria-label="이야기 선택지"
+            >
               <button
                 v-for="option in branchOptions"
                 :key="option.optionNo"
@@ -1109,11 +1071,14 @@ onBeforeUnmount(() => {
                 <span class="branch-option-arrow" aria-hidden="true">›</span>
               </button>
             </div>
-            <p class="branch-or"><span>또는 직접 이야기하기</span></p>
+            <p
+              v-if="!hasBranchRecording || branchVoiceFallbackRequired"
+              class="branch-or"
+            ><span>또는 직접 이야기하기</span></p>
             <section
               class="voice-answer"
               :class="{
-                'voice-answer--recorded': hasBranchRecording,
+                'voice-answer--recorded': hasBranchRecording && !branchVoiceFallbackRequired,
                 'voice-answer--error': speechError,
               }"
               aria-label="말로 대답하기"
@@ -1136,7 +1101,7 @@ onBeforeUnmount(() => {
                       : isListening
                         ? '이야기를 듣고 있어요!'
                         : hasBranchRecording
-                          ? (recognizedBranchIntent ? '말한 내용을 확인해 주세요' : '대답을 녹음했어요')
+                          ? (recognizedBranchIntent ? '말한 내용을 확인해 주세요' : '말한 내용을 확인하고 있어요')
                           : '이야기를 들려주세요!'
                   }}
                 </strong>
@@ -1151,13 +1116,14 @@ onBeforeUnmount(() => {
                   </template>
                   <template v-else-if="isListening">말을 마치면 마이크를 눌러 주세요.</template>
                   <template v-else-if="recognizedBranchIntent">“{{ recognizedBranchIntent }}”</template>
-                  <template v-else-if="hasBranchRecording">먼저 말한 내용을 글자로 확인해요.</template>
+                  <template v-else-if="hasBranchRecording">잠시만 기다려 주세요.</template>
                   <template v-else>마이크를 누르고 대답해 주세요.</template>
                 </p>
               </div>
               <div
-                v-if="hasBranchRecording && !branchVoiceFallbackRequired"
+                v-if="hasBranchRecording && !branchVoiceFallbackRequired && (!branchSubmitting || speechError)"
                 class="voice-actions"
+                :class="{ 'voice-actions--single': !recognizedBranchIntent }"
                 aria-label="녹음한 대답 확인"
               >
                 <button
@@ -1169,18 +1135,17 @@ onBeforeUnmount(() => {
                   다시 말하기
                 </button>
                 <button
+                  v-if="recognizedBranchIntent"
                   class="confirm-answer"
                   type="button"
                   :disabled="branchSubmitting"
-                  @click="recognizedBranchIntent
-                    ? submitBranchAnswer(
-                        undefined,
-                        recognizedBranchIntent,
-                        recognizedBranchReviewToken,
-                      )
-                    : reviewBranchRecording()"
+                  @click="submitBranchAnswer(
+                    undefined,
+                    recognizedBranchIntent,
+                    recognizedBranchReviewToken,
+                  )"
                 >
-                  <span>{{ recognizedBranchIntent ? '이 내용으로 이어 만들기' : '말한 내용 확인하기' }}</span>
+                  <span>이 내용으로 이어 만들기</span>
                   <span class="confirm-answer-icon" aria-hidden="true">
                     <img :src="checkIcon" alt="" />
                   </span>

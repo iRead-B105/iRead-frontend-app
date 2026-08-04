@@ -103,29 +103,6 @@
   font-weight: var(--learner-font-weight-heavy);
 }
 
-.story-listen {
-  position: absolute;
-  z-index: 8;
-  top: 82px;
-  right: 18px;
-  min-height: 48px;
-  padding: 0 18px;
-  border: 2px solid #d9cdf7;
-  border-radius: var(--learner-radius-pill);
-  background: rgb(248 244 255 / 94%);
-  color: #5c4a97;
-  box-shadow: var(--learner-shadow-small);
-  font-family: var(--learner-font-display);
-  font-size: clamp(16px, 1.25cqw, 20px);
-  font-weight: var(--learner-font-weight-heavy);
-  cursor: pointer;
-}
-
-.story-listen:disabled {
-  cursor: wait;
-  opacity: .72;
-}
-
 .story-scene>img {
   position: absolute;
   inset: 0;
@@ -362,6 +339,15 @@
   text-shadow: 0 2px 0 #fff, 0 7px 18px rgb(45 69 135 / 9%);
 }
 
+.question-card--review {
+  overflow: hidden;
+}
+
+.question-card--review .voice-answer--recorded {
+  min-height: 0;
+  max-height: min(54cqh, 320px);
+}
+
 .branch-options {
   width: min(100%, 900px);
   display: grid;
@@ -475,11 +461,12 @@
   align-items: center;
   justify-content: center;
   gap: clamp(16px, 2cqw, 26px);
-  padding: clamp(12px,1.6cqh,18px) clamp(18px,2.4cqw,30px);
-  border: 3px solid #e8e2d7;
-  border-radius: var(--learner-card-radius);
-  background: linear-gradient(145deg, #fff 0%, #fffdf9 100%);
-  box-shadow: 0 7px 0 #ded8cc, 0 12px 22px rgb(76 65 43 / 8%);
+  padding: clamp(14px, 1.8cqh, 20px) 0 0;
+  border: 0;
+  border-top: 2px solid #e5ded1;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .voice-answer--recorded {
@@ -488,8 +475,8 @@
 }
 
 .voice-answer--error {
-  border-color: #f2b8b8;
-  background: linear-gradient(145deg, #fff 0%, #fff5f3 100%);
+  border-top-color: #e8aaaa;
+  background: transparent;
 }
 
 .listening-mic {
@@ -554,10 +541,11 @@
 .listening-copy .voice-transcript {
   max-height: 4.5em;
   overflow-y: auto;
-  padding: 10px 14px;
-  border: 2px solid #e6dfd2;
-  border-radius: 14px;
-  background: #fff;
+  padding: 6px 0 6px 16px;
+  border: 0;
+  border-left: 5px solid #e8bd58;
+  border-radius: 0;
+  background: transparent;
   color: #203d7b;
   font-size: clamp(22px, 2cqw, 29px);
   font-weight: 750;
@@ -601,6 +589,11 @@
   flex: 0 0 auto;
   justify-self: stretch;
   width: 100%;
+}
+
+.voice-actions--single {
+  grid-template-columns: minmax(180px, 320px);
+  justify-content: center;
 }
 
 .retry-button,.confirm-answer {
