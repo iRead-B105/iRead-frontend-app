@@ -43,12 +43,14 @@
   word-break: keep-all;
 }
 
+/* 이미지는 토끼 실제 영역에 맞게 크롭되어 있어(~700x941)
+   버튼 히트박스도 토끼 크기만큼만 차지한다. 화면상 위치·크기는 크롭 전과 동일 */
 .rabbit-companion__character {
   position: absolute;
-  right: -284px;
-  bottom: -204px;
-  width: 760px;
-  height: 760px;
+  right: -78px;
+  bottom: -48px;
+  width: 343px;
+  height: 470px;
   padding: 0;
   border: 0;
   background: transparent;
@@ -79,11 +81,6 @@
 .rabbit-companion--retry .rabbit-companion__character {
   animation: rabbit-encourage .55s ease-out both;
 }
-
-.rabbit-swap-enter-active,
-.rabbit-swap-leave-active { transition: opacity .12s ease, transform .12s ease; }
-.rabbit-swap-enter-from { opacity: 0; transform: scale(.94); }
-.rabbit-swap-leave-to { opacity: 0; transform: scale(1.04); }
 
 @keyframes rabbit-ready {
   0%, 100% { transform: translateY(0) scale(1); }
