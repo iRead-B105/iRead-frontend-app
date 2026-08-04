@@ -45,6 +45,8 @@ onMounted(async () => {
       <LearnerHeader
         v-if="!hideHeader"
         :user-name="activeStudent.name"
+        :student-id="activeStudent.studentId"
+        :profile-image-url="activeStudent.profileImageUrl"
         @brand-click="handleBrandClick"
       />
       <div class="learner-page" :class="{ 'learner-page--full': hideHeader }">

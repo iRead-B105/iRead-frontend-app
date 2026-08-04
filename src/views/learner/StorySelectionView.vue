@@ -51,6 +51,9 @@ const storyTemplates = ref<StoryTemplate[]>([])
 const requestError = ref('')
 const libraryReady = ref(false)
 const openingBookId = ref<string | null>(null)
+const openingBookTitle = computed(() =>
+  storyTemplates.value.find((book) => book.id === openingBookId.value)?.title ?? '새 이야기',
+)
 const pendingDelete = ref<StorySession | null>(null)
 const deletingStoryId = ref<string | null>(null)
 const deleteError = ref('')
@@ -248,6 +251,12 @@ function progressLabel(book: StorySession) {
 function sessionTitle(book: StorySession) {
   return book.latestBranchSubtitle || book.title
 }
+
+function continueTitle(book: StorySession) {
+  const subtitle = book.latestBranchSubtitle?.trim()
+  if (!subtitle || subtitle === book.title) return book.title
+  return `${book.title} - ${subtitle}`
+}
 </script>
 
 <template>
@@ -260,7 +269,17 @@ function sessionTitle(book: StorySession) {
       :class="{ 'library-panel--catalog': mode !== 'home' }"
       aria-labelledby="story-library-title"
     >
-      <p v-if="requestError" class="library-error" role="alert">{{ requestError }}</p>
+      <div
+        v-if="openingBookId"
+        class="story-creation-overlay"
+        role="status"
+        aria-live="assertive"
+      >
+        <span class="story-creation-spinner" aria-hidden="true" />
+        <small>{{ openingBookTitle }}</small>
+        <strong>새 이야기를 만들고 있어요!</strong>
+        <p>이야기가 준비되면 바로 책 속으로 들어가요.</p>
+      </div>
       <div v-if="!libraryReady" class="library-loading" role="status" aria-live="polite">
         <span aria-hidden="true" />
         <strong>이야기 책장을 준비하고 있어요.</strong>
@@ -279,11 +298,10 @@ function sessionTitle(book: StorySession) {
           @click="openCurrentBook"
         >
           <template v-if="currentBook">
-            <img class="continue-scene" :src="currentBook.coverImage" :alt="`${sessionTitle(currentBook)} 이어 읽기 표지`" />
-            <span class="continue-kicker">이어서 읽기</span>
-            <span class="continue-progress">{{ currentBook.progress }}%</span>
+            <img class="continue-scene" :src="currentBook.entryImageUrl || currentBook.coverImage" :alt="`${continueTitle(currentBook)} 이어 읽기 장면`" />
+            <span class="continue-kicker">이어서 읽기 {{ currentBook.progress }}%</span>
             <span class="continue-overlay">
-              <strong>{{ sessionTitle(currentBook) }}</strong>
+              <strong>{{ continueTitle(currentBook) }}</strong>
               <img :src="continueStoryIcon" alt="" aria-hidden="true" />
             </span>
           </template>
@@ -320,13 +338,7 @@ function sessionTitle(book: StorySession) {
       <template v-else>
         <header class="catalog-heading">
           <PageBackButton label="이야기 나라 처음으로" @back="closeCatalog" />
-          <div>
-            <small>{{ mode === 'other' ? '나의 책장' : '새 이야기 고르기' }}</small>
-            <h1>{{ mode === 'other' ? '읽던 책 고르기' : '새 이야기 시작하기' }}</h1>
-          </div>
-        </header>
-
-        <div class="catalog-content">
+          <h1>{{ mode === 'other' ? '나의 책장' : '새 이야기 시작하기' }}</h1>
           <nav v-if="mode === 'other'" class="shelf-tabs" aria-label="책장 분류">
             <button
               type="button"
@@ -347,7 +359,9 @@ function sessionTitle(book: StorySession) {
               <b>{{ completedBooks.length }}</b>
             </button>
           </nav>
+        </header>
 
+        <div class="catalog-content">
           <div
             v-if="visibleLibraryBooks.length"
             class="book-grid"
@@ -365,6 +379,7 @@ function sessionTitle(book: StorySession) {
                 class="book-card"
                 type="button"
                 :disabled="openingBookId === book.id"
+                :aria-busy="openingBookId === book.id"
                 @click="openBook(book)"
               >
                 <span class="book-cover">
@@ -407,7 +422,7 @@ function sessionTitle(book: StorySession) {
         </div>
 
         <nav
-          v-if="visibleLibraryBooks.length && pageCount > 1"
+          v-if="visibleLibraryBooks.length"
           class="book-pagination"
           aria-label="이야기 책 페이지"
         >

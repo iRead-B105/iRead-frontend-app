@@ -9,6 +9,7 @@ import { useGazeCalibration } from '../../composables/useGazeCalibration'
 import { useGazeCursorVisibility } from '../../composables/useGazeCursorVisibility'
 import { useTobiiGazeBridge } from '../../composables/useTobiiGazeBridge'
 import { mockGazeSubmissionsEnabled } from '@/features/learner/training'
+import { resolveAuthenticatedProfileImage } from '@/features/learner/auth'
 import { resolveMicrophoneErrorMessage } from '@/lib/media/microphoneErrorMessage'
 import { useLearnerSessionStore } from '@/stores/learnerSession'
 import { useLearnerErrorModalStore } from '@/stores/learnerErrorModal'
@@ -16,8 +17,14 @@ import eyeTrackerIcon from '@/assets/icons/eye-tracker.svg'
 import microphoneIcon from '@/assets/icons/microphone.svg'
 import exitIcon from '@/assets/icons/exit.svg'
 
-defineProps<{ userName: string }>()
+const props = defineProps<{
+  userName: string
+  studentId: string
+  profileImageUrl?: string | null
+}>()
 const emit = defineEmits<{ brandClick: [] }>()
+
+const avatarSource = ref(defaultAvatar)
 
 type OpenMenu = 'eye' | 'microphone' | null
 type MicrophoneStatus = 'disconnected' | 'connecting' | 'connected' | 'recording' | 'ready' | 'playing'
@@ -36,6 +43,29 @@ let recordedChunks: Blob[] = []
 let testAudio: HTMLAudioElement | null = null
 let discardRecording = false
 let eyeReconnectFeedbackTimer: number | undefined
+let avatarRequestVersion = 0
+
+watch(
+  [
+    () => props.studentId,
+    () => props.profileImageUrl,
+    () => learnerSession.accessToken,
+  ],
+  async ([studentId, profileImageUrl, accessToken]) => {
+    const requestVersion = ++avatarRequestVersion
+    try {
+      const resolved = await resolveAuthenticatedProfileImage(
+        studentId ?? '',
+        profileImageUrl,
+        accessToken,
+      )
+      if (requestVersion === avatarRequestVersion) avatarSource.value = resolved || defaultAvatar
+    } catch {
+      if (requestVersion === avatarRequestVersion) avatarSource.value = defaultAvatar
+    }
+  },
+  { immediate: true },
+)
 
 const {
   microphoneAvailable,
@@ -270,7 +300,11 @@ const handleLogout = async () => {
     <div class="profile-cluster">
       <div class="profile" :aria-label="`${userName} 프로필`">
         <span class="avatar" aria-hidden="true">
-          <img :src="defaultAvatar" alt="" />
+          <img
+            :src="avatarSource"
+            :class="{ 'avatar-image--fallback': avatarSource === defaultAvatar }"
+            alt=""
+          />
         </span>
         <strong>{{ userName }}</strong>
       </div>
