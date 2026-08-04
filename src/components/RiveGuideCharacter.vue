@@ -18,7 +18,7 @@ const props = withDefaults(
     showBubble?: boolean
     speakMessage?: boolean
   }>(),
-  { activeMenu: null, mood: 'idle', showBubble: true, speakMessage: false },
+  { activeMenu: null, mood: 'idle', showBubble: false, speakMessage: false },
 )
 
 // message 를 넘긴 경우 = 학습 화면 컴패니언 모드. 아니면 메인 섬 화면 모드.
@@ -248,7 +248,7 @@ onBeforeUnmount(() => {
 <template>
   <div class="guide" :class="{ ready }">
     <div
-      v-if="showBubble"
+      v-if="false && showBubble"
       class="bubble"
       :role="isCompanion ? 'status' : undefined"
       :aria-live="isCompanion ? 'polite' : undefined"

@@ -731,7 +731,16 @@ const devPreviewLessonMap: Record<string, TrainingLesson> = Object.fromEntries(
   devPreviewLessons.map((lesson) => [lesson.id, lesson]),
 )
 
+// DEV 메뉴 개편 전에 공유된 미리보기 URL도 계속 열리게 한다.
+// 화면은 현재 통합 Activity를 그대로 사용하고 ID만 호환한다.
+const legacyDevPreviewLessonAliases: Readonly<Record<string, string>> = {
+  'dev-preview-first-sound': 'dev-preview-listen-and-select',
+  'dev-preview-word-first-sound-choice': 'dev-preview-audio-letter-choice',
+}
+
 export const getLessonById = (id: string): TrainingLesson | null => {
-  const lesson = lessonMap[id] ?? devPreviewLessonMap[id]
-  return lesson ? personalizeRuntimeValue(lesson) : null
+  const canonicalId = legacyDevPreviewLessonAliases[id] ?? id
+  const lesson = lessonMap[canonicalId] ?? devPreviewLessonMap[canonicalId]
+  if (!lesson) return null
+  return personalizeRuntimeValue(canonicalId === id ? lesson : { ...lesson, id })
 }

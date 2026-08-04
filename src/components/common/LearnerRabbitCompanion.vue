@@ -110,7 +110,7 @@ onBeforeUnmount(() => {
 
 <template>
   <aside class="rabbit-companion" :class="`rabbit-companion--${state}`" aria-live="polite">
-    <div class="rabbit-companion__bubble">
+    <div v-if="false" class="rabbit-companion__bubble">
       <img :src="speechBubble" alt="" aria-hidden="true" />
       <p>{{ currentMessage }}</p>
     </div>
