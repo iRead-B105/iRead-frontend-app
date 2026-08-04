@@ -230,17 +230,11 @@ function beginDwell(index: number) {
     clearDwell()
     return
   }
-  if (dwellTargetIndex.value === index) return
-
-  clearDwell()
+  // 아동 화면의 진행은 응시 시간이 아니라 단어를 한 번 확인했는지를 기준으로 한다.
+  // 상세 체류/순서 분석은 원시 샘플을 교수자 화면에서 별도로 계산한다.
   clearLeaveTimer()
   showReturnCue.value = false
-  dwellTargetIndex.value = index
-  dwellDurationMs.value = getDwellDuration(pageWords.value[index]?.word ?? '')
-  dwellTimer = window.setTimeout(() => {
-    if (dwellTargetIndex.value !== index) return
-    setProgress(index)
-  }, dwellDurationMs.value)
+  setProgress(index)
 }
 
 function scheduleReturnCue() {
