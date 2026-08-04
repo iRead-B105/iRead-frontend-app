@@ -74,6 +74,8 @@ const challengeTrackId = computed(() => {
   const value = String(route.params.trackId ?? route.query.challenge ?? '')
   return isSkillChallengeTrackId(value) ? value : null
 })
+// 검사(실력 검증)는 틀린 응답도 기록만 하고 재시도 없이 진행한다. 액티비티들이 세션으로 이 모드를 읽는다.
+watch(challengeTrackId, (value) => session.setAssessmentMode(Boolean(value)), { immediate: true })
 const challengePresentation = computed(() =>
   challengeTrackId.value
     ? getSkillChallengeLessons(challengeTrackId.value).find(
@@ -108,13 +110,7 @@ const startingTraining = ref(false)
 // mock 모드는 fallbackLesson이 동기 computed라 즉시 available하므로 false로 시작.
 const lessonLoading = ref(learnerDataSource === 'api' && !debugMode.value)
 const submittingQuestion = ref(false)
-const voiceGateOpen = ref(false)
 const voiceSubmitting = ref(false)
-const voiceAttemptLimitReached = ref(false)
-const voiceCompleted = ref(false)
-const voiceFeedback = ref('')
-const advanceAfterAutomaticVoice = ref(false)
-const pendingNextResponse = ref<LearnerTraceSubmissionResponse | undefined>()
 const recordedQuestionNumbers = new Set<number>()
 const gazeSessionId = ref<string | null>(null)
 const gazeSessionCompleted = ref(false)
@@ -156,7 +152,6 @@ const leaveConfirmationOpen = ref(false)
 const leaveConfirmed = ref(false)
 const integrationError = ref('')
 let resolveLeaveConfirmation: ((allow: boolean) => void) | null = null
-let automaticVoiceStopTimer: ReturnType<typeof setTimeout> | null = null
 
 watch(integrationError, (error) => {
   if (!error) return
@@ -195,7 +190,7 @@ const currentQuestionRequiresMicrophone = computed(() =>
 const currentQuestion = computed(() => session.currentQuestion.value)
 const questionScroll = ref<HTMLElement | null>(null)
 const sharedNextEnabled = computed(() =>
-  session.progressState.isCurrentCorrect === true || voiceAttemptLimitReached.value,
+  session.progressState.isCurrentCorrect === true,
 )
 type ActivityLayout = 'trace-speak' | 'choice' | 'manipulation' | 'reading-speak'
 const activityLayouts: Record<TrainingActivityType, ActivityLayout> = {
@@ -218,12 +213,6 @@ const activityLayoutClass = computed(() =>
   lesson.value
     ? `activity-layout--${activityLayouts[lesson.value.activityType]}`
     : undefined,
-)
-// 자체 음성 패널(speech-panel)로 녹음까지 처리하는 액티비티.
-// 이 경우 뷰 단 inline-voice-panel 오버레이는 중복 → 숨긴다(치트 미리보기와 실제 학습 동일 화면).
-const voiceSelfRecordingActivities = new Set<TrainingActivityType>(['gaze-trace', 'word-reading-grid'])
-const activitySelfRecordsVoice = computed(() =>
-  !!lesson.value && voiceSelfRecordingActivities.has(lesson.value.activityType),
 )
 const conciseInstructions: Partial<Record<TrainingActivityType, string>> = {
   'gaze-trace': '글자를 따라 읽어요!',
@@ -477,10 +466,17 @@ onMounted(async () => {
     } else {
       try {
         const studentId = getCachedStudent().studentId
-        const intro = await learningRepository.value.getIntro(studentId, itemId)
+        let intro = await learningRepository.value.getIntro(studentId, itemId)
         if (intro.status === 'COMPLETED') {
           await router.replace({ name: challengeTrackId.value ? 'skill-challenge' : 'training-home' })
           return
+        }
+        // 실력 검증은 문항당 발음 시도가 1회뿐이라, 중단된 검사(IN_PROGRESS)에 재진입하면
+        // 남아 있는 시도 기록 때문에 모든 녹음이 409로 거부되고 평가 없이 통과 처리된다.
+        // 검사는 언제든 예기치 않게 끊길 수 있으므로 재진입 시 세션을 초기화해 처음부터 다시 본다.
+        if (challengeTrackId.value && intro.status === 'IN_PROGRESS') {
+          await learningRepository.value.reset(studentId, itemId)
+          intro = { ...intro, status: 'NOT_STARTED' }
         }
         const firstPayload = await learningRepository.value.getQuestion(studentId, itemId, 1)
         const remainingPayloads = await Promise.all(
@@ -625,17 +621,6 @@ const startPlaying = async () => {
       }
     }
     phase.value = 'playing'
-    if (
-      learnerDataSource === 'api'
-      && !debugMode.value
-      && !mockVoiceSubmissionsEnabled
-      && currentQuestionRequiresMicrophone.value
-      && session.progressState.isCurrentCorrect !== true
-    ) {
-      voiceRecorder.reset()
-      voiceGateOpen.value = true
-      voiceFeedback.value = '준비되면 말하기 버튼을 눌러 주세요.'
-    }
   } catch (error) {
     integrationError.value =
       error instanceof Error ? error.message : '서버 훈련을 시작하지 못했습니다.'
@@ -664,7 +649,6 @@ const finishLeaveConfirmation = (allow: boolean) => {
 }
 
 onBeforeUnmount(() => {
-  clearAutomaticVoiceTimers()
   window.removeEventListener('iread:gaze', onGazeSample)
   window.removeEventListener('iread:gaze-word-hit', onGazeWordHit)
   if (gazeSessionId.value && !gazeSessionCompleted.value) {
@@ -750,66 +734,6 @@ const submitMockVoice = async (
   throw new Error('목 음성 제출을 완료하지 못했습니다.')
 }
 
-// 다음 문제로 이동. 마지막 문제면 결과 저장 흐름으로 진입.
-const clearAutomaticVoiceTimers = () => {
-  if (automaticVoiceStopTimer) clearTimeout(automaticVoiceStopTimer)
-  automaticVoiceStopTimer = null
-}
-
-const beginAutomaticVoiceCapture = async (
-  response?: LearnerTraceSubmissionResponse,
-  advanceAfterSubmit = true,
-) => {
-  if (
-    voiceSubmitting.value
-    || voiceRecorder.state.status === 'requesting'
-    || voiceRecorder.state.status === 'recording'
-  ) return
-
-  const questionIndex = session.progressState.currentQuestionIndex
-  const mapped = serverQuestions.value[questionIndex]
-  if (!mapped?.expectedText) {
-    errorModal.show(
-      new Error('음성 평가에 필요한 읽기 문구가 없어요.'),
-      '음성 평가 오류',
-    )
-    return
-  }
-
-  clearAutomaticVoiceTimers()
-  pendingNextResponse.value = response
-  advanceAfterAutomaticVoice.value = advanceAfterSubmit
-  voiceFeedback.value = '준비되면 바로 말해요!'
-  voiceRecorder.reset()
-  voiceGateOpen.value = true
-  await voiceRecorder.start()
-
-  if (
-    phase.value !== 'playing'
-    || session.progressState.isCompleted
-    || session.progressState.currentQuestionIndex !== questionIndex
-  ) {
-    voiceRecorder.reset()
-    voiceGateOpen.value = false
-    deviceBlocker.value = null
-    return
-  }
-
-  const recorderStatus = voiceRecorder.state.status as string
-  if (recorderStatus !== 'recording') {
-    voiceGateOpen.value = false
-    deviceBlocker.value = 'microphone'
-    return
-  }
-
-  voiceFeedback.value = '듣고 있어요!'
-  const recordingMs = Math.min(
-    12_000,
-    Math.max(3_000, mapped.expectedText.length * 650 + 1_800),
-  )
-  automaticVoiceStopTimer = setTimeout(() => voiceRecorder.stop(), recordingMs)
-}
-
 const enableMicrophoneFromBlocker = async () => {
   if (deviceBlocker.value !== 'microphone' || microphoneRetrying.value) return
 
@@ -822,27 +746,10 @@ const enableMicrophoneFromBlocker = async () => {
     }
 
     deviceBlocker.value = null
-    if (
-      phase.value === 'playing'
-      && !session.progressState.isCompleted
-      && currentQuestionRequiresMicrophone.value
-    ) {
-      voiceGateOpen.value = true
-      voiceFeedback.value = '준비되면 말하기 버튼을 눌러 주세요.'
-      return
-    }
-
     if (phase.value === 'intro') await startPlaying()
   } finally {
     microphoneRetrying.value = false
   }
-}
-
-const restartAutomaticVoiceCapture = () => {
-  void beginAutomaticVoiceCapture(
-    pendingNextResponse.value,
-    advanceAfterAutomaticVoice.value,
-  )
 }
 
 const goNext = async (response?: LearnerTraceSubmissionResponse) => {
@@ -854,15 +761,13 @@ const goNext = async (response?: LearnerTraceSubmissionResponse) => {
       && !recordedQuestionNumbers.has(mapped.questionNumber)
       && !mockVoiceSubmissionsEnabled
     ) {
-      pendingNextResponse.value = response
-      // 액티비티에서 이미 읽은 음성이 있으면 같은 문장을 다시 읽히지 않는다.
+      // 액티비티에서 이미 읽은 음성이 있으면 최종 녹음으로 제출한다.
+      // 없으면(선택형 문항 등) 별도 음성 게이트 없이 그대로 진행한다.
       const captured = session.storedRecordings[mapped.question.id]?.blob ?? null
       if (captured) {
-        await submitRecordedVoice(mapped, captured)
-        return
+        const submitted = await submitRecordedVoice(mapped, captured)
+        if (!submitted) return
       }
-      await beginAutomaticVoiceCapture(response)
-      return
     }
   }
   submittingQuestion.value = true
@@ -1051,155 +956,69 @@ const evaluateActivityVoice = async (
   }
 }
 
-const submitVoiceRecording = async () => {
-  const mapped = serverQuestions.value[session.progressState.currentQuestionIndex]
-  const blob = voiceRecorder.audioBlob.value
-  if (!mapped || !blob) {
-    voiceFeedback.value = '녹음 정보를 확인할 수 없습니다.'
-    return
-  }
-  await submitRecordedVoice(mapped, blob)
-}
-
-// 액티비티에서 담아 둔 녹음과 게이트에서 다시 받은 녹음을 같은 경로로 올린다.
+// 액티비티에서 담아 둔 녹음을 문항의 최종 녹음으로 올린다. true를 반환하면 다음으로 진행한다.
 const submitRecordedVoice = async (
   mapped: MappedTrainingQuestion,
   blob: Blob,
-) => {
+): Promise<boolean> => {
   const itemId = learningItemId.value
   if (!mapped.expectedText || !/^\d+$/.test(itemId)) {
-    voiceFeedback.value = '녹음 정보를 확인할 수 없습니다.'
-    voiceRecorder.reset()
-    voiceGateOpen.value = true
-    return
+    errorModal.show(new Error('녹음 정보를 확인할 수 없습니다.'), '녹음 제출 오류')
+    return false
   }
   voiceSubmitting.value = true
   try {
     const extension = blob.type.includes('mp4') ? 'm4a' : 'webm'
-    const result = await learningRepository.value.saveRecording(
-      getCachedStudent().studentId,
-      itemId,
-      mapped.questionNumber,
-      {
-        targetIndex: mapped.recordingTargetIndex ?? undefined,
+    // 기준 점수 미달이어도 같은 녹음을 시도 한도까지 제출해 문항을 완료 상태로 만든다.
+    for (let attempt = 0; attempt < 4; attempt += 1) {
+      const result = await learningRepository.value.saveRecording(
+        getCachedStudent().studentId,
+        itemId,
+        mapped.questionNumber,
+        {
+          targetIndex: mapped.recordingTargetIndex ?? undefined,
+          expectedText: mapped.expectedText,
+          audioFile: new File([blob], `training-${mapped.questionNumber}.${extension}`, {
+            type: blob.type || 'audio/webm',
+          }),
+        },
+      )
+      recordVoiceScore({
+        score: Math.round(result.pronunciationAccuracyScore),
+        threshold: Math.round(result.pronunciationThreshold),
+        passed: result.passed,
+        canRetry: result.canRetry,
         expectedText: mapped.expectedText,
-        audioFile: new File([blob], `training-${mapped.questionNumber}.${extension}`, {
-          type: blob.type || 'audio/webm',
-        }),
-      },
-    )
-    recordVoiceScore({
-      score: Math.round(result.pronunciationAccuracyScore),
-      threshold: Math.round(result.pronunciationThreshold),
-      passed: result.passed,
-      canRetry: result.canRetry,
-      expectedText: mapped.expectedText,
-      questionNumber: mapped.questionNumber,
-    })
-    voiceFeedback.value = challengeTrackId.value
-      ? '목소리를 잘 저장했어요.'
-      : result.passed
-        ? `${Math.round(result.pronunciationAccuracyScore)}점! 잘 읽었어요.`
-        : `${Math.round(result.pronunciationAccuracyScore)}점이에요. ${
-          result.canRetry
-            ? `${result.pronunciationThreshold}점 이상을 목표로 한 번 더 읽어봐요.`
-            : '힌트를 보고 연습을 마쳤어요.'
-        }`
-    if (result.canRetry) {
-      voiceRecorder.reset()
-      voiceGateOpen.value = true
-      return
+        questionNumber: mapped.questionNumber,
+      })
+      if (!result.canRetry) {
+        recordedQuestionNumbers.add(mapped.questionNumber)
+        return true
+      }
     }
-    recordedQuestionNumbers.add(mapped.questionNumber)
-    voiceCompleted.value = true
-    voiceGateOpen.value = false
-    const pending = pendingNextResponse.value
-    pendingNextResponse.value = undefined
-    if (advanceAfterAutomaticVoice.value) await goNext(pending)
+    errorModal.show(new Error('녹음 제출을 완료하지 못했습니다.'), '녹음 제출 오류')
+    return false
   } catch (error) {
     if (isPronunciationAttemptLimitError(error)) {
       recordedQuestionNumbers.add(mapped.questionNumber)
-      voiceAttemptLimitReached.value = true
-      voiceFeedback.value = '끝까지 잘 했어요! 다음 문제로 넘어가요.'
-      voiceGateOpen.value = false
-      voiceRecorder.reset()
-      const pending = pendingNextResponse.value
-      pendingNextResponse.value = undefined
-      if (advanceAfterAutomaticVoice.value) await goNext(pending)
-      return
+      return true
     }
-    voiceFeedback.value = error instanceof Error ? error.message : '녹음을 저장하지 못했습니다.'
-    voiceRecorder.reset()
-    voiceGateOpen.value = true
+    errorModal.show(
+      error instanceof Error ? error : new Error('녹음을 저장하지 못했습니다.'),
+      '녹음 제출 오류',
+    )
+    return false
   } finally {
     voiceSubmitting.value = false
   }
 }
 
-// 결과 저장 중에는 기술 용어 없이 마무리 로딩만 보여줍니다.
-watch(() => voiceRecorder.state.status, (status) => {
-  if (!voiceGateOpen.value || status !== 'recorded' || voiceSubmitting.value) return
-  clearAutomaticVoiceTimers()
-  if (
-    voiceRecorder.voiceActivityDetectionAvailable.value
-    && !voiceRecorder.hasDetectedVoice.value
-  ) {
-    voiceFeedback.value = '목소리가 들리지 않았어요. 말하기 버튼을 눌러 주세요.'
-    voiceRecorder.reset()
-    return
-  }
-  void submitVoiceRecording()
-})
-
 watch(() => session.progressState.currentQuestionIndex, () => {
-  clearAutomaticVoiceTimers()
   voiceRecorder.reset()
   clearVoiceScore()
-  voiceAttemptLimitReached.value = false
-  voiceCompleted.value = false
-  voiceGateOpen.value = (
-    phase.value === 'playing'
-    && learnerDataSource === 'api'
-    && !debugMode.value
-    && !mockVoiceSubmissionsEnabled
-    && currentQuestionRequiresMicrophone.value
-  )
-  if (voiceGateOpen.value) {
-    voiceFeedback.value = '준비되면 말하기 버튼을 눌러 주세요.'
-  }
 })
 
-// 조작형 학습은 정답을 완성하는 즉시 화면 안에서 발음을 받는다.
-// 다음 버튼이 녹음 모달을 여는 흐름을 없애고, 녹음 완료 뒤에도 현재 문항을 유지한다.
-watch(
-  [sharedNextEnabled, () => session.progressState.currentQuestionIndex],
-  ([correct]) => {
-    if (!correct || learnerDataSource !== 'api' || debugMode.value || mockVoiceSubmissionsEnabled) return
-    const mapped = serverQuestions.value[session.progressState.currentQuestionIndex]
-    if (
-      !mapped?.requiredInputs.includes('VOICE')
-      || recordedQuestionNumbers.has(mapped.questionNumber)
-      || voiceGateOpen.value
-    ) return
-    const captured = session.storedRecordings[mapped.question.id]?.blob ?? null
-    if (captured) {
-      advanceAfterAutomaticVoice.value = false
-      void submitRecordedVoice(mapped, captured)
-      return
-    }
-    pendingNextResponse.value = undefined
-    advanceAfterAutomaticVoice.value = false
-    voiceRecorder.reset()
-    voiceGateOpen.value = true
-    voiceFeedback.value = '준비되면 말하기 버튼을 눌러 주세요.'
-  },
-)
-
 const saveAndFinish = async () => {
-  clearAutomaticVoiceTimers()
-  voiceGateOpen.value = false
-  voiceAttemptLimitReached.value = false
-  voiceCompleted.value = false
   deviceBlocker.value = null
   voiceRecorder.reset()
   phase.value = 'saving'
@@ -1370,47 +1189,6 @@ const isSavingFailed = computed(() => session.savingState.status === 'failed')
           @next="goNext"
           @voice-recorded="evaluateActivityVoice"
         />
-        <Transition name="fade">
-          <aside
-            v-if="(voiceGateOpen || voiceAttemptLimitReached || voiceCompleted) && !activitySelfRecordsVoice"
-            class="inline-voice-panel"
-            :class="{
-              'inline-voice-panel--ready': voiceRecorder.state.status === 'idle' && !voiceAttemptLimitReached && !voiceCompleted,
-              'inline-voice-panel--listening': voiceRecorder.state.status === 'recording',
-              'inline-voice-panel--complete': voiceAttemptLimitReached || voiceCompleted,
-            }"
-            :aria-label="voiceAttemptLimitReached || voiceCompleted
-              ? '발음 연습 완료'
-              : voiceRecorder.state.status === 'recording'
-                ? '목소리 인식 중'
-                : '목소리 녹음 준비'"
-            aria-live="polite"
-          >
-            <span
-              class="inline-voice-icon"
-              :class="{ 'inline-voice-icon--listening': voiceRecorder.state.status === 'recording' }"
-              aria-hidden="true"
-            >
-              <img :src="microphoneIcon" alt="" />
-            </span>
-            <strong class="inline-voice-title">
-              {{ voiceAttemptLimitReached || voiceCompleted
-                ? '참 잘했어요!'
-                : voiceRecorder.state.status === 'recording'
-                  ? '듣고 있어요!'
-                  : '말할 준비가 됐어요' }}
-            </strong>
-            <p class="inline-voice-feedback" role="status">{{ voiceFeedback }}</p>
-            <button
-              v-if="voiceRecorder.state.status === 'idle' && !voiceAttemptLimitReached && !voiceCompleted"
-              class="inline-voice-retry"
-              type="button"
-              @click="restartAutomaticVoiceCapture"
-            >
-              말하기
-            </button>
-          </aside>
-        </Transition>
       </div>
     </div>
 

@@ -258,6 +258,8 @@ function mapChoice(number: number, source: StudentQuestionDto): {
     audioText,
     targetText: source.questionType === 'SAME_INITIAL_WORD_CHOICE' ? audioText : undefined,
     targetImage: optionalString(source.content, 'imageUrl') ?? undefined,
+    // 이미지 생성 정책 확정 전까지 imageUrl 대신 imagePrompt 텍스트를 자리 표시로 보여 준다.
+    targetImageLabel: optionalString(source.content, 'imagePrompt') ?? undefined,
     audioPromptEnabled,
     choiceAudioEnabled: audioPromptEnabled && !isConsonantVowelClassification,
     choices,

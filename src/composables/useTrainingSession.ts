@@ -38,6 +38,8 @@ const savingState = reactive<SavingState>({
 })
 const isSubmittingAnswer = ref(false)
 const currentHint = ref<string | null>(null)
+// 실력 검증(검사) 모드 여부. 검사는 틀린 응답도 그대로 기록만 하고 재시도 없이 진행한다.
+const assessmentMode = ref(false)
 
 interface AnswerEvaluation {
   readonly attemptNo: number
@@ -335,6 +337,10 @@ const resetSession = (): void => {
   Object.keys(storedRecordings).forEach((k) => delete storedRecordings[k])
 }
 
+const setAssessmentMode = (value: boolean): void => {
+  assessmentMode.value = value
+}
+
 const setAnswerEvaluator = (evaluator: AnswerEvaluator | null): void => {
   answerEvaluator = evaluator
 }
@@ -357,6 +363,7 @@ export function useTrainingSession() {
     isPerfectLesson,
     isSubmittingAnswer,
     currentHint,
+    assessmentMode,
     storedAnswers,
     storedRecordings,
     // 계산
@@ -367,6 +374,7 @@ export function useTrainingSession() {
     restoreProgress,
     selectAnswer,
     submitAnswer,
+    setAssessmentMode,
     setAnswerEvaluator,
     setAnswerCompletedHandler,
     markRecordingComplete,

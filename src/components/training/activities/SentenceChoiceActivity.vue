@@ -14,6 +14,7 @@ const attempts = ref(0)
 const wrongChoiceId = ref<string | null>(null)
 const statusMessage = ref('')
 const isComplete = ref(false)
+const submitting = ref(false)
 let wrongTimer: ReturnType<typeof setTimeout> | null = null
 
 const showHint = computed(() => attempts.value >= 2 && !placedChoice.value)
@@ -22,23 +23,29 @@ const finishCorrectChoice = (choice: TrainingChoice) => {
   placedChoice.value = choice
   statusMessage.value = '잘 찾았어!'
   isComplete.value = true
-  session.markRecordingComplete({ isMock: false, audioUrl: null })
 }
 
-// 문장을 고르면 바로 채점한다. 정답이면 그림 아래에 문장이 연결된다.
-const evaluateChoice = (choiceId: string) => {
-  if (placedChoice.value) return
+// 문장을 고르면 세션 제출 경로로 바로 채점한다(백엔드에 응답 저장). 정답이면 그림 아래에 문장이 연결된다.
+const evaluateChoice = async (choiceId: string) => {
+  if (placedChoice.value || submitting.value) return
   const choice = choices.value.find((item) => item.id === choiceId)
   if (!choice) return
-  if (choice.id === props.question.answer) {
-    finishCorrectChoice(choice)
-    return
+  session.selectAnswer(choice.id)
+  submitting.value = true
+  try {
+    const correct = await session.submitAnswer()
+    if (correct) {
+      finishCorrectChoice(choice)
+      return
+    }
+    attempts.value += 1
+    wrongChoiceId.value = choice.id
+    statusMessage.value = '한 번 더 해봐!'
+    if (wrongTimer) clearTimeout(wrongTimer)
+    wrongTimer = setTimeout(() => { wrongChoiceId.value = null }, 650)
+  } finally {
+    submitting.value = false
   }
-  attempts.value += 1
-  wrongChoiceId.value = choice.id
-  statusMessage.value = '한 번 더 해봐!'
-  if (wrongTimer) clearTimeout(wrongTimer)
-  wrongTimer = setTimeout(() => { wrongChoiceId.value = null }, 650)
 }
 
 onBeforeUnmount(() => {
@@ -85,7 +92,7 @@ onBeforeUnmount(() => {
             hint: showHint && choice.id === question.answer,
             used: placedChoice?.id === choice.id,
           }"
-          :disabled="Boolean(placedChoice)"
+          :disabled="Boolean(placedChoice) || submitting"
           @click="evaluateChoice(choice.id)"
         >
           <strong>{{ choice.text }}</strong>

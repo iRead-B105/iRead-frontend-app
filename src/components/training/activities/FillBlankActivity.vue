@@ -142,7 +142,7 @@ watch(isFilled, (filled) => {
 })
 
 const evaluateChoice = (choiceId: string) => {
-  if (isFilled.value) return
+  if (placedChoice.value || isComplete.value) return
   const choice = choices.value.find((item) => item.id === choiceId)
   if (!choice) return
 
@@ -151,6 +151,25 @@ const evaluateChoice = (choiceId: string) => {
     wrongChoiceId.value = null
     speechState.value = 'waiting'
     speechMessage.value = ''
+    // 채운 답을 세션 제출 경로로 저장해 백엔드에 응답 기록을 남긴다.
+    session.selectAnswer(choice.id)
+    void session.submitAnswer()
+    if (session.assessmentMode.value) {
+      // 검사는 따라 읽기 없이 바로 다음으로 진행한다.
+      speechState.value = 'success'
+      speechMessage.value = '다 채웠어!'
+    }
+    return
+  }
+
+  if (session.assessmentMode.value) {
+    // 검사는 틀린 선택도 그대로 기록하고 재시도 없이 다음으로 진행한다.
+    placedChoice.value = choice
+    wrongChoiceId.value = null
+    session.selectAnswer(choice.id)
+    void session.submitAnswer()
+    speechState.value = 'success'
+    speechMessage.value = '기록했어! 다음으로 가자'
     return
   }
 
@@ -168,7 +187,7 @@ const pointIsOverBlank = (clientX: number, clientY: number) => {
   return Boolean(rect && clientX >= rect.left && clientX <= rect.right && clientY >= rect.top && clientY <= rect.bottom)
 }
 const startPointerDrag = (event: PointerEvent, choice: TrainingChoice) => {
-  if (isFilled.value || event.button !== 0) return
+  if (placedChoice.value || isComplete.value || event.button !== 0) return
   event.preventDefault()
   const card = event.currentTarget as HTMLElement | null
   const rect = card?.getBoundingClientRect()

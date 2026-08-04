@@ -170,6 +170,24 @@ const evaluateSentence = () => {
     assemblyCorrect.value = true
     statusMessage.value = ''
     speechState.value = 'waiting'
+    // 완성한 순서를 세션 제출 경로로 저장해 백엔드에 응답 기록을 남긴다.
+    session.selectAnswer(slots.value.filter((id): id is string => id !== null).join('|'))
+    void session.submitAnswer()
+    if (session.assessmentMode.value) {
+      // 검사는 따라 읽기 없이 바로 다음으로 진행한다.
+      speechState.value = 'success'
+      statusMessage.value = '다 만들었어!'
+    }
+    return
+  }
+
+  if (session.assessmentMode.value) {
+    // 검사는 틀린 배치도 그대로 기록하고 재시도 없이 다음으로 진행한다.
+    session.selectAnswer(slots.value.filter((id): id is string => id !== null).join('|'))
+    void session.submitAnswer()
+    assemblyCorrect.value = true
+    speechState.value = 'success'
+    statusMessage.value = '기록했어! 다음으로 가자'
     return
   }
 
