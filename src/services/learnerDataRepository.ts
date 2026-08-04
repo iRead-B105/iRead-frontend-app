@@ -33,7 +33,11 @@ function activeStudentId(): string {
   return getCachedStudent().studentId
 }
 
-let storyLibraryCache: { studentId: string; library: LearnerStoryLibrary } | null = null
+let storyLibraryCache: {
+  studentId: string
+  library: LearnerStoryLibrary
+  stale: boolean
+} | null = null
 let storyLibraryRequest: { studentId: string; pending: Promise<LearnerStoryLibrary> } | null = null
 
 function invalidateStoryLibraryCache(studentId: string) {
@@ -62,14 +66,14 @@ export const getCachedStoryLibrary = (): LearnerStoryLibrary | null => {
 
 export const fetchStoryLibrary = (): Promise<LearnerStoryLibrary> => {
   const studentId = activeStudentId()
-  if (storyLibraryCache?.studentId === studentId) {
+  if (storyLibraryCache?.studentId === studentId && !storyLibraryCache.stale) {
     return Promise.resolve(storyLibraryCache.library)
   }
   if (storyLibraryRequest?.studentId === studentId) return storyLibraryRequest.pending
 
   const pending = learnerContentRepository.getStoryLibrary(studentId)
     .then((library) => {
-      storyLibraryCache = { studentId, library }
+      storyLibraryCache = { studentId, library, stale: false }
       return library
     })
     .finally(() => {
@@ -77,6 +81,11 @@ export const fetchStoryLibrary = (): Promise<LearnerStoryLibrary> => {
     })
   storyLibraryRequest = { studentId, pending }
   return pending
+}
+
+export const markStoryLibraryCacheStale = () => {
+  const studentId = activeStudentId()
+  if (storyLibraryCache?.studentId === studentId) storyLibraryCache.stale = true
 }
 
 export const preloadSelectedStudentStoryLibrary = async (): Promise<void> => {
@@ -100,6 +109,7 @@ export const deleteStorySession = async (storyId: string): Promise<void> => {
   if (storyLibraryCache?.studentId === studentId) {
     storyLibraryCache = {
       studentId,
+      stale: storyLibraryCache.stale,
       library: {
         ...storyLibraryCache.library,
         stories: storyLibraryCache.library.stories.filter((story) => story.storyId !== storyId),

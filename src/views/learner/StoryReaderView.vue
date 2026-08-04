@@ -5,6 +5,7 @@ import storySceneFallback from '../../assets/story/story-reader-turtle-scene-moc
 import {
   getCachedStudent,
   getStoryDetail,
+  markStoryLibraryCacheStale,
   unlockStoryFriend,
 } from '@/services/learnerDataRepository'
 import PageBackButton from '@/components/common/PageBackButton.vue'
@@ -716,6 +717,7 @@ async function goNext() {
       current.lineId,
     )
     current.readAt = new Date().toISOString()
+    markStoryLibraryCacheStale()
 
     if (current.requiresBranchInput) {
       await finishStoryGazeSession()
