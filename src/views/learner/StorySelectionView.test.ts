@@ -76,7 +76,11 @@ describe('StorySelectionView 사전 로딩', () => {
     const wrapper = mountView()
 
     expect(wrapper.text()).toContain('반짝이는 별빛 길로 간다')
-    expect(wrapper.text()).toContain('이어서 읽기')
+    expect(wrapper.find('.continue-kicker').text()).toBe('이어서 읽기 40%')
+    expect(wrapper.find('.continue-overlay strong').text()).toBe(
+      '개미와 배짱이 - 반짝이는 별빛 길로 간다',
+    )
+    expect(wrapper.find('.continue-progress').exists()).toBe(false)
     expect(wrapper.find('.library-loading').exists()).toBe(false)
   })
 

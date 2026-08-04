@@ -39,7 +39,7 @@
   background-size: cover;
   background-repeat: no-repeat;
   box-shadow: var(--learner-frame-shadow);
-  transform: translateY(clamp(24px, 3.5cqh, 40px)) scale(var(--learner-main-selection-scale));
+  transform: translateY(clamp(40px, 5cqh, 54px)) scale(var(--learner-main-selection-scale));
   transform-origin: center;
 }
 
@@ -223,24 +223,6 @@ button {
 }
 
 /* 이어 읽기 카드 오른쪽 위의 완독 퍼센트 원 */
-.continue-progress {
-  position: absolute;
-  top: 20px;
-  right: 22px;
-  width: 76px;
-  height: 76px;
-  display: grid;
-  place-items: center;
-  border: 5px solid #fff;
-  border-radius: 50%;
-  background: var(--learner-color-story);
-  color: #fff;
-  font-family: var(--learner-font-display);
-  font-size: 23px;
-  font-weight: 900;
-  box-shadow: var(--learner-shadow-control);
-}
-
 .continue-overlay {
   position: absolute;
   right: 0;

@@ -192,6 +192,8 @@ const pageWords = computed(() => displayTextLines.value.flatMap((line, lineIndex
 ))
 const isLastPage = computed(() => currentPage.value === allPages.value.length - 1)
 const isPageRead = computed(() => readThrough.value >= pageWords.value.length - 1)
+const isActiveReadingPage = computed(() => page.value.readAt === null)
+const showReadingFeedback = computed(() => isActiveReadingPage.value && gaze.value.visible)
 const isListening = computed(() =>
   voiceRecorder.state.status === 'requesting'
   || voiceRecorder.state.status === 'recording',
@@ -240,9 +242,16 @@ function beginDwell(index: number) {
   }
   // 아동 화면의 진행은 응시 시간이 아니라 단어를 한 번 확인했는지를 기준으로 한다.
   // 상세 체류/순서 분석은 원시 샘플을 교수자 화면에서 별도로 계산한다.
+  if (dwellTargetIndex.value === index) return
+
+  clearDwell()
   clearLeaveTimer()
   showReturnCue.value = false
-  setProgress(index)
+  dwellTargetIndex.value = index
+  dwellDurationMs.value = getDwellDuration(pageWords.value[index]?.word ?? '')
+  dwellTimer = window.setTimeout(() => {
+    if (dwellTargetIndex.value === index) setProgress(index)
+  }, dwellDurationMs.value)
 }
 
 function scheduleReturnCue() {
@@ -405,6 +414,10 @@ function updateGaze(
   const visibleTokenIndex = visibleWordIndexAt(clientX, clientY)
   lastStoryGazePoint = { x: clientX, y: clientY, source }
   recordStoryGazeSample(clientX, clientY, visibleTokenIndex, source)
+  if (!isActiveReadingPage.value) {
+    clearDwell()
+    return
+  }
   if (!canRead) { clearDwell(); scheduleReturnCue(); return }
   const targetIndex = wordIndexAt(clientX, clientY)
   if (targetIndex !== null) beginDwell(targetIndex)
@@ -1033,7 +1046,6 @@ onBeforeUnmount(() => {
       <div
         v-else-if="screen === 'reading'"
         class="story-scene story-scene--image"
-        :class="{ 'story-scene--text-focused': gaze.visible }"
       >
         <button class="reader-back reader-exit" type="button" @click="exitToStorySelection">
           그만 보기
@@ -1048,8 +1060,8 @@ onBeforeUnmount(() => {
                   v-if="item.lineIndex === lineIndex"
                   class="story-word"
                   :class="{
-                    'story-word--read': gaze.visible && index <= readThrough,
-                    'story-word--next': gaze.visible && showReturnCue && index === readThrough + 1,
+                    'story-word--read': showReadingFeedback && index <= readThrough,
+                    'story-word--next': showReadingFeedback && showReturnCue && index === readThrough + 1,
                   }"
                   :data-word-index="index"
                 >{{ item.word }}</span>

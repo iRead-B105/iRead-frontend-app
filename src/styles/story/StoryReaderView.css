@@ -113,11 +113,6 @@
   pointer-events: none;
 }
 
-.story-scene--text-focused .scene-shade {
-  inset: 0;
-  background: rgb(7 13 24 / 58%);
-}
-
 /* 그림 위에 글자가 올라가는 투명 읽기 영역 */
 .reading-panel {
   position: absolute;
@@ -144,17 +139,10 @@
   padding: clamp(22px, 2.5cqw, 36px);
   border: 2px solid transparent;
   border-radius: 20px;
-  background: rgb(7 13 24 / 38%);
+  background: rgb(7 13 24 / 48%);
   opacity: 1;
   transform: none;
   transition: none;
-}
-
-.story-scene--text-focused .reading-panel {
-  border-color: transparent;
-  background: rgb(0 0 0 / 90%);
-  opacity: 1;
-  transform: none;
 }
 
 .story-lines {
@@ -181,17 +169,13 @@
 }
 
 .story-scene--image .story-lines p {
-  margin-bottom: .3em;
+  margin-bottom: .36em;
   color: #fff;
   font-size: clamp(34px, min(3.2cqw, 5.4cqh), 52px);
-  line-height: 1.62;
+  font-weight: 900;
+  line-height: 1.72;
   letter-spacing: .045em;
   text-shadow: 0 2px 8px rgb(0 0 0 / 52%);
-}
-
-.story-scene--text-focused .story-lines p {
-  color: #fff;
-  text-shadow: none;
 }
 
 .story-page-nav {

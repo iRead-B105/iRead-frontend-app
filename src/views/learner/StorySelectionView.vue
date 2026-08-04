@@ -251,6 +251,12 @@ function progressLabel(book: StorySession) {
 function sessionTitle(book: StorySession) {
   return book.latestBranchSubtitle || book.title
 }
+
+function continueTitle(book: StorySession) {
+  const subtitle = book.latestBranchSubtitle?.trim()
+  if (!subtitle || subtitle === book.title) return book.title
+  return `${book.title} - ${subtitle}`
+}
 </script>
 
 <template>
@@ -292,11 +298,10 @@ function sessionTitle(book: StorySession) {
           @click="openCurrentBook"
         >
           <template v-if="currentBook">
-            <img class="continue-scene" :src="currentBook.entryImageUrl || currentBook.coverImage" :alt="`${sessionTitle(currentBook)} 이어 읽기 장면`" />
-            <span class="continue-kicker">이어서 읽기</span>
-            <span class="continue-progress">{{ currentBook.progress }}%</span>
+            <img class="continue-scene" :src="currentBook.entryImageUrl || currentBook.coverImage" :alt="`${continueTitle(currentBook)} 이어 읽기 장면`" />
+            <span class="continue-kicker">이어서 읽기 {{ currentBook.progress }}%</span>
             <span class="continue-overlay">
-              <strong>{{ sessionTitle(currentBook) }}</strong>
+              <strong>{{ continueTitle(currentBook) }}</strong>
               <img :src="continueStoryIcon" alt="" aria-hidden="true" />
             </span>
           </template>
