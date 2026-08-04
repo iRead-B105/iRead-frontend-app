@@ -149,16 +149,23 @@ type StoryGazeSample = {
   readonly tokenIndex?: number
   readonly text?: string
 }
+type StoryGazeSource = 'cursor' | 'tracker'
 const storyGazeSamples: StoryGazeSample[] = []
+// Keep the input source only while deriving the local replay metrics.  The
+// submitted sample contract stays unchanged for the backend.
+const storyGazeSampleSources = new Map<number, StoryGazeSource>()
 let leaveTimer: number | undefined
 let dwellTimer: number | undefined
 let lastExternalGazeAt = 0
 let lastStoryGazeSampleAt = 0
+let cursorGazeSampleTimer: number | undefined
+let lastCursorPoint: { x: number; y: number } | null = null
 let narrationAudio: HTMLAudioElement | null = null
 let narrationObjectUrl: string | null = null
 
 const WORD_HIT_PADDING_X = 18
 const WORD_HIT_PADDING_Y = 24
+const CURSOR_GAZE_SAMPLE_INTERVAL_MS = 80
 
 const allPages = computed(() => story.value.pages)
 const page = computed<StoryPage>(() => allPages.value[currentPage.value] ?? story.value.pages[0]!)
@@ -190,9 +197,9 @@ function clearDwell() {
   dwellTargetIndex.value = null
 }
 
-function getDwellDuration(word: string) {
-  const readableCharacterCount = Array.from(word).filter((character) => /[\p{L}\p{N}]/u.test(character)).length
-  return Math.max(450, Math.max(readableCharacterCount, 1) * 180)
+function getDwellDuration(_word: string) {
+  // 아동 화면의 읽음 진행 기준을 시선 분석·리플레이 기준과 동일하게 맞춘다.
+  return 1_000
 }
 
 function beginDwell(index: number) {
@@ -298,7 +305,12 @@ function visibleWordIndexAt(clientX: number, clientY: number) {
   return candidates[0]?.index ?? null
 }
 
-function recordStoryGazeSample(clientX: number, clientY: number, tokenIndex: number | null) {
+function recordStoryGazeSample(
+  clientX: number,
+  clientY: number,
+  tokenIndex: number | null,
+  source: StoryGazeSource,
+) {
   if (learnerDataSource !== 'api' || !storyGazeSessionId.value) return
   const lineId = Number(page.value.lineId)
   if (!Number.isInteger(lineId) || lineId <= 0) return
@@ -315,9 +327,15 @@ function recordStoryGazeSample(clientX: number, clientY: number, tokenIndex: num
     tokenIndex: tokenIndex ?? undefined,
     text: word,
   })
+  storyGazeSampleSources.set(capturedAtMs, source)
 }
 
-function updateGaze(clientX: number, clientY: number, canRead = true) {
+function updateGaze(
+  clientX: number,
+  clientY: number,
+  canRead = true,
+  source: StoryGazeSource = 'tracker',
+) {
   if (screen.value !== 'reading') return
   const panel = textPanel.value
   if (!panel) return
@@ -325,7 +343,7 @@ function updateGaze(clientX: number, clientY: number, canRead = true) {
   gaze.value = { x: clientX - panelRect.left, y: clientY - panelRect.top, visible: clientX >= panelRect.left && clientX <= panelRect.right && clientY >= panelRect.top && clientY <= panelRect.bottom }
   if (!gaze.value.visible) { clearDwell(); scheduleReturnCue(); return }
   const visibleTokenIndex = visibleWordIndexAt(clientX, clientY)
-  recordStoryGazeSample(clientX, clientY, visibleTokenIndex)
+  recordStoryGazeSample(clientX, clientY, visibleTokenIndex, source)
   if (!canRead) { clearDwell(); scheduleReturnCue(); return }
   const targetIndex = wordIndexAt(clientX, clientY)
   if (targetIndex !== null) beginDwell(targetIndex)
@@ -333,10 +351,22 @@ function updateGaze(clientX: number, clientY: number, canRead = true) {
 }
 
 function onPointerMove(event: PointerEvent) {
+  lastCursorPoint = { x: event.clientX, y: event.clientY }
   if (Date.now() - lastExternalGazeAt < 1500) return
-  updateGaze(event.clientX, event.clientY)
+  updateGaze(event.clientX, event.clientY, true, 'cursor')
 }
-function onPointerLeave() { gaze.value.visible = false; clearDwell(); scheduleReturnCue() }
+function onPointerLeave() {
+  lastCursorPoint = null
+  gaze.value.visible = false
+  clearDwell()
+  scheduleReturnCue()
+}
+
+function sampleCursorGaze() {
+  if (!lastCursorPoint || Date.now() - lastExternalGazeAt < 1500) return
+  updateGaze(lastCursorPoint.x, lastCursorPoint.y, true, 'cursor')
+}
+
 function onExternalGaze(event: Event) {
   const detail = (event as CustomEvent<{
     x?: number
@@ -349,7 +379,7 @@ function onExternalGaze(event: Event) {
   const clientY = typeof detail?.clientY === 'number' ? detail.clientY : detail?.y
   if (typeof clientX === 'number' && typeof clientY === 'number') {
     lastExternalGazeAt = Date.now()
-    updateGaze(clientX, clientY, detail.headPoseStable !== false)
+    updateGaze(clientX, clientY, detail.headPoseStable !== false, 'tracker')
   }
 }
 
@@ -372,12 +402,16 @@ function sampleDwellMs(
   return Math.max(0, Math.min(Number.isFinite(gap) && gap > 0 ? gap : 80, 250))
 }
 
-const READ_DWELL_MS = 1_000
-const FIXATION_DWELL_MS = 2_000
+const TRACKER_READ_DWELL_MS = 1_000
+const TRACKER_FIXATION_DWELL_MS = 2_000
+// 마우스와 아이트래커는 같은 읽음/체류 기준을 사용한다.
+const CURSOR_READ_DWELL_MS = 1_000
+const CURSOR_FIXATION_DWELL_MS = 2_000
 const MAX_SAMPLE_GAP_MS = 250
 
 interface StoryReadableSegment {
   readonly tokenIndex: number
+  readonly source: StoryGazeSource
   readonly startMs: number
   readonly endMs: number
   readonly dwellMs: number
@@ -408,7 +442,11 @@ function createStoryReadableSegments(
   let activeSegment: StoryReadableSegment | null = null
 
   const finishSegment = () => {
-    if (!activeSegment || activeSegment.dwellMs < READ_DWELL_MS) return
+    if (!activeSegment) return
+    const minimumDwellMs = activeSegment.source === 'cursor'
+      ? CURSOR_READ_DWELL_MS
+      : TRACKER_READ_DWELL_MS
+    if (activeSegment.dwellMs < minimumDwellMs) return
     segments.push(activeSegment)
   }
 
@@ -418,6 +456,7 @@ function createStoryReadableSegments(
       && Number(sample.tokenIndex) < tokenCount
       ? Number(sample.tokenIndex)
       : null
+    const source = storyGazeSampleSources.get(sample.capturedAtMs) ?? 'tracker'
     const dwellMs = sampleDwellMs(sample, sampleIndex, samples)
     if (tokenIndex === null) {
       finishSegment()
@@ -427,12 +466,14 @@ function createStoryReadableSegments(
     const shouldContinueSegment =
       activeSegment
       && activeSegment.tokenIndex === tokenIndex
+      && activeSegment.source === source
       && sample.capturedAtMs - activeSegment.endMs <= MAX_SAMPLE_GAP_MS
 
     if (!shouldContinueSegment) {
       finishSegment()
       activeSegment = {
         tokenIndex,
+        source,
         startMs: sample.capturedAtMs,
         endMs: sample.capturedAtMs + dwellMs,
         dwellMs,
@@ -444,6 +485,7 @@ function createStoryReadableSegments(
     if (!currentSegment) return
     activeSegment = {
       tokenIndex: currentSegment.tokenIndex,
+      source: currentSegment.source,
       startMs: currentSegment.startMs,
       endMs: sample.capturedAtMs + dwellMs,
       dwellMs: currentSegment.dwellMs + dwellMs,
@@ -488,39 +530,33 @@ function createStoryPageWordMetrics(
 
   const pageStartMs = lineSamples[0]!.capturedAtMs
   const segments = createStoryReadableSegments(lineSamples, tokens.length)
-  let previousReadTokenIndex: number | null = null
-  const skippedByJump = new Set<number>()
-
-  const markSkippedWordsBefore = (tokenIndex: number) => {
-    const startIndex = previousReadTokenIndex === null ? 0 : previousReadTokenIndex + 1
-    if (tokenIndex <= startIndex) return
-    for (let skippedIndex = startIndex; skippedIndex < tokenIndex; skippedIndex += 1) {
-      const skippedMetric = metrics[skippedIndex]
-      if (skippedMetric && skippedMetric.firstSeenMs === null) {
-        skippedMetric.skipped = true
-        skippedByJump.add(skippedIndex)
-      }
-    }
-  }
+  // 직전 시선의 이동 방향이 아니라 다음에 순서대로 읽어야 할 단어를 기준으로 한다.
+  let nextExpectedTokenIndex = 0
 
   segments.forEach((segment) => {
     const metric = metrics[segment.tokenIndex]
     if (!metric) return
     const firstSeenMs = Math.max(0, Math.round(segment.startMs - pageStartMs))
     const lastSeenMs = Math.max(firstSeenMs, Math.round(segment.endMs - pageStartMs))
-    markSkippedWordsBefore(segment.tokenIndex)
     metric.firstSeenMs = metric.firstSeenMs === null
       ? firstSeenMs
       : Math.min(metric.firstSeenMs, firstSeenMs)
     metric.lastSeenMs = metric.lastSeenMs === null
       ? lastSeenMs
       : Math.max(metric.lastSeenMs, lastSeenMs)
-    metric.skipped = skippedByJump.has(segment.tokenIndex)
-    if (previousReadTokenIndex !== null && segment.tokenIndex < previousReadTokenIndex) {
+    if (segment.tokenIndex > nextExpectedTokenIndex) {
+      metric.skipped = true
+    } else if (segment.tokenIndex < nextExpectedTokenIndex) {
+      metric.skipped = false
       metric.regressionCount += 1
+    } else {
+      metric.skipped = false
+      nextExpectedTokenIndex += 1
     }
-    previousReadTokenIndex = segment.tokenIndex
-    if (segment.dwellMs >= FIXATION_DWELL_MS) {
+    const fixationDwellMs = segment.source === 'cursor'
+      ? CURSOR_FIXATION_DWELL_MS
+      : TRACKER_FIXATION_DWELL_MS
+    if (segment.dwellMs >= fixationDwellMs) {
       metric.dwellMs += Math.round(segment.dwellMs)
       metric.visitCount += 1
     }
@@ -542,19 +578,22 @@ function createStoryGazeSubmission() {
     const pageAnalysis = createStoryPageWordMetrics(current, index)
     if (!pageAnalysis || pageAnalysis.lineSamples.length === 0) return []
     const { lineId, lineSamples, pageStartMs, segments, metrics } = pageAnalysis
-    let previousReadTokenIndex: number | null = null
+    let nextExpectedTokenIndex = 0
 
     segments.forEach((segment) => {
-      if (previousReadTokenIndex !== null && segment.tokenIndex < previousReadTokenIndex) {
+      if (segment.tokenIndex < nextExpectedTokenIndex) {
         regressions.push({
           fromTargetIndex: index + 1,
-          fromTokenIndex: previousReadTokenIndex,
+          fromTokenIndex: nextExpectedTokenIndex,
           toTargetIndex: index + 1,
           toTokenIndex: segment.tokenIndex,
           offsetMs: Math.max(0, segment.startMs - pageStartMs),
         })
+        return
       }
-      previousReadTokenIndex = segment.tokenIndex
+      if (segment.tokenIndex === nextExpectedTokenIndex) {
+        nextExpectedTokenIndex += 1
+      }
     })
 
     const dwellDurationMs = metrics.reduce((sum, metric) => sum + metric.dwellMs, 0)
@@ -599,6 +638,7 @@ function resetStoryGazeState() {
   storyGazeSessionCompleted.value = false
   storyGazeStartedAtMs.value = 0
   storyGazeSamples.splice(0)
+  storyGazeSampleSources.clear()
   lastStoryGazeSampleAt = 0
 }
 
@@ -896,6 +936,7 @@ onMounted(async () => {
   await resetReadingProgressForPage()
   window.addEventListener('pointermove', onPointerMove)
   window.addEventListener('iread:gaze', onExternalGaze)
+  cursorGazeSampleTimer = window.setInterval(sampleCursorGaze, CURSOR_GAZE_SAMPLE_INTERVAL_MS)
 })
 onBeforeRouteLeave(async () => {
   await finishStoryGazeSession()
@@ -905,6 +946,9 @@ onBeforeUnmount(() => {
   clearLeaveTimer()
   clearDwell()
   clearNarration()
+  if (cursorGazeSampleTimer !== undefined) window.clearInterval(cursorGazeSampleTimer)
+  cursorGazeSampleTimer = undefined
+  lastCursorPoint = null
   window.removeEventListener('pointermove', onPointerMove)
   window.removeEventListener('iread:gaze', onExternalGaze)
 })
