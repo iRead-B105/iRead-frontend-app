@@ -1,6 +1,7 @@
 import fallbackCover from '@/assets/story/ui/new-book-icon.png'
 import fallbackScene from '@/assets/story/story-reader-turtle-scene-mock.png'
 import { learnerApiClient } from '../learnerApiClient'
+import { resolveAuthenticatedStoryImage } from '../story/authenticatedStoryImage'
 import { getGrowthAreaId, resolveTrainingMapping } from './trainingTemplateMapping'
 import type {
   LearnerCurrentCurriculum,
@@ -126,10 +127,10 @@ export class ApiLearnerContentRepository implements LearnerContentRepository {
     ))
     const allCompleted = orderedTrainings.length > 0
       && orderedTrainings.every((training) => training.status === 'COMPLETED')
+    // 진행 가능한 훈련이 없으면(예: 오늘 완료 후 생성된 다음날 커리큘럼이
+    // 아직 문항 생성 전이라 전부 NOT_READY) 현재 훈련 없음으로 둔다.
+    // currentOrder가 목록 길이를 넘어가 오늘 학습 완료로 취급된다.
     const current = explicitlyCurrent
-      ?? (allCompleted
-        ? undefined
-        : orderedTrainings.find((training) => training.status !== 'COMPLETED'))
 
     return {
       curriculumId: String(response.curriculumId),
@@ -180,30 +181,36 @@ export class ApiLearnerContentRepository implements LearnerContentRepository {
       ]),
     )
 
+    const stories = await Promise.all(response.stories.map(async (story, index) => {
+      const template = templates.get(String(story.storyTemplateId))
+      return {
+        storyId: String(story.storyId),
+        templateId: String(story.storyTemplateId),
+        sessionNumber: index + 1,
+        createdAt: story.createdAt,
+        lastReadAt: null,
+        title: template?.templateTitle ?? '나의 이야기',
+        latestBranchSubtitle: story.latestBranchSubtitle
+          || template?.templateTitle
+          || '나의 이야기',
+        coverImageUrl: template?.imageUrl || fallbackCover,
+        entryImageUrl: await resolveAuthenticatedStoryImage(
+          studentId,
+          String(story.storyId),
+          story.entryImageUrl,
+        ),
+        status: story.storyStatus,
+        progress: story.progress,
+      }
+    }))
+
     return {
       templates: response.storyTemplates.map((template) => ({
         templateId: String(template.storyTemplateId),
         title: template.templateTitle,
         coverImageUrl: template.imageUrl || fallbackCover,
       })),
-      stories: response.stories.map((story, index) => {
-        const template = templates.get(String(story.storyTemplateId))
-        return {
-          storyId: String(story.storyId),
-          templateId: String(story.storyTemplateId),
-          sessionNumber: index + 1,
-          createdAt: story.createdAt,
-          lastReadAt: null,
-          title: template?.templateTitle ?? '나의 이야기',
-          latestBranchSubtitle: story.latestBranchSubtitle
-            || template?.templateTitle
-            || '나의 이야기',
-          coverImageUrl: template?.imageUrl || fallbackCover,
-          entryImageUrl: story.entryImageUrl || null,
-          status: story.storyStatus,
-          progress: story.progress,
-        }
-      }),
+      stories,
     }
   }
 
@@ -216,6 +223,25 @@ export class ApiLearnerContentRepository implements LearnerContentRepository {
       `/api/app/story/${encodeURIComponent(studentId)}/${encodeURIComponent(storyId)}/lines`,
       { signal: options.signal },
     )
+    const pages = await Promise.all([...response.storyLines]
+      .sort((left, right) => (
+        (left.sceneOrder ?? 0) - (right.sceneOrder ?? 0)
+        || left.lineOrder - right.lineOrder
+      ))
+      .map(async (line) => ({
+        lineId: String(line.lineId),
+        order: line.lineOrder,
+        lines: [line.lineText],
+        imageUrl: await resolveAuthenticatedStoryImage(
+          studentId,
+          storyId,
+          line.imageUrl,
+        ) || fallbackScene,
+        readAt: line.readAt,
+        requiresBranchInput: line.requiresBranchInput,
+        branchPrompt: line.branchPrompt,
+      })))
+
     return {
       storyId,
       title: '나의 이야기',
@@ -227,20 +253,7 @@ export class ApiLearnerContentRepository implements LearnerContentRepository {
       totalDays: response.totalDays,
       pagesPerDay: response.pagesPerDay,
       dayComplete: response.dayComplete,
-      pages: [...response.storyLines]
-        .sort((left, right) => (
-          (left.sceneOrder ?? 0) - (right.sceneOrder ?? 0)
-          || left.lineOrder - right.lineOrder
-        ))
-        .map((line) => ({
-          lineId: String(line.lineId),
-          order: line.lineOrder,
-          lines: [line.lineText],
-          imageUrl: line.imageUrl || fallbackScene,
-          readAt: line.readAt,
-          requiresBranchInput: line.requiresBranchInput,
-          branchPrompt: line.branchPrompt,
-        })),
+      pages,
     }
   }
 

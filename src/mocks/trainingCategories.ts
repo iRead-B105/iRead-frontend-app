@@ -62,6 +62,13 @@ export const trainingCategories: TrainingCategory[] = [
       { id: 'read-batchim-words', categoryId: 'fluency', title: '겹받침 낱말 읽기', description: '겹받침 낱말을 눈으로 보고 소리 내어 읽어요.', activityType: 'word-reading-grid', estimatedMinutes: 8, isReady: true },
       { id: 'read-nonwords', categoryId: 'fluency', title: '의미 없는 말 읽기', description: '처음 보는 의미 없는 말도 소리 내어 읽어요.', activityType: 'word-reading-grid', estimatedMinutes: 8, isReady: true },
       { id: 'read-short-sentences', categoryId: 'fluency', title: '짧은 문장 읽기', description: '짧은 문장을 눈으로 보고 소리 내어 읽어요.', activityType: 'word-reading-grid', estimatedMinutes: 9, isReady: true },
+      { id: 'read-sentences', categoryId: 'fluency', title: '문장 읽기', description: '한 문장을 왼쪽부터 또박또박 읽어요.', activityType: 'word-reading-grid', estimatedMinutes: 9, isReady: true },
+      { id: 'read-short-passage', categoryId: 'fluency', title: '짧은 글 읽기', description: '문장을 차례대로 이어 읽어요.', activityType: 'word-reading-grid', estimatedMinutes: 10, isReady: true },
+      { id: 'follow-sentence', categoryId: 'fluency', title: '문장 따라 읽기', description: '모범 음성을 듣고 따라 읽어요.', activityType: 'word-reading-grid', estimatedMinutes: 9, isReady: true },
+      { id: 'word-chain', categoryId: 'fluency', title: '단어 이어 읽기', description: '낱말을 멈추지 않고 차례로 읽어요.', activityType: 'word-reading-grid', estimatedMinutes: 8, isReady: true },
+      { id: 'phrase-reading', categoryId: 'fluency', title: '끊어 읽기', description: '뜻이 이어지는 말끼리 묶어 읽어요.', activityType: 'word-reading-grid', estimatedMinutes: 9, isReady: true },
+      { id: 're-read', categoryId: 'fluency', title: '같은 문장 다시 읽기', description: '같은 문장을 반복해 편안하게 읽어요.', activityType: 'word-reading-grid', estimatedMinutes: 9, isReady: true },
+      { id: 'short-story', categoryId: 'fluency', title: '짧은 이야기 읽기', description: '두 문장을 이어 짧은 이야기를 읽어요.', activityType: 'word-reading-grid', estimatedMinutes: 10, isReady: true },
     ],
   },
 ]

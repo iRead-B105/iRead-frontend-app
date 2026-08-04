@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import iReadMainLogo from '@/assets/header/iread-main.png'
+import iReadLoginLogo from '@/assets/header/iread-login.png'
 import { learnerDataSource } from '@/config/learnerDataSource'
+import { resolveAuthenticatedProfileImage } from '@/features/learner/auth'
 import type { LearnerStudent } from '@/features/learner/model'
 import { useLearnerSessionStore } from '@/stores/learnerSession'
 import { useLearnerErrorModalStore } from '@/stores/learnerErrorModal'
@@ -19,8 +20,15 @@ const loginId = ref(isMockMode ? 'demo' : '')
 const password = ref(isMockMode ? 'demo' : '')
 const linkedStudents = ref<LearnerStudent[]>([])
 const selectedStudentId = ref('')
+const studentPage = ref(0)
 const errorMessage = ref('')
 const isLoading = ref(false)
+const studentsPerPage = 3
+const totalStudentPages = computed(() => Math.ceil(linkedStudents.value.length / studentsPerPage))
+const paginatedStudents = computed(() => {
+  const start = studentPage.value * studentsPerPage
+  return linkedStudents.value.slice(start, start + studentsPerPage)
+})
 
 const routeFromLearningEntry = async () => {
   const entry = await learnerSession.resolveLearningEntry(true)
@@ -43,7 +51,17 @@ const handleTeacherLogin = async () => {
       email: loginId.value.trim(),
       password: password.value,
     })
-    linkedStudents.value = learnerSession.linkedStudents.map((student) => ({ ...student }))
+    linkedStudents.value = await Promise.all(
+      learnerSession.linkedStudents.map(async (student) => ({
+        ...student,
+        profileImageUrl: await resolveAuthenticatedProfileImage(
+          student.studentId,
+          student.profileImageUrl,
+          learnerSession.bootstrapToken,
+        ).catch(() => null),
+      })),
+    )
+    studentPage.value = 0
     loginStep.value = 'student'
   } catch (error) {
     errorModal.show(error, '교수자 로그인 오류')
@@ -88,9 +106,17 @@ const retryLearningEntry = async () => {
 const returnToTeacherLogin = () => {
   loginStep.value = 'teacher'
   selectedStudentId.value = ''
+  studentPage.value = 0
   linkedStudents.value = []
   errorMessage.value = ''
   learnerSession.cancelStudentSelection()
+}
+
+const changeStudentPage = (offset: number) => {
+  const lastPage = Math.max(totalStudentPages.value - 1, 0)
+  studentPage.value = Math.min(Math.max(studentPage.value + offset, 0), lastPage)
+  selectedStudentId.value = ''
+  errorMessage.value = ''
 }
 </script>
 
@@ -101,13 +127,18 @@ const returnToTeacherLogin = () => {
 
     <div class="login-shell">
       <div class="login-logo-frame">
-        <img :src="iReadMainLogo" alt="아이리드" class="login-logo" />
+        <img :src="iReadLoginLogo" alt="아이리드" class="login-logo" />
       </div>
 
       <section class="login-card" aria-labelledby="login-title">
         <p class="login-step">{{ loginStep === 'teacher' ? '1 / 2' : '2 / 2' }}</p>
         <h1 id="login-title" class="login-title">
-          {{ loginStep === 'teacher' ? '선생님이 먼저 로그인해 주세요' : '학습할 친구를 골라 주세요' }}
+          <template v-if="loginStep === 'teacher'">
+            선생님이 먼저<br />로그인해 주세요.
+          </template>
+          <template v-else>
+            학습할 친구를<br />골라 주세요.
+          </template>
         </h1>
         <p v-if="loginStep === 'teacher' && isMockMode" class="login-demo-notice">
           데모 화면이에요. 바로 다음을 눌러 주세요.
@@ -163,7 +194,7 @@ const returnToTeacherLogin = () => {
         <form v-else-if="linkedStudents.length" class="student-form" @submit.prevent="handleStudentLogin">
           <div class="student-grid" role="radiogroup" aria-label="연결된 아동">
             <button
-              v-for="student in linkedStudents"
+              v-for="student in paginatedStudents"
               :key="student.studentId"
               class="student-card"
               :class="{ selected: selectedStudentId === student.studentId }"
@@ -173,17 +204,47 @@ const returnToTeacherLogin = () => {
               @click="selectedStudentId = student.studentId; errorMessage = ''"
             >
               <span class="student-avatar" :style="{ '--profile-color': student.profileColor }">
-                {{ student.name.slice(0, 1) }}
+                <img
+                  v-if="student.profileImageUrl"
+                  :src="student.profileImageUrl"
+                  alt=""
+                  aria-hidden="true"
+                />
+                <template v-else>{{ student.name.slice(0, 1) }}</template>
               </span>
               <strong>{{ student.name }}</strong>
-              <small>{{ student.age === null ? '학습자' : `${student.age}세` }}</small>
+              <small v-if="student.age !== null">{{ student.age }}세</small>
             </button>
           </div>
+
+          <nav
+            v-if="totalStudentPages > 1"
+            class="student-pagination"
+            aria-label="학습자 목록 페이지"
+          >
+            <button
+              type="button"
+              class="student-page-button"
+              :disabled="studentPage === 0"
+              @click="changeStudentPage(-1)"
+            >
+              이전
+            </button>
+            <span aria-live="polite">{{ studentPage + 1 }} / {{ totalStudentPages }}</span>
+            <button
+              type="button"
+              class="student-page-button"
+              :disabled="studentPage >= totalStudentPages - 1"
+              @click="changeStudentPage(1)"
+            >
+              다음
+            </button>
+          </nav>
 
           <p v-if="errorMessage" class="login-error" role="alert">{{ errorMessage }}</p>
 
           <div class="student-actions">
-            <button type="button" class="back-button" @click="returnToTeacherLogin">이전</button>
+            <button type="button" class="back-button" @click="returnToTeacherLogin">교사 로그인</button>
             <button type="submit" class="login-button" :disabled="isLoading">
               {{ isLoading ? '시작 중...' : '학습 시작' }}
             </button>

@@ -6,6 +6,7 @@ import type { LearnerAuthRepository } from './repository'
 export * from './apiLearnerAuthRepository'
 export * from './mockLearnerAuthRepository'
 export * from './repository'
+export * from './authenticatedProfileImage'
 
 export function createLearnerAuthRepository(
   source: 'mock' | 'api',

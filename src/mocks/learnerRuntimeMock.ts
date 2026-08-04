@@ -108,7 +108,7 @@ const selectedStudent: MockLinkedStudent = {
   name: '윤정',
   age: 9,
   profileColor: '#f18ca4',
-  profileImageUrl: null,
+  profileImageUrl: '/images/student-profile-girl.png',
 }
 
 export const learnerRuntimeMock = {
@@ -123,14 +123,14 @@ export const learnerRuntimeMock = {
         name: '민준',
         age: 10,
         profileColor: '#71a9ef',
-        profileImageUrl: null,
+        profileImageUrl: '/images/student-profile-boy.png',
       },
       {
         studentId: '1003',
         name: '서아',
         age: 8,
         profileColor: '#9acb62',
-        profileImageUrl: null,
+        profileImageUrl: '/images/student-profile-girl.png',
       },
     ] satisfies MockLinkedStudent[],
   },
