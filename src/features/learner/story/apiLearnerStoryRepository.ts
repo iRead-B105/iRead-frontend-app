@@ -3,6 +3,7 @@ import { learnerApiClient } from '../learnerApiClient'
 import type {
   LearnerStoryBranchResult,
   LearnerStoryBranchTranscriptionResult,
+  LearnerStoryReviewedBranchAnswer,
   LearnerStoryRepository,
   LearnerStorySpeechResult,
   LearnerStoryTtsResult,
@@ -29,11 +30,11 @@ export class ApiLearnerStoryRepository implements LearnerStoryRepository {
     studentId: string,
     storyId: string,
     lineId: string,
-    answer: string | number,
+    answer: number | LearnerStoryReviewedBranchAnswer,
   ): Promise<LearnerStoryBranchResult> {
     const body = jsonBody(typeof answer === 'number'
       ? { optionNo: answer }
-      : { branchIntent: answer })
+      : answer)
     const response = await learnerApiClient.request<{
       transcript: string
       nextLineId: number

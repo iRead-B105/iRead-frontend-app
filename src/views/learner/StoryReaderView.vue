@@ -132,6 +132,9 @@ const dwellTargetIndex = ref<number | null>(null)
 const dwellDurationMs = ref(100)
 const transcript = ref('')
 const recognizedBranchIntent = ref('')
+const recognizedBranchReviewToken = ref('')
+const branchReviewMessage = ref('')
+const branchVoiceAttemptCount = ref(0)
 const speechError = ref(false)
 const branchSubmitting = ref(false)
 const mockBranchVoiceFile = ref<File | null>(null)
@@ -174,6 +177,7 @@ const isListening = computed(() =>
 const hasBranchRecording = computed(() =>
   mockBranchVoiceFile.value !== null || voiceRecorder.state.hasRecording,
 )
+const branchVoiceFallbackRequired = computed(() => branchVoiceAttemptCount.value >= 3)
 
 function exitToStorySelection() {
   void router.push({ name: 'story-selection' })
@@ -670,6 +674,10 @@ async function goNext() {
       clearLeaveTimer()
       gaze.value.visible = false
       transcript.value = ''
+      recognizedBranchIntent.value = ''
+      recognizedBranchReviewToken.value = ''
+      branchReviewMessage.value = ''
+      branchVoiceAttemptCount.value = 0
       speechError.value = false
       mockBranchVoiceFile.value = null
       voiceRecorder.reset()
@@ -707,8 +715,15 @@ async function goNext() {
 }
 
 async function startListening() {
+  if (branchVoiceFallbackRequired.value) {
+    speechError.value = true
+    branchReviewMessage.value = '위의 선택지에서 하나를 골라 주세요.'
+    return
+  }
   speechError.value = false
+  branchReviewMessage.value = ''
   recognizedBranchIntent.value = ''
+  recognizedBranchReviewToken.value = ''
   voiceRecorder.reset()
   if (mockDeviceSubmissionsEnabled) {
     mockBranchVoiceFile.value = createMockVoiceFile(5)
@@ -771,10 +786,33 @@ async function reviewBranchRecording() {
       audioFile,
     )
     transcript.value = result.transcript
-    recognizedBranchIntent.value = result.accepted ? result.transcript : ''
-    speechError.value = !result.accepted
+    if (
+      (result.decision === 'ALLOW' || result.decision === 'CONFIRM')
+      && result.reviewToken
+    ) {
+      recognizedBranchIntent.value = result.transcript
+      recognizedBranchReviewToken.value = result.reviewToken
+      speechError.value = false
+      branchReviewMessage.value = result.decision === 'CONFIRM'
+        ? '말한 내용이 맞는지 한 번 확인해 주세요.'
+        : ''
+    } else {
+      branchVoiceAttemptCount.value += 1
+      recognizedBranchIntent.value = ''
+      recognizedBranchReviewToken.value = ''
+      speechError.value = true
+      branchReviewMessage.value = branchVoiceFallbackRequired.value
+        ? '위의 선택지에서 하나를 골라 주세요.'
+        : result.decision === 'BLOCK'
+          ? '다른 방법으로 이야기해 볼까요?'
+          : '질문에 대한 생각을 다시 말해 볼까요?'
+    }
   } catch (error) {
+    branchVoiceAttemptCount.value += 1
     speechError.value = true
+    branchReviewMessage.value = branchVoiceFallbackRequired.value
+      ? '위의 선택지에서 하나를 골라 주세요.'
+      : '다시 녹음해 볼까요?'
     errorModal.show(
       error instanceof Error ? error : new Error('말한 내용을 확인하지 못했습니다.'),
       '음성 선택 확인 오류',
@@ -784,9 +822,17 @@ async function reviewBranchRecording() {
   }
 }
 
-async function submitBranchAnswer(optionNo?: number, freeIntent?: string) {
+async function submitBranchAnswer(
+  optionNo?: number,
+  freeIntent?: string,
+  reviewToken?: string,
+) {
   const current = page.value
-  const answer = optionNo ?? freeIntent
+  const answer = optionNo ?? (
+    freeIntent && reviewToken
+      ? { branchIntent: freeIntent, reviewToken }
+      : undefined
+  )
   if (!current.lineId || !answer || branchSubmitting.value) {
     speechError.value = true
     return
@@ -819,6 +865,9 @@ async function submitBranchAnswer(optionNo?: number, freeIntent?: string) {
     await resetReadingProgressForPage()
     mockBranchVoiceFile.value = null
     recognizedBranchIntent.value = ''
+    recognizedBranchReviewToken.value = ''
+    branchReviewMessage.value = ''
+    branchVoiceAttemptCount.value = 0
     voiceRecorder.reset()
     screen.value = 'reading'
   } catch (error) {
@@ -999,7 +1048,7 @@ onBeforeUnmount(() => {
                 <p>
                   {{
                     speechError
-                      ? (voiceRecorder.state.errorMessage ?? '다시 녹음해 볼까요?')
+                      ? (branchReviewMessage || voiceRecorder.state.errorMessage || '다시 녹음해 볼까요?')
                       : isListening
                         ? '말을 마치면 마이크를 눌러 주세요.'
                         : hasBranchRecording
@@ -1010,7 +1059,7 @@ onBeforeUnmount(() => {
               </div>
               <div class="voice-actions">
                 <button
-                  v-if="hasBranchRecording"
+                  v-if="hasBranchRecording && !branchVoiceFallbackRequired"
                   class="retry-button"
                   type="button"
                   :disabled="branchSubmitting"
@@ -1019,12 +1068,16 @@ onBeforeUnmount(() => {
                   다시 말하기
                 </button>
                 <button
-                  v-if="hasBranchRecording"
+                  v-if="hasBranchRecording && !branchVoiceFallbackRequired"
                   class="confirm-answer"
                   type="button"
                   :disabled="branchSubmitting"
                   @click="recognizedBranchIntent
-                    ? submitBranchAnswer(undefined, recognizedBranchIntent)
+                    ? submitBranchAnswer(
+                        undefined,
+                        recognizedBranchIntent,
+                        recognizedBranchReviewToken,
+                      )
                     : reviewBranchRecording()"
                 >
                   <span>{{ recognizedBranchIntent ? '이 내용으로 이어 만들기' : '말한 내용 확인하기' }}</span>
