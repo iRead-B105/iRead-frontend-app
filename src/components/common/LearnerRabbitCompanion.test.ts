@@ -24,13 +24,13 @@ describe('LearnerRabbitCompanion', () => {
     const activity = document.createElement('div')
     activity.dataset.companionState = 'correct'
     document.body.append(activity)
-    await vi.waitFor(() => expect(wrapper.text()).toContain('정말 잘했어'))
+    await vi.waitFor(() => expect(wrapper.classes()).toContain('rabbit-companion--correct'))
 
     await wrapper.get('.rabbit-companion__character').trigger('pointerenter')
-    expect(wrapper.text()).toContain('안녕! 만나서 반가워!')
+    expect(wrapper.classes()).toContain('rabbit-companion--greeting')
 
     await wrapper.get('.rabbit-companion__character').trigger('pointerleave')
-    expect(wrapper.text()).toContain('정말 잘했어')
+    expect(wrapper.classes()).toContain('rabbit-companion--correct')
     wrapper.unmount()
   })
 
@@ -38,7 +38,7 @@ describe('LearnerRabbitCompanion', () => {
     route.name = 'story-reading'
     route.fullPath = '/learner/stories/1'
     const wrapper = mount(LearnerRabbitCompanion)
-    await vi.waitFor(() => expect(wrapper.text()).toContain('이야기를 같이 읽어보자'))
+    await vi.waitFor(() => expect(wrapper.classes()).toContain('rabbit-companion--story'))
     wrapper.unmount()
   })
 })

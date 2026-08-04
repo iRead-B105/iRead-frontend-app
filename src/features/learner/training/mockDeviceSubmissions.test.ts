@@ -127,6 +127,33 @@ describe('mock device submissions', () => {
     expect(gazeData.words[0]?.dwellMs).not.toBe(gazeData.words[1]?.dwellMs)
   })
 
+  it('matches gaze words to each final voice recording target', () => {
+    const gazeData = createRealGazeSubmission([
+      mappedQuestion({
+        expectedText: 'alpha beta gamma delta',
+        question: {
+          ...mappedQuestion().question,
+          readingItems: [
+            { id: 'word-0', text: 'alpha', targetIndex: 2 },
+            { id: 'phrase-1', text: 'beta gamma', targetIndex: 5 },
+            { id: 'word-2', text: 'delta', targetIndex: 8 },
+          ],
+        },
+      }),
+    ], [])
+
+    expect(gazeData.words.map(({ text, targetIndex, tokenIndex }) => ({
+      text,
+      targetIndex,
+      tokenIndex,
+    }))).toEqual([
+      { text: 'alpha', targetIndex: 2, tokenIndex: 0 },
+      { text: 'beta', targetIndex: 5, tokenIndex: 0 },
+      { text: 'gamma', targetIndex: 5, tokenIndex: 1 },
+      { text: 'delta', targetIndex: 8, tokenIndex: 0 },
+    ])
+  })
+
   it('uses full expected text tokens for sentence reading gaze metrics', () => {
     const gazeData = createRealGazeSubmission([
       mappedQuestion({

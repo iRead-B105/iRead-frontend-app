@@ -9,7 +9,6 @@
 }
 
 .rabbit-companion__bubble {
-  display: none;
   position: absolute;
   z-index: 2;
   top: 12px;
@@ -19,6 +18,10 @@
   display: grid;
   place-items: center;
   filter: drop-shadow(0 8px 10px rgb(52 82 121 / 14%));
+}
+
+.rabbit-companion__bubble {
+  display: none !important;
 }
 
 .rabbit-companion__bubble img {

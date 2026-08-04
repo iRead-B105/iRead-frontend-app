@@ -100,22 +100,63 @@ const MAX_SAMPLE_GAP_MS = 250
 const READ_DWELL_MS = 1_000
 const FIXATION_DWELL_MS = 2_000
 
-function wordTokensForQuestion(question: MappedTrainingQuestion): string[] {
+type GazeWordPosition = {
+  text: string
+  targetIndex: number
+  tokenIndex: number
+}
+
+function wordPositionsForQuestion(question: MappedTrainingQuestion): GazeWordPosition[] {
+  if (question.question.readingItems?.length) {
+    return question.question.readingItems.flatMap((item) => {
+      const words = wordsFrom(item.text)
+      return words.map((text, tokenIndex) => ({
+        text,
+        targetIndex: item.targetIndex,
+        tokenIndex,
+      }))
+    })
+  }
+
   const expectedTokens = wordsFrom(question.expectedText ?? '')
-  if (expectedTokens.length > 0) return expectedTokens
+  if (expectedTokens.length > 0) {
+    return expectedTokens.map((text, tokenIndex) => ({
+      text,
+      targetIndex: question.recordingTargetIndex ?? 0,
+      tokenIndex,
+    }))
+  }
 
   if (question.question.readingSentences?.length) {
-    return question.question.readingSentences.flatMap((sentence) => sentence.chunks)
+    return question.question.readingSentences
+      .flatMap((sentence) => sentence.chunks)
+      .flatMap((text, targetIndex) => wordsFrom(text).map((word, tokenIndex) => ({
+        text: word,
+        targetIndex,
+        tokenIndex,
+      })))
   }
   if (question.question.readingWords?.length) {
-    return question.question.readingWords.map((word) => word.text)
+    return question.question.readingWords.map((word, targetIndex) => ({
+      text: word.text,
+      targetIndex,
+      tokenIndex: 0,
+    }))
   }
   const sourceText =
     question.expectedText
     ?? question.question.targetText
     ?? question.question.targetResult
     ?? ''
-  return wordsFrom(sourceText)
+  return wordsFrom(sourceText).map((text, tokenIndex) => ({
+    text,
+    targetIndex: question.recordingTargetIndex ?? 0,
+    tokenIndex,
+  }))
+}
+
+function wordTokensForQuestion(question: MappedTrainingQuestion): string[] {
+  return wordPositionsForQuestion(question).map((position) => position.text)
 }
 
 type WordAccumulator = {
@@ -146,6 +187,7 @@ function createWordMetrics(
         sample.questionNumber === question.questionNumber,
       ).sort((first, second) => first.capturedAtMs - second.capturedAtMs)
       const tokens = wordTokensForQuestion(question)
+      const positions = wordPositionsForQuestion(question)
       const questionStartMs = questionSamples[0]?.capturedAtMs ?? 0
       const accumulators = tokens.map<WordAccumulator>(() => ({
         dwellMs: 0,
@@ -241,10 +283,11 @@ function createWordMetrics(
 
       return tokens.map((text, tokenIndex) => {
         const accumulator = accumulators[tokenIndex]
+        const position = positions[tokenIndex]
         return {
         questionNo: question.questionNumber,
-        targetIndex: question.recordingTargetIndex ?? 0,
-        tokenIndex,
+        targetIndex: position?.targetIndex ?? question.recordingTargetIndex ?? 0,
+        tokenIndex: position?.tokenIndex ?? tokenIndex,
         text,
         dwellMs: accumulator?.dwellMs ?? 0,
         visitCount: accumulator?.visitCount ?? 0,
