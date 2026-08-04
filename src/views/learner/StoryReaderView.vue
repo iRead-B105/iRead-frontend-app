@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
-import storyChoiceScene from '../../assets/story/story-choice-turtle-crossroads.png'
 import storySceneFallback from '../../assets/story/story-reader-turtle-scene-mock.png'
 import {
   getCachedStudent,
@@ -11,6 +10,7 @@ import {
 import PageBackButton from '@/components/common/PageBackButton.vue'
 import type { VillageItem } from '@/types/village'
 import { learnerStoryRepository } from '@/features/learner/story'
+import { preloadStoryImage } from '@/features/learner/story/storyImagePreloader'
 import type { LearnerStoryBranchPrompt } from '@/features/learner/model'
 import { learnerGazeRepository } from '@/features/learner/gaze'
 import {
@@ -71,7 +71,7 @@ const story = ref<Story>({
   dayComplete: false,
   pages: [{
     lineId: '',
-    image: storyChoiceScene,
+    image: '',
     lines: ['이야기를 준비하고 있어요.'],
     readAt: null,
     requiresBranchInput: false,
@@ -79,46 +79,55 @@ const story = ref<Story>({
   }],
 })
 const loadError = ref('')
+const storyReady = ref(false)
 
-async function loadStory() {
+function initialPageFor(nextStory: Story) {
+  if (route.query.continue !== '1') return 0
+  const firstUnreadPage = nextStory.pages.findIndex((item) => item.readAt === null)
+  return firstUnreadPage >= 0
+    ? firstUnreadPage
+    : Math.max(nextStory.pages.length - 1, 0)
+}
+
+async function loadStory(): Promise<boolean> {
   loadError.value = ''
   try {
     const detail = await getStoryDetail(storyId.value)
-    story.value = {
-    title: detail.title,
-    character: detail.character,
-    question: detail.branchQuestion,
-    status: detail.status,
-    currentDay: detail.currentDay,
-    availableDay: detail.availableDay,
-    totalDays: detail.totalDays,
-    pagesPerDay: detail.pagesPerDay,
-    dayComplete: detail.dayComplete,
-    pages: detail.pages.map((page) => ({
-      lineId: page.lineId,
-      image: resolveStoryScene(page.imageUrl),
-      imagePosition: page.imagePosition,
-      lines: [...page.lines],
-      readAt: page.readAt,
-      requiresBranchInput: page.requiresBranchInput,
-      branchPrompt: page.branchPrompt,
-    })),
+    const nextStory: Story = {
+      title: detail.title,
+      character: detail.character,
+      question: detail.branchQuestion,
+      status: detail.status,
+      currentDay: detail.currentDay,
+      availableDay: detail.availableDay,
+      totalDays: detail.totalDays,
+      pagesPerDay: detail.pagesPerDay,
+      dayComplete: detail.dayComplete,
+      pages: detail.pages.map((page) => ({
+        lineId: page.lineId,
+        image: resolveStoryScene(page.imageUrl),
+        imagePosition: page.imagePosition,
+        lines: [...page.lines],
+        readAt: page.readAt,
+        requiresBranchInput: page.requiresBranchInput,
+        branchPrompt: page.branchPrompt,
+      })),
     }
+    await preloadStoryImage(nextStory.pages[initialPageFor(nextStory)]?.image)
+    story.value = nextStory
+    return true
   } catch (error) {
     loadError.value = '이야기를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.'
     errorModal.show(
       error instanceof Error ? error : new Error(loadError.value),
       '이야기 연결 오류',
     )
+    return false
   }
 }
 
 function initialPage() {
-  if (route.query.continue !== '1') return 0
-  const firstUnreadPage = story.value.pages.findIndex((item) => item.readAt === null)
-  return firstUnreadPage >= 0
-    ? firstUnreadPage
-    : Math.max(story.value.pages.length - 1, 0)
+  return initialPageFor(story.value)
 }
 
 const currentPage = ref(0)
@@ -929,7 +938,9 @@ async function playNarration() {
 watch(storyId, async () => {
   await finishStoryGazeSession()
   resetStoryGazeState()
-  await loadStory()
+  storyReady.value = false
+  storyReady.value = await loadStory()
+  if (!storyReady.value) return
   currentPage.value = initialPage()
   screen.value = 'reading'
   rewardedFriend.value = null
@@ -939,7 +950,8 @@ watch(storyId, async () => {
   await resetReadingProgressForPage()
 })
 onMounted(async () => {
-  await loadStory()
+  storyReady.value = await loadStory()
+  if (!storyReady.value) return
   currentPage.value = initialPage()
   await startStoryGazeSession()
   await resetReadingProgressForPage()
@@ -962,7 +974,11 @@ onBeforeUnmount(() => {
 <template>
   <main class="story-reader">
     <section class="reader-frame" :aria-label="`${story.title} 읽기`">
-      <div v-if="screen === 'reading'" class="story-scene">
+      <div v-if="!storyReady" class="story-loading" role="status" aria-live="polite">
+        <span class="story-loading__spinner" aria-hidden="true" />
+        <strong>{{ loadError || '이야기 장면을 준비하고 있어요.' }}</strong>
+      </div>
+      <div v-else-if="screen === 'reading'" class="story-scene">
         <PageBackButton
           class="reader-back"
           label="이야기 나라로 돌아가기"
@@ -1004,11 +1020,15 @@ onBeforeUnmount(() => {
         />
         <img :src="page.image" alt="" :style="{ objectPosition: page.imagePosition ?? 'center' }" />
         <div class="question-backdrop" aria-hidden="true" />
-        <section class="question-card" :class="{ 'question-card--generating': screen === 'generating' }" aria-live="polite">
+        <section
+          class="question-card"
+          :class="{
+            'question-card--choice': screen === 'question',
+            'question-card--generating': screen === 'generating',
+          }"
+          aria-live="polite"
+        >
           <template v-if="screen === 'question'">
-            <div class="choice-illustration">
-              <img :src="storyChoiceScene" alt="갈림길 앞에서 어느 길로 갈지 고민하는 거북이" />
-            </div>
             <h1>{{ branchQuestion }}</h1>
             <div v-if="branchOptions.length === 3" class="branch-options" aria-label="이야기 선택지">
               <button
@@ -1018,11 +1038,20 @@ onBeforeUnmount(() => {
                 :disabled="branchSubmitting"
                 @click="submitBranchAnswer(option.optionNo)"
               >
-                {{ option.label }}
+                <span class="branch-option-number" aria-hidden="true">{{ option.optionNo }}</span>
+                <span class="branch-option-label">{{ option.label }}</span>
+                <span class="branch-option-arrow" aria-hidden="true">›</span>
               </button>
             </div>
-            <p class="branch-or">버튼을 누르거나 말로 이야기해 주세요.</p>
-            <section class="voice-answer" aria-label="말로 대답하기">
+            <p class="branch-or"><span>또는 직접 이야기하기</span></p>
+            <section
+              class="voice-answer"
+              :class="{
+                'voice-answer--recorded': hasBranchRecording,
+                'voice-answer--error': speechError,
+              }"
+              aria-label="말로 대답하기"
+            >
               <button
                 class="listening-mic"
                 :class="{ 'listening-mic--active': isListening }"
@@ -1045,21 +1074,27 @@ onBeforeUnmount(() => {
                           : '이야기를 들려주세요!'
                   }}
                 </strong>
-                <p>
-                  {{
-                    speechError
-                      ? (branchReviewMessage || voiceRecorder.state.errorMessage || '다시 녹음해 볼까요?')
-                      : isListening
-                        ? '말을 마치면 마이크를 눌러 주세요.'
-                        : hasBranchRecording
-                          ? (recognizedBranchIntent || '먼저 말한 내용을 글자로 확인해요.')
-                          : '마이크를 누르고 대답해 주세요.'
-                  }}
+                <p
+                  :class="{
+                    'voice-transcript': hasBranchRecording && Boolean(recognizedBranchIntent),
+                    'voice-message--error': speechError,
+                  }"
+                >
+                  <template v-if="speechError">
+                    {{ branchReviewMessage || voiceRecorder.state.errorMessage || '다시 녹음해 볼까요?' }}
+                  </template>
+                  <template v-else-if="isListening">말을 마치면 마이크를 눌러 주세요.</template>
+                  <template v-else-if="recognizedBranchIntent">“{{ recognizedBranchIntent }}”</template>
+                  <template v-else-if="hasBranchRecording">먼저 말한 내용을 글자로 확인해요.</template>
+                  <template v-else>마이크를 누르고 대답해 주세요.</template>
                 </p>
               </div>
-              <div class="voice-actions">
+              <div
+                v-if="hasBranchRecording && !branchVoiceFallbackRequired"
+                class="voice-actions"
+                aria-label="녹음한 대답 확인"
+              >
                 <button
-                  v-if="hasBranchRecording && !branchVoiceFallbackRequired"
                   class="retry-button"
                   type="button"
                   :disabled="branchSubmitting"
@@ -1068,7 +1103,6 @@ onBeforeUnmount(() => {
                   다시 말하기
                 </button>
                 <button
-                  v-if="hasBranchRecording && !branchVoiceFallbackRequired"
                   class="confirm-answer"
                   type="button"
                   :disabled="branchSubmitting"

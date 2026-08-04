@@ -57,6 +57,8 @@ export class MockLearnerContentRepository implements LearnerContentRepository {
     return storyTemplateId
   }
 
+  async deleteStory(_studentId: string, _storyId: string) {}
+
   async getGrowthAreas() {
     return learnerRuntimeMock.growthAreas.map((item) => ({ ...item }))
   }

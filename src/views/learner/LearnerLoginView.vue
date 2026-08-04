@@ -6,6 +6,7 @@ import { learnerDataSource } from '@/config/learnerDataSource'
 import type { LearnerStudent } from '@/features/learner/model'
 import { useLearnerSessionStore } from '@/stores/learnerSession'
 import { useLearnerErrorModalStore } from '@/stores/learnerErrorModal'
+import { preloadSelectedStudentStoryLibrary } from '@/services/learnerDataRepository'
 import userIcon from '@/assets/icons/user.svg'
 import lockIcon from '@/assets/icons/lock.svg'
 
@@ -64,6 +65,7 @@ const handleStudentLogin = async () => {
   try {
     const authenticated = await learnerSession.loginStudent(student.studentId)
     if (!authenticated) throw new Error('아동 학습 세션을 시작할 수 없습니다.')
+    void preloadSelectedStudentStoryLibrary().catch(() => undefined)
     await routeFromLearningEntry()
   } catch (error) {
     errorModal.show(error, '아동 학습 세션 오류')
