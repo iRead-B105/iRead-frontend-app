@@ -2,26 +2,19 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { TrainingChoice, TrainingQuestion } from '@/types/training'
 import { useTrainingSession } from '@/composables/useTrainingSession'
+import { useVoiceRecorder } from '@/composables/useVoiceRecorder'
 
 const props = defineProps<{ question: TrainingQuestion }>()
-defineEmits<{ next: [] }>()
+type VoiceEvaluationControls = {
+  success: (message?: string) => void
+  retry: (message?: string) => void
+}
+const emit = defineEmits<{
+  next: []
+  voiceRecorded: [blob: Blob, controls: VoiceEvaluationControls]
+}>()
 
-interface SpeechResultEvent extends Event {
-  results: { [index: number]: { [index: number]: { transcript: string } } }
-}
-interface SpeechErrorEvent extends Event { error?: string }
-interface SpeechRecognitionLike {
-  lang: string
-  interimResults: boolean
-  continuous: boolean
-  onresult: ((event: SpeechResultEvent) => void) | null
-  onerror: ((event: SpeechErrorEvent) => void) | null
-  onend: (() => void) | null
-  start: () => void
-  stop: () => void
-}
-type SpeechRecognitionConstructor = new () => SpeechRecognitionLike
-type SpeechState = 'waiting' | 'listening' | 'retry' | 'success' | 'denied'
+type SpeechState = 'waiting' | 'listening' | 'evaluating' | 'retry' | 'success' | 'denied'
 
 const session = useTrainingSession()
 const choices = computed<TrainingChoice[]>(() => props.question.choices ?? [])
@@ -60,85 +53,85 @@ const toneStyle = (choiceId: string) => {
 }
 const speechState = ref<SpeechState>('waiting')
 const speechMessage = ref('')
-let recognition: SpeechRecognitionLike | null = null
+const recorder = useVoiceRecorder()
 let wrongTimer: ReturnType<typeof setTimeout> | null = null
 let speechRetryTimer: ReturnType<typeof setTimeout> | null = null
+let autoStopTimer: ReturnType<typeof setTimeout> | null = null
+let submittedBlob: Blob | null = null
 
 const isFilled = computed(() => placedChoice.value?.id === props.question.answer)
 const showHint = computed(() => attempts.value >= 2 && !isFilled.value)
 const isComplete = computed(() => speechState.value === 'success')
 
-const normalize = (value: string) => value.replace(/[\s.,!?~'"’“”]/g, '').toLowerCase()
+// 문장 길이에 비례한 녹음 시간(3~12초). 끝나면 자동으로 평가로 넘어간다.
+const recordingMs = computed(() =>
+  Math.min(12_000, Math.max(3_000, completedSentence.value.length * 650 + 1_800)),
+)
 
-const sentenceMatches = (transcript: string) => {
-  const heard = normalize(transcript)
-  const answer = normalize(completedSentence.value)
-  return Boolean(answer && (heard === answer || heard.includes(answer)))
+const stopAutoTimer = () => {
+  if (autoStopTimer) clearTimeout(autoStopTimer)
+  autoStopTimer = null
 }
 
-const finishSpeech = () => {
+const finishSpeech = (message = '다 읽었어!') => {
   if (isComplete.value) return
   speechState.value = 'success'
-  speechMessage.value = '다 읽었어!'
-  session.markRecordingComplete({ isMock: false, audioUrl: null })
+  speechMessage.value = message
+  session.markRecordingComplete({
+    isMock: false,
+    audioUrl: recorder.audioUrl.value,
+    blob: recorder.audioBlob.value,
+  })
 }
 
-const handleTranscript = (transcript: string) => {
-  if (!isFilled.value || speechState.value !== 'listening') return
-  if (sentenceMatches(transcript)) finishSpeech()
-  else {
-    speechState.value = 'retry'
-    speechMessage.value = '한 번 더 읽어봐!'
-    speechRetryTimer = setTimeout(startSpeech, 900)
-  }
+const retrySpeech = (message = '한 번 더 읽어봐!') => {
+  if (isComplete.value) return
+  recorder.reset()
+  speechState.value = 'retry'
+  speechMessage.value = message
+  if (speechRetryTimer) clearTimeout(speechRetryTimer)
+  speechRetryTimer = setTimeout(() => void startSpeech(), 1_100)
 }
 
-const startSpeech = () => {
-  if (!isFilled.value || speechState.value === 'listening' || isComplete.value) return
+// 완성한 문장을 실제로 녹음해 백엔드 발음 평가로 보낸다(부모 evaluateActivityVoice).
+const startSpeech = async () => {
+  if (!isFilled.value || isComplete.value) return
+  if (
+    recorder.state.status === 'recording'
+    || recorder.state.status === 'requesting'
+    || speechState.value === 'evaluating'
+  ) return
+  recorder.reset()
+  submittedBlob = null
   speechState.value = 'listening'
   speechMessage.value = '문장을 읽어봐!'
-
-  const speechWindow = window as typeof window & {
-    SpeechRecognition?: SpeechRecognitionConstructor
-    webkitSpeechRecognition?: SpeechRecognitionConstructor
+  await recorder.start()
+  if ((recorder.state.status as string) !== 'recording') {
+    speechState.value = 'denied'
+    speechMessage.value = recorder.state.errorMessage ?? '마이크를 켜고 다시 눌러요'
+    return
   }
-  const Recognition = speechWindow.SpeechRecognition ?? speechWindow.webkitSpeechRecognition
-  if (!Recognition) return
-
-  recognition?.stop()
-  recognition = new Recognition()
-  recognition.lang = 'ko-KR'
-  recognition.interimResults = false
-  recognition.continuous = false
-  recognition.onresult = (event) => handleTranscript(event.results[0]?.[0]?.transcript ?? '')
-  recognition.onerror = (event) => {
-    if (event.error === 'not-allowed' || event.error === 'service-not-allowed' || event.error === 'audio-capture') {
-      window.dispatchEvent(new CustomEvent('iread:microphone-state', { detail: { active: false, available: false } }))
-      speechState.value = 'denied'
-      speechMessage.value = '마이크를 켜고 다시 눌러요'
-      return
-    }
-    if (event.error !== 'aborted') {
-      speechState.value = 'retry'
-      speechMessage.value = '한 번 더 읽어봐!'
-      speechRetryTimer = setTimeout(startSpeech, 900)
-    }
-  }
-  recognition.onend = () => {
-    if (speechState.value === 'listening') {
-      speechState.value = 'retry'
-      speechMessage.value = '한 번 더 읽어봐!'
-      speechRetryTimer = setTimeout(startSpeech, 900)
-    }
-    recognition = null
-  }
-  recognition.start()
+  stopAutoTimer()
+  autoStopTimer = setTimeout(() => recorder.stop(), recordingMs.value)
 }
+
+watch(() => recorder.state.status, (status) => {
+  const blob = recorder.audioBlob.value
+  if (status !== 'recorded' || !blob || blob === submittedBlob) return
+  stopAutoTimer()
+  submittedBlob = blob
+  speechState.value = 'evaluating'
+  speechMessage.value = '확인 중이에요!'
+  emit('voiceRecorded', blob, {
+    success: (message) => finishSpeech(message),
+    retry: (message) => retrySpeech(message),
+  })
+})
 
 watch(isFilled, (filled) => {
   if (!filled) return
   if (speechRetryTimer) clearTimeout(speechRetryTimer)
-  speechRetryTimer = setTimeout(startSpeech, 450)
+  speechRetryTimer = setTimeout(() => void startSpeech(), 450)
 })
 
 const evaluateChoice = (choiceId: string) => {
@@ -226,23 +219,17 @@ const cancelPointerDrag = () => {
   draggingChoiceId.value = null
   isOverBlank.value = false
 }
-const onExternalSpeech = (event: Event) => {
-  const detail = (event as CustomEvent<{ transcript?: string }>).detail
-  if (detail?.transcript) handleTranscript(detail.transcript)
-}
-
 onMounted(() => {
-  window.addEventListener('iread:speech', onExternalSpeech)
   window.addEventListener('pointermove', onPointerMove)
   window.addEventListener('pointerup', finishPointerDrag)
   window.addEventListener('pointercancel', cancelPointerDrag)
 })
 onBeforeUnmount(() => {
-  window.removeEventListener('iread:speech', onExternalSpeech)
   window.removeEventListener('pointermove', onPointerMove)
   window.removeEventListener('pointerup', finishPointerDrag)
   window.removeEventListener('pointercancel', cancelPointerDrag)
-  recognition?.stop()
+  stopAutoTimer()
+  recorder.stop()
   if (wrongTimer) clearTimeout(wrongTimer)
   if (speechRetryTimer) clearTimeout(speechRetryTimer)
 })
@@ -307,6 +294,14 @@ onBeforeUnmount(() => {
     </Teleport>
 
     <footer class="action-bar">
+      <button
+        v-if="speechState === 'denied'"
+        class="next-button"
+        type="button"
+        @click="startSpeech"
+      >
+        말하기
+      </button>
       <button v-if="isComplete" class="next-button shared-next-source" type="button" @click="$emit('next')">다음</button>
     </footer>
   </section>
