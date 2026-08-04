@@ -16,7 +16,25 @@ export interface LearnerStorySpeechResult {
 export interface LearnerStoryBranchTranscriptionResult {
   readonly transcript: string
   readonly confidence: number
-  readonly accepted: boolean
+  readonly decision: 'ALLOW' | 'CONFIRM' | 'RETRY' | 'BLOCK'
+  readonly reasonCode:
+    | 'OK'
+    | 'AMBIGUOUS'
+    | 'OFF_TOPIC'
+    | 'SELF_HARM'
+    | 'SEXUAL'
+    | 'SEVERE_VIOLENCE'
+    | 'THREAT'
+    | 'HATE_HARASSMENT'
+    | 'PII'
+    | 'INJECTION'
+  readonly policyVersion: string
+  readonly reviewToken: string | null
+}
+
+export interface LearnerStoryReviewedBranchAnswer {
+  readonly branchIntent: string
+  readonly reviewToken: string
 }
 
 export interface LearnerStoryTtsResult {
@@ -36,7 +54,7 @@ export interface LearnerStoryRepository {
     studentId: string,
     storyId: string,
     lineId: string,
-    answer: string | number,
+    answer: number | LearnerStoryReviewedBranchAnswer,
   ) => Promise<LearnerStoryBranchResult>
   readonly transcribeBranchIntent: (
     studentId: string,

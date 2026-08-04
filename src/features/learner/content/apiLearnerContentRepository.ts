@@ -19,6 +19,7 @@ interface StoryShelfDto {
     readonly storyTemplateId: number
     readonly createdAt: string
     readonly latestBranchSubtitle: string
+    readonly entryImageUrl: string | null
     readonly storyStatus: 'UNREAD' | 'IN_PROGRESS' | 'COMPLETED'
     readonly progress: number
   }[]
@@ -198,6 +199,7 @@ export class ApiLearnerContentRepository implements LearnerContentRepository {
             || template?.templateTitle
             || '나의 이야기',
           coverImageUrl: template?.imageUrl || fallbackCover,
+          entryImageUrl: story.entryImageUrl || null,
           status: story.storyStatus,
           progress: story.progress,
         }
@@ -248,6 +250,13 @@ export class ApiLearnerContentRepository implements LearnerContentRepository {
       { method: 'POST' },
     )
     return String(response.storyId)
+  }
+
+  async deleteStory(studentId: string, storyId: string): Promise<void> {
+    await learnerApiClient.request<void>(
+      `/api/app/story/${encodeURIComponent(studentId)}/sessions/${encodeURIComponent(storyId)}`,
+      { method: 'DELETE' },
+    )
   }
 
   async getGrowthAreas(

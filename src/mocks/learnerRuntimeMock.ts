@@ -66,6 +66,7 @@ export interface MockStorySession {
   title: string
   latestBranchSubtitle: string
   coverImageUrl: string
+  entryImageUrl: string | null
   status: MockStoryStatus
   progress: number
 }
@@ -181,6 +182,7 @@ export const learnerRuntimeMock = {
         title: '이상한 나라의 앨리스',
         latestBranchSubtitle: '웃는 고양이의 비밀 길',
         coverImageUrl: aliceCover,
+        entryImageUrl: storyScene,
         status: 'IN_PROGRESS',
         progress: 62,
       },
@@ -193,6 +195,7 @@ export const learnerRuntimeMock = {
         title: '개미와 베짱이',
         latestBranchSubtitle: '겨울 창고의 따뜻한 약속',
         coverImageUrl: antAndGrasshopperCover,
+        entryImageUrl: storyScene,
         status: 'COMPLETED',
         progress: 100,
       },

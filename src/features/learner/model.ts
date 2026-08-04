@@ -66,6 +66,7 @@ export interface LearnerStorySession {
   readonly title: string
   readonly latestBranchSubtitle: string
   readonly coverImageUrl: string
+  readonly entryImageUrl: string | null
   readonly status: LearnerStoryStatus
   readonly progress: number
 }

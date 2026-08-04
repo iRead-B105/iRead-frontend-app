@@ -1,4 +1,7 @@
-import type { LearnerStoryRepository } from './repository'
+import type {
+  LearnerStoryBranchTranscriptionResult,
+  LearnerStoryRepository,
+} from './repository'
 
 export class MockLearnerStoryRepository implements LearnerStoryRepository {
   readonly source = 'mock' as const
@@ -24,8 +27,15 @@ export class MockLearnerStoryRepository implements LearnerStoryRepository {
     return { transcript: '', accuracy: 0, readingStatus: 'MOCK' }
   }
 
-  async transcribeBranchIntent() {
-    return { transcript: '별빛 다리를 건너갈래요', confidence: 0.98, accepted: true }
+  async transcribeBranchIntent(): Promise<LearnerStoryBranchTranscriptionResult> {
+    return {
+      transcript: '별빛 다리를 건너갈래요',
+      confidence: 0.98,
+      decision: 'ALLOW',
+      reasonCode: 'OK',
+      policyVersion: 'story-branch-input-v1',
+      reviewToken: 'mock-reviewed-branch-token',
+    }
   }
 
   async synthesizeLine() {
