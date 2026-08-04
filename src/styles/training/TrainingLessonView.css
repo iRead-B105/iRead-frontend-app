@@ -1244,6 +1244,19 @@
   gap: var(--learner-space-4);
 }
 
+.lesson-loading {
+  height: 100%;
+  display: grid;
+  place-items: center;
+  padding: var(--learner-space-4);
+}
+
+.lesson-loading p {
+  margin: 0;
+  font-size: var(--learner-font-size-page);
+  font-weight: var(--learner-font-weight-heavy);
+}
+
 .gaze-debug-panel {
   position: fixed;
   z-index: 9999;

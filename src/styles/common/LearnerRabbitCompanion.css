@@ -1,0 +1,105 @@
+.rabbit-companion {
+  position: absolute;
+  z-index: 40;
+  right: 18px;
+  bottom: 0;
+  width: 920px;
+  height: 800px;
+  pointer-events: none;
+}
+
+.rabbit-companion__bubble {
+  position: absolute;
+  z-index: 2;
+  top: 12px;
+  left: 0;
+  width: 285px;
+  height: 142px;
+  display: grid;
+  place-items: center;
+  filter: drop-shadow(0 8px 10px rgb(52 82 121 / 14%));
+}
+
+.rabbit-companion__bubble img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+}
+
+.rabbit-companion__bubble p {
+  position: relative;
+  z-index: 1;
+  width: 78%;
+  margin: -8px 0 0 -12px;
+  color: #203567;
+  font-family: var(--learner-font-display);
+  font-size: 25px;
+  font-weight: 900;
+  line-height: 1.25;
+  text-align: center;
+  word-break: keep-all;
+}
+
+.rabbit-companion__character {
+  position: absolute;
+  right: -284px;
+  bottom: -204px;
+  width: 760px;
+  height: 760px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  pointer-events: auto;
+  transition: transform .18s ease;
+}
+
+.rabbit-companion__character:hover,
+.rabbit-companion__character:focus-visible {
+  outline: none;
+  transform: translateY(-7px) scale(1.035);
+}
+
+.rabbit-companion__character img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 10px 9px rgb(58 65 105 / 17%));
+}
+
+.rabbit-companion--microphone .rabbit-companion__character,
+.rabbit-companion--correct .rabbit-companion__character,
+.rabbit-companion--celebrate .rabbit-companion__character {
+  animation: rabbit-ready 1.15s ease-in-out infinite;
+}
+
+.rabbit-companion--retry .rabbit-companion__character {
+  animation: rabbit-encourage .55s ease-out both;
+}
+
+.rabbit-swap-enter-active,
+.rabbit-swap-leave-active { transition: opacity .12s ease, transform .12s ease; }
+.rabbit-swap-enter-from { opacity: 0; transform: scale(.94); }
+.rabbit-swap-leave-to { opacity: 0; transform: scale(1.04); }
+
+@keyframes rabbit-ready {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-8px) scale(1.025); }
+}
+
+@keyframes rabbit-encourage {
+  0% { transform: translateX(0); }
+  35% { transform: translateX(-6px) rotate(-1deg); }
+  70% { transform: translateX(5px) rotate(1deg); }
+  100% { transform: translateX(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rabbit-companion__character,
+  .rabbit-companion--microphone .rabbit-companion__character,
+  .rabbit-companion--correct .rabbit-companion__character,
+  .rabbit-companion--celebrate .rabbit-companion__character,
+  .rabbit-companion--retry .rabbit-companion__character { animation: none; transition: none; }
+}

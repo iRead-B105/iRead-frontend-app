@@ -72,7 +72,7 @@ function analysisBody(studentId: string, data: CollectedGazeData) {
     avgVisitedDuration: totalVisitedCount > 0
       ? Math.round(totalVisitedDuration / totalVisitedCount)
       : 0,
-    sentenceMetrics: sentenceMetrics.map((metric) => ({
+    sentenceMetrics: sentenceMetrics.length > 0 ? sentenceMetrics.map((metric) => ({
       storyLineId: metric.storyLineId,
       sequenceNo: metric.sequenceNo,
       surfaceText: metric.surfaceText ?? '-',
@@ -82,7 +82,7 @@ function analysisBody(studentId: string, data: CollectedGazeData) {
       averageFixationTimeMs: metric.averageFixationTimeMs,
       firstGazeOffsetMs: metric.firstGazeOffsetMs ?? 0,
       lastGazeOffsetMs: metric.lastGazeOffsetMs ?? 0,
-    })),
+    })) : null,
     wordAttempts: words.map((word) => ({
       useLocation: contentType,
       storyLineId: word.storyLineId,

@@ -16,7 +16,6 @@ import puzzleRearPurple from '@/assets/training/sound-puzzle/puzzle-rear-purple.
 import trashTool from '@/assets/training/sound-puzzle/tool-trash.png'
 import undoToolActive from '@/assets/training/sound-puzzle/tool-undo-active.png'
 import undoToolDisabled from '@/assets/training/sound-puzzle/tool-undo-disabled.png'
-import soundControlPanel from '@/assets/training/sound-puzzle/sound-control-panel.svg'
 import completeButtonDisabled from '@/assets/training/sound-puzzle/complete-button-disabled.png'
 import completeButtonActive from '@/assets/training/sound-puzzle/complete-button-active.png'
 import completeButtonSuccess from '@/assets/training/sound-puzzle/complete-button-success.png'
@@ -227,13 +226,13 @@ const cancelDrag = () => {
       </div>
 
       <div class="function-panel">
-        <div class="sound-control-card">
-          <img :src="soundControlPanel" alt="" aria-hidden="true" />
+        <div class="listen-panel">
+          <span class="panel-label">소리 듣기</span>
           <SoundButton
             :text="question.audioText || ''"
             :rate="0.72"
             :disabled="isPlaying || !question.audioText"
-            size="large"
+            size="medium"
             variant="primary"
             label="만들 낱말 소리 듣기"
           />

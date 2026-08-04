@@ -45,6 +45,7 @@ import {
 } from '@/features/learner/training'
 import { getCachedStudent } from '@/services/learnerDataRepository'
 import { useLearnerErrorModalStore } from '@/stores/learnerErrorModal'
+import { useLearnerSessionStore } from '@/stores/learnerSession'
 import { learnerGazeRepository } from '@/features/learner/gaze'
 import { learnerTestRepository } from '@/features/learner/test'
 import { presentTrainingHint } from '@/features/learner/training/hintPresentation'
@@ -56,6 +57,7 @@ const session = useTrainingSession()
 const dailyCurriculum = useDailyCurriculum()
 const skillChallenge = useSkillChallenge()
 const errorModal = useLearnerErrorModalStore()
+const learnerSession = useLearnerSessionStore()
 const { eyeTrackerConnected, virtualEyeTrackerConnected, microphoneAvailable } = useDeviceStatus()
 const voiceRecorder = useVoiceRecorder()
 const {
@@ -101,6 +103,9 @@ const lesson = computed(() =>
 const serverIntro = ref<LearnerTrainingIntro | null>(null)
 const serverQuestions = ref<readonly MappedTrainingQuestion[]>([])
 const startingTraining = ref(false)
+// API 모드에서는 serverLesson이 비동기 페칭 후 세팅되므로 그 전까지 로딩 UI를 보여준다.
+// mock 모드는 fallbackLesson이 동기 computed라 즉시 available하므로 false로 시작.
+const lessonLoading = ref(learnerDataSource === 'api' && !debugMode.value)
 const submittingQuestion = ref(false)
 const voiceGateOpen = ref(false)
 const voiceSubmitting = ref(false)
@@ -466,6 +471,7 @@ onMounted(async () => {
     const itemId = learningItemId.value
     if (!/^\d+$/.test(itemId)) {
       integrationError.value = '서버 학습 ID가 없어 학습을 시작할 수 없습니다.'
+      lessonLoading.value = false
     } else {
       try {
         const studentId = getCachedStudent().studentId
@@ -547,6 +553,8 @@ onMounted(async () => {
       } catch (error) {
         integrationError.value =
           error instanceof Error ? error.message : '서버 훈련 정보를 불러오지 못했습니다.'
+      } finally {
+        lessonLoading.value = false
       }
     }
   }
@@ -1236,26 +1244,45 @@ const saveAndFinish = async () => {
       void router.replace({ name: 'training-home', query: { debugPanel: '1' } })
       return
     }
-    void router.replace(
-      challengeTrackId.value
-        ? {
-          name: 'skill-challenge-question-complete',
-          params: {
-            trackId: challengeTrackId.value,
-            testId: learningItemId.value,
-          },
-          query: { lessonId: lessonId.value },
+    if (challengeTrackId.value) {
+      try {
+        const plan = await learnerTestRepository.getChallengePlan(getCachedStudent().studentId)
+        if (plan.completed) {
+          learnerSession.markChallengeCompleted()
+          await router.replace({ name: 'skill-challenge-complete' })
+          return
         }
-        : nextCurriculumItem
-          ? {
-            name: 'training-lesson',
+        if (plan.nextTestId && plan.nextTestId !== learningItemId.value) {
+          await router.replace({
+            name: 'skill-challenge-lesson',
             params: {
-              categoryId: nextCurriculumItem.categoryId,
-              lessonId: nextCurriculumItem.lesson.id,
+              trackId: plan.nextTrackCode ?? challengeTrackId.value,
+              testId: plan.nextTestId,
             },
-            query: { trainingId: nextCurriculumItem.trainingId },
-          }
-          : { name: 'training-today-complete' },
+          })
+          return
+        }
+      } catch {
+        // 다음 계획 조회 실패 또는 서버가 아직 완료를 반영 전 → 축하 화면으로 폴백
+      }
+      await router.replace({
+        name: 'skill-challenge-question-complete',
+        params: { trackId: challengeTrackId.value, testId: learningItemId.value },
+        query: { lessonId: lessonId.value },
+      })
+      return
+    }
+    void router.replace(
+      nextCurriculumItem
+        ? {
+          name: 'training-lesson',
+          params: {
+            categoryId: nextCurriculumItem.categoryId,
+            lessonId: nextCurriculumItem.lesson.id,
+          },
+          query: { trainingId: nextCurriculumItem.trainingId },
+        }
+        : { name: 'training-today-complete' },
     )
   }
   // 실패 시 phase 는 'saving' 유지 → 저장 오버레이에서 재시도 버튼 노출
@@ -1265,7 +1292,14 @@ const isSavingFailed = computed(() => session.savingState.status === 'failed')
 </script>
 
 <template>
-  <div class="lesson-view">
+  <div
+    class="lesson-view"
+    :data-companion-state="session.progressState.isCurrentCorrect === true
+      ? 'correct'
+      : session.progressState.isCurrentCorrect === false
+        ? 'retry'
+        : undefined"
+  >
     <!-- 문제 풀이 -->
     <div
       v-if="phase === 'playing' && lesson"
@@ -1490,8 +1524,12 @@ const isSavingFailed = computed(() => session.savingState.status === 'failed')
       <p v-if="gazeTransferDebug.lastError">{{ gazeTransferDebug.lastError }}</p>
     </aside>
 
+    <!-- 로딩: API 모드 비동기 페칭 중 -->
+    <div v-if="lessonLoading" class="lesson-loading" role="status" aria-live="polite">
+      <p>학습을 준비하고 있어요…</p>
+    </div>
     <!-- 폴백: 알 수 없는 레슨 -->
-    <div v-if="!lesson" class="fallback">
+    <div v-else-if="!lesson" class="fallback">
       <p>레슨을 불러올 수 없어요.</p>
       <button class="retry-button" type="button" @click="exitToHome">훈련 선택으로 가기</button>
     </div>

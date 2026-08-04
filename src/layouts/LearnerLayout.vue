@@ -2,6 +2,7 @@
 import { computed, defineAsyncComponent, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import LearnerHeader from '../components/layout/LearnerHeader.vue'
+import LearnerRabbitCompanion from '../components/common/LearnerRabbitCompanion.vue'
 import GazeCalibrationModal from '../components/common/GazeCalibrationModal.vue'
 import GlobalGazeCursor from '../components/common/GlobalGazeCursor.vue'
 import { useGazeCalibration } from '../composables/useGazeCalibration'
@@ -55,6 +56,7 @@ onMounted(async () => {
           />
         </RouterView>
       </div>
+      <LearnerRabbitCompanion />
     </div>
 
     <GazeCalibrationModal v-if="isGazeCalibrationOpen" @close="closeGazeCalibration" />
