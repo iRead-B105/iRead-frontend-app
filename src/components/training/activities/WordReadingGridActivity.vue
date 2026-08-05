@@ -7,7 +7,7 @@ import { useDeveloperMode } from '@/composables/useDeveloperMode'
 import { useVoiceRecorder } from '@/composables/useVoiceRecorder'
 import checkIcon from '@/assets/icons/check.svg'
 import microphoneIcon from '@/assets/icons/microphone.svg'
-import { cursorGazeFallbackEnabled } from '@/lib/cursorGazeFallback'
+import { cursorGazeFallbackActive } from '@/lib/cursorGazeFallback'
 
 const props = defineProps<{ question: TrainingQuestion }>()
 type VoiceEvaluationControls = {
@@ -216,8 +216,8 @@ const updateGaze = (clientX: number, clientY: number, emitWordHit = false) => {
 
 const onPointerMove = (event: PointerEvent) => {
   // 가상 아이트래커는 iread:gaze 이벤트로 시선을 보내므로 pointermove는 무시한다.
-  // 커서 폴백이 꺼져 있으면(기본값) 마우스로 시선 히트를 만들지 않는다.
-  if (virtualEyeTrackerConnected.value || !cursorGazeFallbackEnabled) return
+  // 커서 폴백은 아이트래커 미연결 시 자동으로 켜진다.
+  if (virtualEyeTrackerConnected.value || !cursorGazeFallbackActive.value) return
   updateGaze(event.clientX, event.clientY, true)
 }
 const onPointerLeave = () => {

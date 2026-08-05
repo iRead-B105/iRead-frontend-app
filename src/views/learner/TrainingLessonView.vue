@@ -45,7 +45,7 @@ import { learnerTestRepository } from '@/features/learner/test'
 import { presentTrainingHint } from '@/features/learner/training/hintPresentation'
 import { getTrainingTemplateMapping } from '@/features/learner/content/trainingTemplateMapping'
 import { isApiError } from '@/lib/api'
-import { cursorGazeFallbackEnabled } from '@/lib/cursorGazeFallback'
+import { cursorGazeFallbackActive } from '@/lib/cursorGazeFallback'
 
 const route = useRoute()
 const router = useRouter()
@@ -221,10 +221,10 @@ const displayedHint = computed(() => presentTrainingHint(
   session.currentHint.value,
   session.progressState.hintLevel,
 ))
-const gazeDeviceFallbackEnabled = cursorGazeFallbackEnabled
+const gazeDeviceFallbackEnabled = cursorGazeFallbackActive
 
 const gazeTransferSource = () => {
-  if (!eyeTrackerConnected.value && cursorGazeFallbackEnabled) return 'cursor'
+  if (!eyeTrackerConnected.value && cursorGazeFallbackActive.value) return 'cursor'
   return 'real'
 }
 
@@ -325,7 +325,7 @@ const attachWordHitToRecentSample = (hit: GazeWordHit) => {
 }
 
 const appendCursorGazeSampleFromHit = (hit: GazeWordHit) => {
-  if (!cursorGazeFallbackEnabled || eyeTrackerConnected.value) return
+  if (!cursorGazeFallbackActive.value || eyeTrackerConnected.value) return
   if (hit.capturedAtMs - lastCursorGazeSampleAt < 80) return
   lastCursorGazeSampleAt = hit.capturedAtMs
   const sample: DeviceGazeSample = {
@@ -497,7 +497,7 @@ onMounted(async () => {
 
 const startPlaying = async () => {
   if (integrationError.value || startingTraining.value) return
-  if (!gazeDeviceFallbackEnabled && gazeRequired.value && !eyeTrackerConnected.value) {
+  if (!gazeDeviceFallbackEnabled.value && gazeRequired.value && !eyeTrackerConnected.value) {
     deviceBlocker.value = 'eye-tracker'
     return
   }
@@ -594,7 +594,7 @@ watch(
   [eyeTrackerConnected, microphoneAvailable, phase, () => session.progressState.isCompleted],
   ([eyeConnected, micAvailable, currentPhase, completed]) => {
     const gazeBlockerResolved = deviceBlocker.value === 'eye-tracker'
-      && (gazeDeviceFallbackEnabled || eyeConnected)
+      && (gazeDeviceFallbackEnabled.value || eyeConnected)
     const microphoneBlockerResolved = deviceBlocker.value === 'microphone' && micAvailable
     if (gazeBlockerResolved || microphoneBlockerResolved) {
       deviceBlocker.value = null
@@ -608,7 +608,7 @@ watch(
       return
     }
     if (currentPhase !== 'playing') return
-    if (!gazeDeviceFallbackEnabled && gazeRequired.value && !eyeConnected) deviceBlocker.value = 'eye-tracker'
+    if (!gazeDeviceFallbackEnabled.value && gazeRequired.value && !eyeConnected) deviceBlocker.value = 'eye-tracker'
     else if (currentQuestionRequiresMicrophone.value && !micAvailable) deviceBlocker.value = 'microphone'
   },
 )

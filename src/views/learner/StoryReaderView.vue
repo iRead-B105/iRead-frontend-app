@@ -16,7 +16,7 @@ import { useVoiceRecorder } from '@/composables/useVoiceRecorder'
 import { useLearnerErrorModalStore } from '@/stores/learnerErrorModal'
 import microphoneIcon from '@/assets/icons/microphone.svg'
 import checkIcon from '@/assets/icons/check.svg'
-import { cursorGazeFallbackEnabled } from '@/lib/cursorGazeFallback'
+import { cursorGazeFallbackActive } from '@/lib/cursorGazeFallback'
 
 interface StoryPage {
   lineId: string
@@ -401,9 +401,9 @@ function recordStoryGazeSample(
   source: StoryGazeSource,
   force = false,
 ) {
-  // 커서 폴백이 꺼져 있으면(기본값) 마우스 좌표를 시선 샘플로 기록하지 않는다.
-  // 실제 아이트래커('tracker') 샘플만 백엔드로 전송된다.
-  if (source === 'cursor' && !cursorGazeFallbackEnabled) return
+  // 커서 폴백은 아이트래커 미연결 시 자동으로 켜진다. 트래커가 연결되어
+  // 있으면 마우스 좌표를 시선 샘플로 기록하지 않는다.
+  if (source === 'cursor' && !cursorGazeFallbackActive.value) return
   if (!storyGazeSessionId.value) return
   const lineId = Number(page.value.lineId)
   if (!Number.isInteger(lineId) || lineId <= 0) return
@@ -1032,10 +1032,9 @@ onMounted(async () => {
   await resetReadingProgressForPage()
   window.addEventListener('pointermove', onPointerMove)
   window.addEventListener('iread:gaze', onExternalGaze)
-  // 커서 폴백이 켜진 경우에만 마우스 위치를 주기적으로 시선 샘플로 수집한다.
-  if (cursorGazeFallbackEnabled) {
-    cursorGazeSampleTimer = window.setInterval(sampleCursorGaze, CURSOR_GAZE_SAMPLE_INTERVAL_MS)
-  }
+  // 마우스 위치를 주기적으로 시선 샘플로 수집한다. 폴백이 꺼져 있으면
+  // (트래커 연결 중) recordStoryGazeSample에서 커서 샘플이 걸러진다.
+  cursorGazeSampleTimer = window.setInterval(sampleCursorGaze, CURSOR_GAZE_SAMPLE_INTERVAL_MS)
 })
 onBeforeRouteLeave(async () => {
   await finishStoryGazeSession()
