@@ -254,11 +254,9 @@ function beginDwell(index: number) {
     }, 420)
   }
   showReturnCue.value = false
-  dwellTargetIndex.value = index
-  dwellDurationMs.value = getDwellDuration(pageWords.value[index]?.word ?? '')
-  dwellTimer = window.setTimeout(() => {
-    if (dwellTargetIndex.value === index) setProgress(index)
-  }, dwellDurationMs.value)
+  // 아동 화면의 읽음 진행은 체류 시간이 아니라 다음 단어에
+  // 시선/마우스 커서가 한 번 도달했는지를 기준으로 한다.
+  setProgress(index)
 }
 
 function scheduleReturnCue() {
