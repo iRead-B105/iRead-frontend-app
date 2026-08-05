@@ -453,6 +453,7 @@ function mapAudio(number: number, source: StudentQuestionDto): {
         ...baseQuestion(number, '처음부터 차례대로 읽어요', expectedText),
         targetText: expectedText,
         readingSentences: sentences,
+        readingGranularity: source.questionType === 'SENTENCE_READING' ? 'word' : 'segment',
       }, source, 'segments'),
     }
   }
@@ -473,6 +474,9 @@ function mapAudio(number: number, source: StudentQuestionDto): {
   } else if (source.questionType === 'SHORT_STORY_READING') {
     phraseChunks = objectArray(source.content, 'sentences')
       .map((sentence) => requiredString(sentence, 'text'))
+  } else if (source.questionType === 'SENTENCE_REPEAT') {
+    // 문장 따라 읽기는 시선 진행만 단어별로 확인하고, 음성은 문장 전체를 한 번 평가한다.
+    phraseChunks = expectedText.split(/\s+/).filter(Boolean)
   } else {
     phraseChunks = [expectedText]
   }
@@ -486,6 +490,7 @@ function mapAudio(number: number, source: StudentQuestionDto): {
       phraseChunks,
       focusWord,
       audioPromptEnabled: source.questionType === 'SENTENCE_REPEAT',
+      readingAudioMode: source.questionType === 'SENTENCE_REPEAT' ? 'whole-sentence' : 'per-item',
     }, source, layout),
   }
 }

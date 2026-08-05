@@ -98,6 +98,11 @@ const syncAnswer = () => {
     progressState.isCurrentCorrect = null
     return
   }
+  const removedIndex = removedIndices.value[0]
+  if (typeof props.question.answer === 'string' && /^unit-\d+$/.test(props.question.answer)) {
+    session.selectAnswer(`unit-${removedIndex}`)
+    return
+  }
   const expectedResult = props.question.targetResult ?? props.question.answer
   session.selectAnswer(
     resultText.value === expectedResult ? props.question.answer : resultText.value,
@@ -105,7 +110,7 @@ const syncAnswer = () => {
 }
 
 const removePiece = (index: number) => {
-  if (isAnswered.value || removedIndices.value.includes(index)) return
+  if (isAnswered.value || removedIndices.value.length > 0 || removedIndices.value.includes(index)) return
   removedIndices.value = [...removedIndices.value, index]
   syncAnswer()
 }
