@@ -6,7 +6,9 @@ import { useTobiiGazeBridge } from '@/composables/useTobiiGazeBridge'
 // Keep the local Tobii WebSocket bridge alive across every learner route.
 // Header instances may consume the shared state, but route changes must not
 // tear down the gaze producer.
-useTobiiGazeBridge()
+// Start the bridge as soon as the learner app mounts, before the learner route
+// or header is rendered. The header only observes this shared connection state.
+useTobiiGazeBridge({ autoConnect: true })
 </script>
 
 <template>

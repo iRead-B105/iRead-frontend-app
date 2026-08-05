@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, defineAsyncComponent, onMounted } from 'vue'
+import { computed, defineAsyncComponent, onBeforeUnmount, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import LearnerHeader from '../components/layout/LearnerHeader.vue'
 import LearnerRabbitCompanion from '../components/common/LearnerRabbitCompanion.vue'
@@ -25,10 +25,15 @@ const handleBrandClick = () => {
   if (route.name === 'learner-home') registerLogoClick()
 }
 
+const handleEyeTrackerState = (event: Event) => {
+  const detail = (event as CustomEvent<{ connected?: boolean }>).detail
+  if (typeof detail?.connected === 'boolean') setEyeTrackerConnected(detail.connected)
+}
+
 onMounted(async () => {
+  window.addEventListener('iread:eye-tracker-state', handleEyeTrackerState)
   try {
     const status = await fetchDeviceStatus()
-    setEyeTrackerConnected(status.eyeTrackerConnected)
     setMicrophoneState({
       available: status.microphoneAvailable,
       active: status.microphoneActive,
@@ -36,6 +41,10 @@ onMounted(async () => {
   } catch {
     // 로컬 gaze bridge 이벤트가 계속 실제 장치 상태를 갱신한다.
   }
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('iread:eye-tracker-state', handleEyeTrackerState)
 })
 </script>
 
