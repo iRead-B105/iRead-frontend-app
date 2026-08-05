@@ -78,7 +78,6 @@ const finishSpeech = (message = '다 읽었어!') => {
   speechState.value = 'success'
   speechMessage.value = message
   session.markRecordingComplete({
-    isMock: false,
     audioUrl: recorder.audioUrl.value,
     blob: recorder.audioBlob.value,
   })

@@ -9,6 +9,7 @@ import SoundButton from '@/components/training/SoundButton.vue'
 import microphoneIcon from '@/assets/icons/microphone.svg'
 import type { LearnerTraceSubmissionResponse } from '@/features/learner/training'
 import { consonantPronunciationText } from '@/lib/hangulPronunciation'
+import { cursorGazeFallbackEnabled } from '@/lib/cursorGazeFallback'
 
 const props = defineProps<{ question: TrainingQuestion }>()
 type VoiceEvaluationControls = {
@@ -104,12 +105,12 @@ const stopSpeech = () => {
   recorder.stop()
 }
 
-const finishSpeech = (isMock: boolean, blob: Blob | null = null, message?: string) => {
+const finishSpeech = (blob: Blob | null = null, message?: string) => {
   if (speechState.value === 'success') return
   stopSpeech()
   speechState.value = 'success'
   emit('guideMessage', message || '잘했어!\n또박또박 잘 읽었어!')
-  session.markRecordingComplete({ isMock, audioUrl: null, blob })
+  session.markRecordingComplete({ audioUrl: null, blob })
 }
 
 const setRetry = (message?: string) => {
@@ -146,7 +147,7 @@ watch(() => recorder.state.status, (status) => {
   submittedBlob = blob
   speechState.value = 'evaluating'
   emit('voiceRecorded', blob, {
-    success: (message) => finishSpeech(false, blob, message),
+    success: (message) => finishSpeech(blob, message),
     retry: (message) => setRetry(message),
   })
 })
@@ -203,9 +204,10 @@ const advanceFromClientPoint = (clientX: number, clientY: number) => {
 }
 
 const onPointerMove = (event: PointerEvent) => {
-  if (!virtualEyeTrackerConnected.value) {
-    advanceFromClientPoint(event.clientX, event.clientY)
-  }
+  // 가상 아이트래커는 iread:gaze 이벤트로 시선을 보내므로 pointermove는 무시한다.
+  // 커서 폴백이 꺼져 있으면(기본값) 마우스로 시선 히트를 만들지 않는다.
+  if (virtualEyeTrackerConnected.value || !cursorGazeFallbackEnabled) return
+  advanceFromClientPoint(event.clientX, event.clientY)
 }
 const onGaze = (event: Event) => {
   const detail = (event as CustomEvent<{ clientX?: number; clientY?: number; headPoseStable?: boolean }>).detail

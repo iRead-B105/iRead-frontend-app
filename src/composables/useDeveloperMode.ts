@@ -5,6 +5,8 @@ const CLICK_WINDOW_MS = 1_500
 const REQUIRED_CLICKS = 5
 
 const readInitialState = () => {
+  // 프로덕션 빌드에서는 localStorage에 'on'이 남아 있어도 개발자 모드를 켜지 않는다.
+  if (!import.meta.env.DEV) return false
   if (typeof window === 'undefined') return false
   return window.localStorage.getItem(STORAGE_KEY) === 'on'
 }

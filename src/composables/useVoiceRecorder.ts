@@ -1,18 +1,18 @@
-// 음성 녹음 composable (목업용)
+// 음성 녹음 composable
 //
-// 가능하면 브라우저 MediaRecorder 로 실제 녹음을 수행합니다.
+// 브라우저 MediaRecorder 로 실제 녹음을 수행합니다.
 // MediaRecorder/getUserMedia 를 지원하지 않거나 권한이 거부된 환경에서는
 // 녹음을 시작하지 않고 공용 장치 상태를 연결 안 됨으로 변경합니다.
 //
 // 본 파일은 발음 평가/STT 점수 측정을 수행하지 않습니다.
-// 녹음 결과는 목업 저장소에 Blob(또는 목업 표시)으로만 보관됩니다.
+// 녹음 결과는 Blob으로만 보관되며, 평가는 상위 화면이 백엔드로 제출합니다.
 
 import { onScopeDispose, reactive, ref, shallowRef } from 'vue'
 import type { RecordingState } from '@/types/training'
 import { resolveMicrophoneErrorMessage } from '@/lib/media/microphoneErrorMessage'
 import { useDeviceStatus } from './useDeviceStatus'
 
-const MAX_RECORDING_MS = 30_000 // 최대 녹음 시간(목업 안전장치)
+const MAX_RECORDING_MS = 30_000 // 최대 녹음 시간(안전장치)
 const WAVEFORM_BARS = 28
 
 const isMediaRecorderSupported = (): boolean =>
@@ -29,7 +29,6 @@ export function useVoiceRecorder() {
   const state = reactive<RecordingState>({
     status: 'idle',
     elapsedMs: 0,
-    isMock: false,
     hasRecording: false,
     errorMessage: null,
   })
@@ -75,11 +74,6 @@ export function useVoiceRecorder() {
       mediaStream = null
     }
     mediaRecorder = null
-  }
-
-  // 목업 파형 갱신(실제 음량 분석 아님)
-  const animateMockWaveform = (): void => {
-    waveform.value = Array.from({ length: WAVEFORM_BARS }, () => 0.25 + Math.random() * 0.7)
   }
 
   const startVoiceActivityDetection = (stream: MediaStream): void => {
@@ -167,7 +161,6 @@ export function useVoiceRecorder() {
       mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true })
       startVoiceActivityDetection(mediaStream)
       setMicrophoneState({ available: true, active: true })
-      state.isMock = false
       state.status = 'recording'
       startedAt = Date.now()
       chunks.value = []
@@ -191,7 +184,7 @@ export function useVoiceRecorder() {
       }
 
       mediaRecorder.start()
-      startTimers(false)
+      startTimers()
       // 최대 녹음 시간 도달 시 자동 종료
       if (elapsedTimer) {
         setTimeout(() => {
@@ -206,14 +199,11 @@ export function useVoiceRecorder() {
     }
   }
 
-  const startTimers = (isMock: boolean): void => {
+  const startTimers = (): void => {
     elapsedTimer = setInterval(() => {
       state.elapsedMs = Date.now() - startedAt
     }, 200)
-    waveTimer = setInterval(() => {
-      if (isMock) animateMockWaveform()
-      else updateVoiceActivity()
-    }, 140)
+    waveTimer = setInterval(() => updateVoiceActivity(), 140)
   }
 
   // 녹음 종료
@@ -223,7 +213,7 @@ export function useVoiceRecorder() {
       mediaRecorder.stop() // onstop 에서 상태 정리
       return
     }
-    // 목업 모드 종료
+    // 레코더가 이미 정리된 경우의 방어적 마무리
     state.hasRecording = true
     state.status = 'recorded'
     setMicrophoneState({ active: false })
@@ -252,7 +242,6 @@ export function useVoiceRecorder() {
     stopStream()
     resetRecordingData()
     state.status = 'idle'
-    state.isMock = false
     state.errorMessage = null
   }
 
