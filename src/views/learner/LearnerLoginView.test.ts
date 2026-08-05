@@ -48,9 +48,19 @@ describe('LearnerLoginView 학습 진입 흐름', () => {
 
     expect(wrapper.get('#login-title').text()).toBe('선생님이 먼저 로그인해 주세요.')
     expect(wrapper.get('#login-title').find('br').exists()).toBe(false)
+    expect(wrapper.findAll('.login-step')).toHaveLength(2)
+    expect(wrapper.get('.login-step--active').text()).toBe('1교사 로그인')
+    expect(wrapper.findAll('.login-field-label').map((label) => label.text())).toEqual([
+      '이메일 주소',
+      '비밀번호',
+    ])
+    expect(wrapper.get('#teacher-password').attributes('type')).toBe('password')
+    await wrapper.get('.password-toggle').trigger('click')
+    expect(wrapper.get('#teacher-password').attributes('type')).toBe('text')
+    expect(wrapper.get('.password-toggle').attributes('aria-label')).toBe('비밀번호 숨기기')
 
-    await wrapper.get('input[aria-label="선생님 아이디"]').setValue('teacher@example.com')
-    await wrapper.get('input[aria-label="비밀번호"]').setValue('password')
+    await wrapper.get('#teacher-email').setValue('teacher@example.com')
+    await wrapper.get('#teacher-password').setValue('password')
     await wrapper.get('form.login-form').trigger('submit')
     await flushPromises()
     await wrapper.get('[role="radio"]').trigger('click')
@@ -88,15 +98,19 @@ describe('LearnerLoginView 학습 진입 흐름', () => {
       { global: { plugins: [pinia, router] } },
     )
 
-    await wrapper.get('input[aria-label="선생님 아이디"]').setValue('teacher@example.com')
-    await wrapper.get('input[aria-label="비밀번호"]').setValue('password')
+    await wrapper.get('#teacher-email').setValue('teacher@example.com')
+    await wrapper.get('#teacher-password').setValue('password')
     await wrapper.get('form.login-form').trigger('submit')
     await flushPromises()
 
     expect(wrapper.get('#login-title').text()).toBe('아동 프로필을 선택해 주세요.')
     expect(wrapper.get('#login-title').find('br').exists()).toBe(false)
-    expect(wrapper.get('.student-page-button--previous').attributes('aria-label')).toBe('이전 아동 목록')
-    expect(wrapper.get('.student-page-button--next').attributes('aria-label')).toBe('다음 아동 목록')
+    expect(wrapper.get('.login-step--active').text()).toBe('2아동 프로필 선택')
+    expect(wrapper.get('.back-button').text()).toBe('이전')
+    expect(wrapper.get('.student-page-button--previous').attributes('aria-label')).toBe('이전 프로필 보기')
+    expect(wrapper.get('.student-page-button--next').attributes('aria-label')).toBe('다음 프로필 보기')
+    expect(wrapper.find('.student-page-button--previous svg').exists()).toBe(true)
+    expect(wrapper.find('.student-page-button--next svg').exists()).toBe(true)
     expect(wrapper.findAll('.student-card small').map((item) => item.text())).not.toContain('학습자')
     expect(wrapper.get('.student-avatar img').attributes('src')).toBe('/images/student-profile.png')
     expect(wrapper.findAll('[role="radio"]')).toHaveLength(3)
