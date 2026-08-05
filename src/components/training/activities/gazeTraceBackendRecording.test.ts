@@ -7,10 +7,6 @@ import { useTrainingSession } from '@/composables/useTrainingSession'
 import type { TrainingQuestion } from '@/types/training'
 import GazeTraceActivity from './GazeTraceActivity.vue'
 
-vi.mock('@/features/learner/training/mockDeviceSubmissions', () => ({
-  mockVoiceSubmissionsEnabled: false,
-}))
-
 vi.mock('@/composables/useAudioPlayer', () => ({
   useAudioPlayer: () => ({ replay: vi.fn(async () => {}), stop: vi.fn() }),
 }))

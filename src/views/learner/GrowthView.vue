@@ -20,7 +20,6 @@ import type {
   LearnerStoryLibrary,
 } from '@/features/learner/model'
 import type { VillageItem } from '@/types/village'
-import { learnerDataSource } from '@/config/learnerDataSource'
 
 type GardenId = 1 | 2 | 3
 
@@ -196,37 +195,8 @@ const progressLabel = (garden: Garden) => (
   stages[garden.id] === 5 ? '만개' : `${stages[garden.id]}단계`
 )
 
-const grow = (garden: Garden) => {
-  if (loadError.value || learnerDataSource === 'api') return
-
-  const currentStage = stages[garden.id]
-  if (currentStage >= 5) {
-    announcement.value = `${garden.title} 화단이 활짝 피었어!`
-    return
-  }
-
-  if (progressFor(garden) < 100) {
-    announcement.value = `${garden.title} 진행 바를 가득 채우면 꽃을 키울 수 있어!`
-    return
-  }
-
-  stages[garden.id] = Math.min(5, currentStage + 1)
-  void loadGardenImage(garden)
-  growingGarden.value = garden.id
-  window.setTimeout(() => {
-    if (growingGarden.value === garden.id) growingGarden.value = null
-  }, 520)
-
-  announcement.value = stages[garden.id] === 5
-    ? `${garden.title} 화단이 활짝 피었어!`
-    : `${garden.title} 화단이 ${stages[garden.id]}단계로 자랐어!`
-
-  window.clearTimeout(growthTimer)
-  growthTimer = window.setTimeout(() => {
-    saveSeenStages()
-    growthTimer = undefined
-  }, 1200)
-}
+// 성장 단계는 서버 데이터로만 표시한다(클릭 성장 치트는 mock 모드와 함께 제거).
+const grow = (_garden: Garden) => {}
 
 onMounted(async () => {
   placedFriendIds.value = loadPlacedFriendIds()
@@ -403,11 +373,7 @@ onBeforeUnmount(() => {
         :disabled="Boolean(loadError)"
         :aria-label="loadError
           ? `${garden.title} 화단. 성장 정보 계약 확인 필요`
-          : learnerDataSource === 'api'
-            ? `${garden.title} 화단 ${progressLabel(garden)}. 진행 ${progressFor(garden)}퍼센트`
-            : progressFor(garden) === 100
-            ? `${garden.title} 화단 ${progressLabel(garden)}. 진행 바가 가득 찼어. 눌러서 성장시키기`
-            : `${garden.title} 화단 ${progressLabel(garden)}. 진행 ${progressFor(garden)}퍼센트`"
+          : `${garden.title} 화단 ${progressLabel(garden)}. 진행 ${progressFor(garden)}퍼센트`"
         @pointerenter="showGrowHint(garden)"
         @pointerleave="showGardenHint(garden)"
         @focus="showGrowHint(garden)"

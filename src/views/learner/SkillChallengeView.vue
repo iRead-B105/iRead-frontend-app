@@ -1,14 +1,10 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import {
-  skillChallengeTracks,
-  useSkillChallenge,
-} from '@/composables/useSkillChallenge'
+import { skillChallengeTracks } from '@/composables/useSkillChallenge'
 import listeningEarImage from '@/assets/challenge/challenge-listening-ear.png'
 import sentenceCardsImage from '@/assets/challenge/challenge-sentence-cards.png'
 import readingBooksImage from '@/assets/challenge/challenge-reading-books.png'
-import { learnerDataSource } from '@/config/learnerDataSource'
 import {
   learnerTestRepository,
   type LearnerSkillChallengePlan,
@@ -17,29 +13,22 @@ import { getCachedStudent } from '@/services/learnerDataRepository'
 import { useLearnerSessionStore } from '@/stores/learnerSession'
 
 const router = useRouter()
-const challenge = useSkillChallenge()
 const learnerSession = useLearnerSessionStore()
-const isApiMode = learnerDataSource === 'api'
 const plan = ref<LearnerSkillChallengePlan | null>(null)
-const loading = ref(isApiMode)
+const loading = ref(true)
 const loadError = ref('')
 
-const progress = computed(() => plan.value?.completedQuestions ?? challenge.completedCount.value)
+const progress = computed(() => plan.value?.completedQuestions ?? 0)
 const actionLabel = computed(() => progress.value > 0 ? '이어하기' : '시작하기')
 
 const startChallenge = () => {
-  const firstLesson = isApiMode ? null : challenge.startChallenge()
-  const trackId = isApiMode ? plan.value?.nextTrackCode : firstLesson?.trackId
-  const testId = isApiMode ? plan.value?.nextTestId : 'mock'
+  const trackId = plan.value?.nextTrackCode
+  const testId = plan.value?.nextTestId
   if (!trackId || !testId) return
 
   void router.push({
     name: 'skill-challenge-lesson',
-    params: {
-      trackId,
-      testId,
-      ...(firstLesson ? { lessonId: firstLesson.lessonId } : {}),
-    },
+    params: { trackId, testId },
   })
 }
 
@@ -50,7 +39,6 @@ const trackImages = {
 }
 
 const loadPlan = async () => {
-  if (!isApiMode) return
   loading.value = true
   loadError.value = ''
   try {
@@ -105,7 +93,7 @@ onMounted(loadPlan)
         <div class="challenge-action">
           <button
             type="button"
-            :disabled="isApiMode && !plan?.nextTestId"
+            :disabled="!plan?.nextTestId"
             @click="startChallenge"
           >
             {{ actionLabel }}

@@ -1,4 +1,4 @@
-export type DataSource = 'mock' | 'api'
+export type DataSource = 'api'
 
 export interface LearnerEnvironment {
   readonly learnerDataSource: DataSource
@@ -13,10 +13,10 @@ export interface LearnerEnvironmentInput {
 }
 
 function parseSource(value: string | undefined): DataSource {
-  if (value === undefined || value === '') return 'mock'
-  if (value === 'mock' || value === 'api') return value
+  // mock 데이터 소스는 제거되었다. 학습 데이터는 항상 백엔드 API에서 온다.
+  if (value === undefined || value === '' || value === 'api') return 'api'
   throw new TypeError(
-    `[아동 환경설정] VITE_LEARNER_DATA_SOURCE는 mock 또는 api여야 합니다. 현재 값: ${value}`,
+    `[아동 환경설정] VITE_LEARNER_DATA_SOURCE는 api만 지원합니다(mock 제거됨). 현재 값: ${value}`,
   )
 }
 

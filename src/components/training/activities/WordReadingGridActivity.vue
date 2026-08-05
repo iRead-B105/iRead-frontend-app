@@ -6,7 +6,6 @@ import { useDeviceStatus } from '@/composables/useDeviceStatus'
 import { useVoiceRecorder } from '@/composables/useVoiceRecorder'
 import checkIcon from '@/assets/icons/check.svg'
 import microphoneIcon from '@/assets/icons/microphone.svg'
-import { mockVoiceSubmissionsEnabled } from '@/features/learner/training/mockDeviceSubmissions'
 
 const props = defineProps<{ question: TrainingQuestion }>()
 type VoiceEvaluationControls = {
@@ -137,10 +136,6 @@ const startSpeech = async (wordIndex: number) => {
   activeIndex.value = wordIndex
   speechState.value = 'listening'
 
-  if (mockVoiceSubmissionsEnabled) {
-    fallbackTimer = setTimeout(() => finishWord(wordIndex, true, null), 1_100)
-    return
-  }
   await recorder.start()
   if (disposed) return
   if (recorder.state.status !== 'recording') {

@@ -5,8 +5,6 @@ import {
   isSkillChallengeTrackId,
 } from '@/composables/useSkillChallenge'
 import { isPlayableLesson, isValidCategoryId } from '@/mocks/trainingLookup'
-import { getLessonById } from '@/mocks/trainingLessons'
-import { learnerDataSource } from '@/config/learnerDataSource'
 
 const redirectTrainingHome = '/learner/training'
 
@@ -18,15 +16,11 @@ const validateCategory: RouteRecordRaw['beforeEnter'] = (to) => {
 const validateLesson: RouteRecordRaw['beforeEnter'] = (to) => {
   const categoryId = String(to.params.categoryId ?? '')
   const lessonId = String(to.params.lessonId ?? '')
-  const isDebugPreview = import.meta.env.DEV && to.query.debug === '1'
-  const debugLesson = isDebugPreview ? getLessonById(lessonId) : null
-  const isDebugLessonPlayable =
-    debugLesson !== null && debugLesson.categoryId === categoryId
   const hasServerTrainingId =
     typeof to.query.trainingId === 'string' && /^\d+$/.test(to.query.trainingId)
   return isValidCategoryId(categoryId) &&
-    (isPlayableLesson(categoryId, lessonId) || isDebugLessonPlayable) &&
-    (learnerDataSource === 'mock' || hasServerTrainingId || isDebugLessonPlayable)
+    isPlayableLesson(categoryId, lessonId) &&
+    hasServerTrainingId
     ? true
     : redirectTrainingHome
 }
@@ -55,9 +49,7 @@ const validateChallengeLesson: RouteRecordRaw['beforeEnter'] = (to) => {
   const lessons = isSkillChallengeTrackId(trackId)
     ? getSkillChallengeLessons(trackId)
     : []
-  const validTestId = learnerDataSource === 'mock'
-    ? testId === 'mock'
-    : /^\d+$/.test(testId)
+  const validTestId = /^\d+$/.test(testId)
   return isSkillChallengeTrackId(trackId) &&
     validTestId &&
     lessons.length > 0 &&
@@ -69,9 +61,7 @@ const validateChallengeLesson: RouteRecordRaw['beforeEnter'] = (to) => {
 const validateChallengeQuestionComplete: RouteRecordRaw['beforeEnter'] = (to) => {
   const trackId = String(to.params.trackId ?? '')
   const testId = String(to.params.testId ?? '')
-  const validTestId = learnerDataSource === 'mock'
-    ? testId === 'mock'
-    : /^\d+$/.test(testId)
+  const validTestId = /^\d+$/.test(testId)
   if (!isSkillChallengeTrackId(trackId) || !validTestId) {
     return { name: 'skill-challenge' }
   }

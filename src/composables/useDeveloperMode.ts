@@ -55,6 +55,8 @@ const setEnabled = (value: boolean) => {
 const toggle = () => setEnabled(!enabled.value)
 
 const registerLogoClick = () => {
+  // 개발자 모드(로그 오버레이·치트 메뉴)는 프로덕션 빌드에서 활성화하지 않는다.
+  if (!import.meta.env.DEV) return false
   logoClicks += 1
   if (clickResetTimer !== undefined) window.clearTimeout(clickResetTimer)
 

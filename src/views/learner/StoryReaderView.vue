@@ -13,11 +13,6 @@ import { learnerStoryRepository } from '@/features/learner/story'
 import { preloadStoryImage } from '@/features/learner/story/storyImagePreloader'
 import type { LearnerStoryBranchPrompt } from '@/features/learner/model'
 import { learnerGazeRepository } from '@/features/learner/gaze'
-import {
-  createMockVoiceFile,
-  mockDeviceSubmissionsEnabled,
-} from '@/features/learner/training'
-import { learnerDataSource } from '@/config/learnerDataSource'
 import { useVoiceRecorder } from '@/composables/useVoiceRecorder'
 import { useLearnerErrorModalStore } from '@/stores/learnerErrorModal'
 import microphoneIcon from '@/assets/icons/microphone.svg'
@@ -145,7 +140,6 @@ const branchReviewMessage = ref('')
 const branchVoiceAttemptCount = ref(0)
 const speechError = ref(false)
 const branchSubmitting = ref(false)
-const mockBranchVoiceFile = ref<File | null>(null)
 const storyGazeSessionId = ref<string | null>(null)
 const storyGazeSessionCompleted = ref(false)
 const storyGazeStartedAtMs = ref(0)
@@ -199,7 +193,7 @@ const isListening = computed(() =>
   || voiceRecorder.state.status === 'recording',
 )
 const hasBranchRecording = computed(() =>
-  mockBranchVoiceFile.value !== null || voiceRecorder.state.hasRecording,
+  voiceRecorder.state.hasRecording,
 )
 const branchVoiceFallbackRequired = computed(() => branchVoiceAttemptCount.value >= 3)
 
@@ -380,7 +374,7 @@ function recordStoryGazeSample(
   source: StoryGazeSource,
   force = false,
 ) {
-  if (learnerDataSource !== 'api' || !storyGazeSessionId.value) return
+  if (!storyGazeSessionId.value) return
   const lineId = Number(page.value.lineId)
   if (!Number.isInteger(lineId) || lineId <= 0) return
   const capturedAtMs = Date.now()
@@ -718,7 +712,7 @@ function resetStoryGazeState() {
 }
 
 async function startStoryGazeSession() {
-  if (learnerDataSource !== 'api' || storyGazeSessionId.value) return
+  if (storyGazeSessionId.value) return
   const storyNumericId = Number(storyId.value)
   if (!Number.isInteger(storyNumericId) || storyNumericId <= 0) return
   try {
@@ -732,18 +726,14 @@ async function startStoryGazeSession() {
     storyGazeStartedAtMs.value = Date.now()
   } catch (error) {
     errorModal.show(
-      error instanceof Error ? error : new Error('?댁빞湲??쒖꽑 ?섏쭛???쒖옉?섏? 紐삵뻽?듬땲??'),
-      '?댁빞湲??쒖꽑 ?곌껐 ?ㅻ쪟',
+      error instanceof Error ? error : new Error('이야기 시선 수집을 시작하지 못했습니다.'),
+      '이야기 시선 연결 오류',
     )
   }
 }
 
 async function finishStoryGazeSession() {
-  if (
-    learnerDataSource !== 'api'
-    || !storyGazeSessionId.value
-    || storyGazeSessionCompleted.value
-  ) return
+  if (!storyGazeSessionId.value || storyGazeSessionCompleted.value) return
   const sessionId = storyGazeSessionId.value
   const studentId = getCachedStudent().studentId
   storyGazeSessionCompleted.value = true
@@ -761,8 +751,8 @@ async function finishStoryGazeSession() {
   } catch (error) {
     storyGazeSessionCompleted.value = false
     errorModal.show(
-      error instanceof Error ? error : new Error('?댁빞湲??쒖꽑 遺꾩꽍????ν븯吏 紐삵뻽?듬땲??'),
-      '?댁빞湲??쒖꽑 ???ㅻ쪟',
+      error instanceof Error ? error : new Error('이야기 시선 분석을 저장하지 못했습니다.'),
+      '이야기 시선 저장 오류',
     )
   }
 }
@@ -793,7 +783,6 @@ async function goNext() {
       branchReviewMessage.value = ''
       branchVoiceAttemptCount.value = 0
       speechError.value = false
-      mockBranchVoiceFile.value = null
       voiceRecorder.reset()
       screen.value = 'question'
       return
@@ -840,11 +829,6 @@ async function startListening() {
   recognizedBranchIntent.value = ''
   recognizedBranchReviewToken.value = ''
   voiceRecorder.reset()
-  if (mockDeviceSubmissionsEnabled) {
-    mockBranchVoiceFile.value = createMockVoiceFile(5)
-    return
-  }
-  mockBranchVoiceFile.value = null
   await voiceRecorder.start()
   if (
     voiceRecorder.state.status === 'denied'
@@ -873,7 +857,7 @@ async function showStoryReward() {
 function branchAudioFile(): File | null {
   const current = page.value
   const blob = voiceRecorder.audioBlob.value
-  return mockBranchVoiceFile.value ?? (
+  return (
     blob
       ? new File(
           [blob],
@@ -978,7 +962,6 @@ async function submitBranchAnswer(
     resetStoryGazeState()
     await startStoryGazeSession()
     await resetReadingProgressForPage()
-    mockBranchVoiceFile.value = null
     recognizedBranchIntent.value = ''
     recognizedBranchReviewToken.value = ''
     branchReviewMessage.value = ''

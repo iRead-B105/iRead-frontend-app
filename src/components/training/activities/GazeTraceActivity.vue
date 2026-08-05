@@ -8,7 +8,6 @@ import { useDeviceStatus } from '@/composables/useDeviceStatus'
 import SoundButton from '@/components/training/SoundButton.vue'
 import microphoneIcon from '@/assets/icons/microphone.svg'
 import type { LearnerTraceSubmissionResponse } from '@/features/learner/training'
-import { mockVoiceSubmissionsEnabled } from '@/features/learner/training/mockDeviceSubmissions'
 import { consonantPronunciationText } from '@/lib/hangulPronunciation'
 
 const props = defineProps<{ question: TrainingQuestion }>()
@@ -131,11 +130,6 @@ const startSpeech = async () => {
   recorder.reset()
   submittedBlob = null
   speechState.value = 'listening'
-
-  if (mockVoiceSubmissionsEnabled) {
-    fallbackTimer = setTimeout(() => finishSpeech(true), 1100)
-    return
-  }
 
   await recorder.start()
   if (recorder.state.status !== 'recording') {

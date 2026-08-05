@@ -4,7 +4,6 @@
  * 화면은 이 모듈의 UI 모델만 사용하고 Spring DTO와 인증 토큰을 직접 다루지 않는다.
  * 실제 구현 선택은 features/learner의 mock/API repository에서 담당한다.
  */
-import { learnerDataSource } from '@/config/learnerDataSource'
 import { learnerContentRepository } from '@/features/learner/content'
 import { preloadStoryImages } from '@/features/learner/story/storyImagePreloader'
 import type {
@@ -17,7 +16,6 @@ import type {
   LearnerStoryFriend,
   LearnerStoryLibrary,
 } from '@/features/learner/model'
-import { learnerRuntimeMock } from '@/mocks/learnerRuntimeMock'
 import { useLearnerSessionStore } from '@/stores/learnerSession'
 
 export type {
@@ -49,9 +47,15 @@ export const getCachedStudent = (): LearnerStudent => {
     const student = useLearnerSessionStore().student
     if (student) return { ...student }
   } catch {
-    // Pinia 설치 전 평가되는 모듈은 아래 mock 기본값을 사용한다.
+    // Pinia 설치 전에 평가되면 아래 빈 학생으로 폴백한다(로그인 후 실제 값으로 대체).
   }
-  return { ...learnerRuntimeMock.auth.linkedStudents[0]! }
+  return {
+    studentId: '',
+    name: '',
+    age: null,
+    profileColor: '#f5c04e',
+    profileImageUrl: null,
+  }
 }
 
 export const fetchCurrentCurriculum = (
@@ -131,14 +135,11 @@ export const unlockStoryFriend = (storyId: string): Promise<LearnerStoryFriend |
  * device store의 초기값은 동기적이어야 하므로 보수적인 기본값을 반환한다.
  * 로그인 이후 실제 상태는 repository의 비동기 조회로 갱신한다.
  */
-export const getInitialDeviceStatus = (): LearnerDeviceStatus =>
-  learnerDataSource === 'mock'
-    ? { ...learnerRuntimeMock.deviceStatus }
-    : {
-        eyeTrackerConnected: false,
-        microphoneAvailable: typeof navigator !== 'undefined' && !!navigator.mediaDevices,
-        microphoneActive: false,
-      }
+export const getInitialDeviceStatus = (): LearnerDeviceStatus => ({
+  eyeTrackerConnected: false,
+  microphoneAvailable: typeof navigator !== 'undefined' && !!navigator.mediaDevices,
+  microphoneActive: false,
+})
 
 export const fetchDeviceStatus = (): Promise<LearnerDeviceStatus> =>
   learnerContentRepository.getDeviceStatus(activeStudentId())

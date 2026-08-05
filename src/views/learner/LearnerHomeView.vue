@@ -4,7 +4,6 @@ import { useRouter } from 'vue-router'
 import IslandMap from '../../components/IslandMap.vue'
 import type { MainMapMenuItem } from '../../data/mainMapMenu'
 import { useDailyCurriculum } from '@/composables/useDailyCurriculum'
-import { learnerDataSource } from '@/config/learnerDataSource'
 import { learnerTestRepository } from '@/features/learner/test'
 import { getCachedStudent } from '@/services/learnerDataRepository'
 import { useLearnerSessionStore } from '@/stores/learnerSession'
@@ -38,7 +37,6 @@ const isChallengeDone = async (): Promise<boolean> => {
   if (entry && entry.totalQuestions > 0 && entry.completedQuestions >= entry.totalQuestions) {
     return true
   }
-  if (learnerDataSource !== 'api') return false
   try {
     const plan = await learnerTestRepository.getChallengePlan(getCachedStudent().studentId)
     return plan.completed

@@ -8,7 +8,6 @@ import { useDeviceStatus } from '../../composables/useDeviceStatus'
 import { useGazeCalibration } from '../../composables/useGazeCalibration'
 import { useGazeCursorVisibility } from '../../composables/useGazeCursorVisibility'
 import { useTobiiGazeBridge } from '../../composables/useTobiiGazeBridge'
-import { mockGazeSubmissionsEnabled } from '@/features/learner/training'
 import { resolveAuthenticatedProfileImage } from '@/features/learner/auth'
 import { resolveMicrophoneErrorMessage } from '@/lib/media/microphoneErrorMessage'
 import { useLearnerSessionStore } from '@/stores/learnerSession'
@@ -86,7 +85,7 @@ const {
   status: eyeTrackerStatus,
   disconnect: disconnectEyeTracker,
   reconnect: reconnectEyeTracker,
-} = useTobiiGazeBridge({ autoConnect: !mockGazeSubmissionsEnabled })
+} = useTobiiGazeBridge({ autoConnect: true })
 
 watch(eyeTrackerStatus, (status) => {
   // 브리지의 자동 재시도는 수 초마다 connecting/disconnected를 오간다.

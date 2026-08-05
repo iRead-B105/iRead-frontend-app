@@ -1,7 +1,6 @@
 import type { Pinia } from 'pinia'
 import { watch, type WatchStopHandle } from 'vue'
 import type { Router } from 'vue-router'
-import { learnerDataSource } from '@/config/learnerDataSource'
 import { useDailyCurriculum } from '@/composables/useDailyCurriculum'
 import { RealtimeClient, type RealtimeEvent } from '@/lib/realtime/realtimeClient'
 import { useLearnerSessionStore } from '@/stores/learnerSession'
@@ -18,8 +17,6 @@ export function installLearnerRealtimeSync(
   pinia: Pinia,
   router: Router,
 ): () => void {
-  if (learnerDataSource !== 'api') return () => undefined
-
   const session = useLearnerSessionStore(pinia)
   const dailyCurriculum = useDailyCurriculum()
   let client: RealtimeClient | null = null

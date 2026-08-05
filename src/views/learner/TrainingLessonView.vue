@@ -9,7 +9,6 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch, type Component } from 'vue'
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import type { TrainingActivityType, TrainingLesson } from '@/types/training'
-import { getLessonById } from '@/mocks/trainingLessons'
 import { useDailyCurriculum } from '@/composables/useDailyCurriculum'
 import { useTrainingSession } from '@/composables/useTrainingSession'
 import { useDeviceStatus } from '@/composables/useDeviceStatus'
@@ -18,7 +17,6 @@ import { useDeveloperMode } from '@/composables/useDeveloperMode'
 import {
   getSkillChallengeLessons,
   isSkillChallengeTrackId,
-  useSkillChallenge,
 } from '@/composables/useSkillChallenge'
 import { trainingActivityComponents } from '@/components/training/activityRegistry'
 import LearningBackButton from '@/components/training/LearningBackButton.vue'
@@ -27,22 +25,18 @@ import leaveTrainingRabbit from '@/assets/training/ui/leave-training-rabbit.png'
 import lessonProgressTitleBoard from '@/assets/training/ui/lesson-progress-title-board-compact.webp'
 import eyeTrackerIcon from '@/assets/icons/eye-tracker.svg'
 import microphoneIcon from '@/assets/icons/microphone.svg'
-import { learnerDataSource } from '@/config/learnerDataSource'
 import {
   learnerTrainingRepository,
-  createRealGazeSubmission,
   buildTrainingResponse,
-  createMockGazeSubmission,
-  createMockVoiceFile,
   mapTrainingQuestion,
-  getMockTrainingLessonData,
-  mockGazeSubmissionsEnabled,
-  mockVoiceSubmissionsEnabled,
   type LearnerTraceSubmissionResponse,
   type LearnerTrainingIntro,
   type MappedTrainingQuestion,
-  type DeviceGazeSample,
 } from '@/features/learner/training'
+import {
+  createGazeSubmission,
+  type DeviceGazeSample,
+} from '@/features/learner/training/gazeSubmission'
 import { getCachedStudent } from '@/services/learnerDataRepository'
 import { useLearnerErrorModalStore } from '@/stores/learnerErrorModal'
 import { useLearnerSessionStore } from '@/stores/learnerSession'
@@ -56,7 +50,6 @@ const route = useRoute()
 const router = useRouter()
 const session = useTrainingSession()
 const dailyCurriculum = useDailyCurriculum()
-const skillChallenge = useSkillChallenge()
 const errorModal = useLearnerErrorModalStore()
 const learnerSession = useLearnerSessionStore()
 const { eyeTrackerConnected, virtualEyeTrackerConnected, microphoneAvailable } = useDeviceStatus()
@@ -69,7 +62,6 @@ const {
   pushDevGaze,
 } = useDeveloperMode()
 
-const debugMode = computed(() => import.meta.env.DEV && route.query.debug === '1')
 const challengeTrackId = computed(() => {
   const value = String(route.params.trackId ?? route.query.challenge ?? '')
   return isSkillChallengeTrackId(value) ? value : null
@@ -98,17 +90,13 @@ const learningItemId = computed(() => String(
     : route.query.trainingId ?? '',
 ))
 
-const fallbackLesson = computed(() => getLessonById(lessonId.value))
 const serverLesson = ref<TrainingLesson | null>(null)
-const lesson = computed(() =>
-  learnerDataSource === 'api' && !debugMode.value ? serverLesson.value : fallbackLesson.value,
-)
+const lesson = computed(() => serverLesson.value)
 const serverIntro = ref<LearnerTrainingIntro | null>(null)
 const serverQuestions = ref<readonly MappedTrainingQuestion[]>([])
 const startingTraining = ref(false)
-// API 모드에서는 serverLesson이 비동기 페칭 후 세팅되므로 그 전까지 로딩 UI를 보여준다.
-// mock 모드는 fallbackLesson이 동기 computed라 즉시 available하므로 false로 시작.
-const lessonLoading = ref(learnerDataSource === 'api' && !debugMode.value)
+// serverLesson이 비동기 페칭 후 세팅되므로 그 전까지 로딩 UI를 보여준다.
+const lessonLoading = ref(true)
 const submittingQuestion = ref(false)
 const voiceSubmitting = ref(false)
 const recordedQuestionNumbers = new Set<number>()
@@ -130,7 +118,7 @@ const gazeDebugVisible = computed(() =>
   || import.meta.env.VITE_GAZE_DEBUG_PANEL === 'true',
 )
 const gazeTransferDebug = ref({
-  source: mockGazeSubmissionsEnabled ? 'mock' : 'real',
+  source: 'real',
   start: 'idle',
   end: 'idle',
   sessionId: '',
@@ -159,32 +147,14 @@ watch(integrationError, (error) => {
   void router.replace({ name: challengeTrackId.value ? 'skill-challenge' : 'training-home' })
 })
 
-const gazeRequiredActivities = new Set<TrainingActivityType>([
-  'gaze-trace',
-  'word-reading-grid',
-])
-const microphoneRequiredActivities = new Set<TrainingActivityType>([
-  'gaze-trace',
-  'word-reading-grid',
-])
 const gazeRequired = computed(() =>
-  learnerDataSource === 'api'
-    ? serverQuestions.value.some((question) => question.requiredInputs.includes('GAZE'))
-    : lesson.value
-      ? gazeRequiredActivities.has(lesson.value.activityType)
-      : false,
+  serverQuestions.value.some((question) => question.requiredInputs.includes('GAZE')),
 )
 const microphoneRequired = computed(() =>
-  learnerDataSource === 'api'
-    ? serverQuestions.value.some((question) => question.requiredInputs.includes('VOICE'))
-    : lesson.value
-      ? microphoneRequiredActivities.has(lesson.value.activityType)
-      : false,
+  serverQuestions.value.some((question) => question.requiredInputs.includes('VOICE')),
 )
 const currentQuestionRequiresMicrophone = computed(() =>
-  learnerDataSource === 'api'
-    ? serverQuestions.value[session.progressState.currentQuestionIndex]?.requiredInputs.includes('VOICE') === true
-    : microphoneRequired.value,
+  serverQuestions.value[session.progressState.currentQuestionIndex]?.requiredInputs.includes('VOICE') === true,
 )
 
 const currentQuestion = computed(() => session.currentQuestion.value)
@@ -228,21 +198,14 @@ const conciseInstructions: Partial<Record<TrainingActivityType, string>> = {
   'fill-blank': '빈칸을 채워봐!',
   'sentence-order': '문장을 만들어봐!',
 }
-const mockListeningPromptLessonIds = new Set([
-  'repeat-sentence',
-  'follow-sentence',
-])
 const displayQuestion = computed(() => {
   const question = currentQuestion.value
   if (!question || !lesson.value) return question
   return {
     ...question,
-    audioPromptEnabled:
-      question.audioPromptEnabled
-      ?? mockListeningPromptLessonIds.has(lesson.value.id),
-    requiredInputs: learnerDataSource === 'api'
-      ? serverQuestions.value[session.progressState.currentQuestionIndex]?.requiredInputs
-      : undefined,
+    audioPromptEnabled: question.audioPromptEnabled ?? false,
+    requiredInputs:
+      serverQuestions.value[session.progressState.currentQuestionIndex]?.requiredInputs,
     instruction: lesson.value.activityType === 'gaze-trace'
       ? conciseInstructions['gaze-trace']
       : question.instruction.length <= 14
@@ -256,12 +219,10 @@ const displayedHint = computed(() => presentTrainingHint(
   session.currentHint.value,
   session.progressState.hintLevel,
 ))
-const voiceDeviceFallbackEnabled = mockVoiceSubmissionsEnabled
 const cursorGazeFallbackEnabled = import.meta.env.VITE_CURSOR_GAZE_FALLBACK !== 'false'
-const gazeDeviceFallbackEnabled = mockGazeSubmissionsEnabled || cursorGazeFallbackEnabled
+const gazeDeviceFallbackEnabled = cursorGazeFallbackEnabled
 
 const gazeTransferSource = () => {
-  if (mockGazeSubmissionsEnabled) return 'mock'
   if (!eyeTrackerConnected.value && cursorGazeFallbackEnabled) return 'cursor'
   return 'real'
 }
@@ -428,37 +389,8 @@ const onGazeWordHit = (event: Event) => {
 onMounted(async () => {
   window.addEventListener('iread:gaze', onGazeSample)
   window.addEventListener('iread:gaze-word-hit', onGazeWordHit)
-  if (challengeTrackId.value) {
-    skillChallenge.ensureChallenge(challengeTrackId.value, lessonId.value)
-  }
   // 세션 초기화 및 첫 문제 준비(이전 정답/녹음은 모두 리셋)
-  if ((learnerDataSource === 'mock' || debugMode.value) && fallbackLesson.value) {
-    // 목업 DTO가 있으면 매퍼를 통과시켜 실제 API 렌더링과 동일하게 구성한다.
-    // (DTO가 없는 레슨은 legacy TrainingLesson 폴백 — Phase 2에서 DTO화 후 제거)
-    try {
-      const mockDtoLesson = getMockTrainingLessonData(lessonId.value)
-      if (mockDtoLesson) {
-        const totalQuestions = mockDtoLesson.questions.length
-        const mappedQuestions = mockDtoLesson.questions.map((question, index) => mapTrainingQuestion({
-          trainingId: learningItemId.value,
-          questionNumber: index + 1,
-          totalQuestions,
-          question,
-        }))
-        serverQuestions.value = mappedQuestions
-        session.startLesson({
-          ...fallbackLesson.value,
-          questions: mappedQuestions.map((entry) => entry.question),
-        })
-      } else {
-        session.startLesson(fallbackLesson.value)
-      }
-    } catch (error) {
-      console.warn('목업 DTO 매핑 실패, legacy 폴백:', error)
-      session.startLesson(fallbackLesson.value)
-    }
-  }
-  if (learnerDataSource === 'api' && !debugMode.value) {
+  {
     const itemId = learningItemId.value
     if (!/^\d+$/.test(itemId)) {
       integrationError.value = '서버 학습 ID가 없어 학습을 시작할 수 없습니다.'
@@ -499,14 +431,13 @@ onMounted(async () => {
         }
         const templateMapping = getTrainingTemplateMapping(Number(intro.trainingTemplateId))
         const resolvedLessonId = templateMapping?.lessonId ?? lessonId.value
-        const presentation = getLessonById(resolvedLessonId) ?? fallbackLesson.value
         const loadedLesson: TrainingLesson = {
           id: resolvedLessonId,
-          categoryId: templateMapping?.categoryId ?? presentation?.categoryId ?? 'phonics',
+          categoryId: templateMapping?.categoryId ?? 'phonics',
           title: intro.trainingName,
-          description: presentation?.description ?? '오늘의 맞춤 훈련을 시작해요.',
+          description: '오늘의 맞춤 훈련을 시작해요.',
           activityType,
-          estimatedMinutes: presentation?.estimatedMinutes ?? 5,
+          estimatedMinutes: 5,
           questions: mappedQuestions.map((question) => question.question),
         }
         serverIntro.value = intro
@@ -558,9 +489,7 @@ onMounted(async () => {
       }
     }
   }
-  if (debugMode.value) {
-    phase.value = 'playing'
-  } else if (!integrationError.value) {
+  if (!integrationError.value) {
     await startPlaying()
   }
 })
@@ -571,13 +500,13 @@ const startPlaying = async () => {
     deviceBlocker.value = 'eye-tracker'
     return
   }
-  if (!voiceDeviceFallbackEnabled && microphoneRequired.value && !microphoneAvailable.value) {
+  if (microphoneRequired.value && !microphoneAvailable.value) {
     deviceBlocker.value = 'microphone'
     return
   }
   startingTraining.value = true
   try {
-    if (learnerDataSource === 'api' && !debugMode.value) {
+    {
       const intro = serverIntro.value
       const itemId = learningItemId.value
       if (!intro || !/^\d+$/.test(itemId)) {
@@ -607,11 +536,9 @@ const startPlaying = async () => {
           contentType: challengeTrackId.value ? 'TEST' : 'TRAINING',
           ...(challengeTrackId.value ? { testId: itemId } : { trainingId: itemId }),
           calibrationStatus:
-            mockGazeSubmissionsEnabled || virtualEyeTrackerConnected.value
-              ? 'SKIPPED'
-              : eyeTrackerConnected.value
-                ? 'SUCCESS'
-                : 'SKIPPED',
+            !virtualEyeTrackerConnected.value && eyeTrackerConnected.value
+              ? 'SUCCESS'
+              : 'SKIPPED',
         })
         gazeSessionId.value = gazeSession.gazeSessionId
         updateGazeTransferDebug({
@@ -630,7 +557,6 @@ const startPlaying = async () => {
 }
 
 onBeforeRouteLeave(() => {
-  if (debugMode.value) return true
   if (leaveConfirmed.value) return true
   if (phase.value === 'intro' || session.progressState.isCompleted) return true
 
@@ -666,14 +592,9 @@ onBeforeUnmount(() => {
 watch(
   [eyeTrackerConnected, microphoneAvailable, phase, () => session.progressState.isCompleted],
   ([eyeConnected, micAvailable, currentPhase, completed]) => {
-    if (debugMode.value) {
-      deviceBlocker.value = null
-      return
-    }
     const gazeBlockerResolved = deviceBlocker.value === 'eye-tracker'
       && (gazeDeviceFallbackEnabled || eyeConnected)
-    const microphoneBlockerResolved = deviceBlocker.value === 'microphone'
-      && (voiceDeviceFallbackEnabled || micAvailable)
+    const microphoneBlockerResolved = deviceBlocker.value === 'microphone' && micAvailable
     if (gazeBlockerResolved || microphoneBlockerResolved) {
       deviceBlocker.value = null
       if (phase.value === 'intro') void startPlaying()
@@ -684,15 +605,11 @@ watch(
       return
     }
     if (!gazeDeviceFallbackEnabled && gazeRequired.value && !eyeConnected) deviceBlocker.value = 'eye-tracker'
-    else if (!voiceDeviceFallbackEnabled && currentQuestionRequiresMicrophone.value && !micAvailable) deviceBlocker.value = 'microphone'
+    else if (currentQuestionRequiresMicrophone.value && !micAvailable) deviceBlocker.value = 'microphone'
   },
 )
 
 const exitToHome = () => {
-  if (debugMode.value) {
-    void router.push({ name: 'training-home', query: { debugPanel: '1' } })
-    return
-  }
   void router.push({ name: challengeTrackId.value ? 'skill-challenge' : 'training-home' })
 }
 
@@ -706,32 +623,6 @@ const activateSharedNext = () => {
     return
   }
   void goNext()
-}
-
-const submitMockVoice = async (
-  mapped: MappedTrainingQuestion,
-  itemId: string,
-): Promise<void> => {
-  if (!mapped.expectedText) {
-    throw new Error('목 음성 제출에 필요한 읽기 문구가 없습니다.')
-  }
-  for (let attempt = 0; attempt < 2; attempt += 1) {
-    const result = await learningRepository.value.saveRecording(
-      getCachedStudent().studentId,
-      itemId,
-      mapped.questionNumber,
-      {
-        targetIndex: mapped.recordingTargetIndex ?? undefined,
-        expectedText: mapped.expectedText,
-        audioFile: createMockVoiceFile(mapped.questionNumber),
-      },
-    )
-    if (!result.canRetry) {
-      recordedQuestionNumbers.add(mapped.questionNumber)
-      return
-    }
-  }
-  throw new Error('목 음성 제출을 완료하지 못했습니다.')
 }
 
 const enableMicrophoneFromBlocker = async () => {
@@ -754,12 +645,11 @@ const enableMicrophoneFromBlocker = async () => {
 
 const goNext = async (response?: LearnerTraceSubmissionResponse) => {
   if (submittingQuestion.value) return
-  if (learnerDataSource === 'api' && !debugMode.value) {
+  {
     const mapped = serverQuestions.value[session.progressState.currentQuestionIndex]
     if (
       mapped?.requiredInputs.includes('VOICE')
       && !recordedQuestionNumbers.has(mapped.questionNumber)
-      && !mockVoiceSubmissionsEnabled
     ) {
       // 액티비티에서 이미 읽은 음성이 있으면 최종 녹음으로 제출한다.
       // 없으면(선택형 문항 등) 별도 음성 게이트 없이 그대로 진행한다.
@@ -772,18 +662,11 @@ const goNext = async (response?: LearnerTraceSubmissionResponse) => {
   }
   submittingQuestion.value = true
   try {
-    if (learnerDataSource === 'api' && !debugMode.value) {
+    {
       const itemId = learningItemId.value
       const mapped = serverQuestions.value[session.progressState.currentQuestionIndex]
       if (!mapped || !/^\d+$/.test(itemId)) {
         throw new Error('제출할 서버 훈련 문항을 확인할 수 없습니다.')
-      }
-      if (
-        mockVoiceSubmissionsEnabled
-        && mapped.requiredInputs.includes('VOICE')
-        && !recordedQuestionNumbers.has(mapped.questionNumber)
-      ) {
-        await submitMockVoice(mapped, itemId)
       }
       if (mapped.responseType === 'TRACE') {
         if (!response) throw new Error('시선 따라가기 결과가 없습니다.')
@@ -840,12 +723,6 @@ const evaluateActivityVoice = async (
   const mapped = serverQuestions.value[session.progressState.currentQuestionIndex]
   const itemId = learningItemId.value
 
-  // DEV는 진입/표시용 도구일 뿐 평가 실행 모드가 아니다.
-  // API 학습에서는 DEV가 켜져 있어도 실제 음성 평가를 반드시 수행한다.
-  if (learnerDataSource !== 'api') {
-    controls.success()
-    return
-  }
   // 단어별 평가(word-reading): 시선으로 선택한 단어 하나만 Azure 평가한다.
   if (word) {
     if (!mapped || !/^\d+$/.test(itemId)) {
@@ -1024,16 +901,14 @@ const saveAndFinish = async () => {
   phase.value = 'saving'
   let ok = false
   let nextCurriculumItem: (typeof dailyCurriculum.curriculumItems)[number] | null = null
-  if (learnerDataSource === 'api' && !debugMode.value) {
+  {
     session.savingState.status = 'saving'
     session.savingState.errorMessage = null
     try {
       const itemId = learningItemId.value
       if (!/^\d+$/.test(itemId)) throw new Error('서버 학습 ID가 올바르지 않습니다.')
       if (gazeSessionId.value && !gazeSessionCompleted.value) {
-        const gazeData = mockGazeSubmissionsEnabled
-          ? createMockGazeSubmission(serverQuestions.value)
-          : createRealGazeSubmission(serverQuestions.value, gazeSamples)
+        const gazeData = createGazeSubmission(serverQuestions.value, gazeSamples)
         updateGazeTransferDebug({ end: 'sending', lastError: '' })
         await learnerGazeRepository.end(
           gazeSessionId.value,
@@ -1065,18 +940,9 @@ const saveAndFinish = async () => {
       session.savingState.errorMessage =
         error instanceof Error ? error.message : '학습을 마무리하지 못했습니다.'
     }
-  } else {
-    ok = await session.saveResult()
-    if (ok && !challengeTrackId.value) {
-      nextCurriculumItem = dailyCurriculum.markLessonComplete(lessonId.value)
-    }
   }
   if (ok) {
     session.completeLesson()
-    if (debugMode.value) {
-      void router.replace({ name: 'training-home', query: { debugPanel: '1' } })
-      return
-    }
     if (challengeTrackId.value) {
       try {
         const plan = await learnerTestRepository.getChallengePlan(getCachedStudent().studentId)

@@ -2,7 +2,6 @@
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import iReadLoginLogo from '@/assets/header/iread-login.png'
-import { learnerDataSource } from '@/config/learnerDataSource'
 import { resolveAuthenticatedProfileImage } from '@/features/learner/auth'
 import type { LearnerStudent } from '@/features/learner/model'
 import { useLearnerSessionStore } from '@/stores/learnerSession'
@@ -14,10 +13,9 @@ import lockIcon from '@/assets/icons/lock.svg'
 const router = useRouter()
 const learnerSession = useLearnerSessionStore()
 const errorModal = useLearnerErrorModalStore()
-const isMockMode = learnerDataSource === 'mock'
 const loginStep = ref<'teacher' | 'student'>('teacher')
-const loginId = ref(isMockMode ? 'demo' : '')
-const password = ref(isMockMode ? 'demo' : '')
+const loginId = ref('')
+const password = ref('')
 const linkedStudents = ref<LearnerStudent[]>([])
 const selectedStudentId = ref('')
 const studentPage = ref(0)
@@ -140,10 +138,6 @@ const changeStudentPage = (offset: number) => {
             학습할 친구를<br />골라 주세요.
           </template>
         </h1>
-        <p v-if="loginStep === 'teacher' && isMockMode" class="login-demo-notice">
-          데모 화면이에요. 바로 다음을 눌러 주세요.
-        </p>
-
         <section v-if="learnerSession.authenticated" class="student-empty" aria-live="polite">
           <span aria-hidden="true">🌱</span>
           <strong>학습 시작 상태를 다시 확인해요</strong>
