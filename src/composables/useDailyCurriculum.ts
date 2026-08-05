@@ -108,12 +108,16 @@ const loadCurrentCurriculum = (preserveCurrentState = false) => {
     })
     .catch((error: unknown) => {
       if (requestVersion !== stateVersion || getCachedStudent().studentId !== studentId) return
-      if (preserveCurrentState && curriculumItems.length > 0) {
+      // "진행 가능한 커리큘럼 없음"(404)은 확정 응답이므로 이전 상태 유지보다 우선한다.
+      // 마지막 훈련 완료 직후 다음 커리큘럼이 아직 생성 전이면 이 응답이 오는데,
+      // 이때 완료된 커리큘럼 상태를 유지하면 방금 끝낸 훈련을 다음 훈련으로 착각해
+      // 같은 라우트로의 이동(no-op)이 되면서 저장 오버레이가 무한 로딩으로 남는다.
+      if (isExpectedUnavailable(error)) {
+        resetCurriculumState('unavailable')
         loadedStudentId = studentId
         return
       }
-      if (isExpectedUnavailable(error)) {
-        resetCurriculumState('unavailable')
+      if (preserveCurrentState && curriculumItems.length > 0) {
         loadedStudentId = studentId
         return
       }

@@ -935,6 +935,11 @@ const saveAndFinish = async () => {
         nextCurriculumItem = dailyCurriculum.curriculumId.value === completedCurriculumId
           ? dailyCurriculum.curriculumItems[dailyCurriculum.currentIndex.value] ?? null
           : null
+        // 안전망: 어떤 이유로든 방금 끝낸 훈련이 다음 훈련으로 잡히면(스테일 상태)
+        // 같은 라우트 replace가 no-op이 되어 저장 오버레이가 갇힌다 → 완료 화면으로 보낸다
+        if (nextCurriculumItem && String(nextCurriculumItem.trainingId) === itemId) {
+          nextCurriculumItem = null
+        }
       }
       session.savingState.status = 'success'
       ok = true

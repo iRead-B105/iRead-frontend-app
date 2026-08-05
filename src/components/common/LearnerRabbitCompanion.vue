@@ -101,11 +101,17 @@ const onGaze = (event: Event) => {
   const rect = character.value?.getBoundingClientRect()
   if (typeof x !== 'number' || typeof y !== 'number' || !rect) return
   const isLooking = x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom
-  window.clearTimeout(gazeLeaveTimer)
   if (isLooking) {
+    window.clearTimeout(gazeLeaveTimer)
+    gazeLeaveTimer = 0
     greet()
-  } else if (hovered.value) {
-    gazeLeaveTimer = window.setTimeout(restore, 300)
+  } else if (hovered.value && !gazeLeaveTimer) {
+    // 시선 프레임은 초당 수십 번 오므로, 벗어날 때마다 타이머를 재설정하면
+    // 300ms가 영영 차지 않아 손을 내리지 못한다 → 한 번만 걸고 기다린다
+    gazeLeaveTimer = window.setTimeout(() => {
+      gazeLeaveTimer = 0
+      restore()
+    }, 300)
   }
 }
 
