@@ -21,7 +21,7 @@ const emit = defineEmits<{
   guideMessage: [message: string]
   voiceRecorded: [blob: Blob, controls: VoiceEvaluationControls]
 }>()
-type SpeechState = 'waiting' | 'listening' | 'evaluating' | 'retry' | 'success'
+type SpeechState = 'waiting' | 'listening' | 'evaluating' | 'retry' | 'success' | 'denied'
 
 const session = useTrainingSession()
 const audio = useAudioPlayer()
@@ -73,11 +73,13 @@ const pronunciationText = computed(() => {
     ?? props.question.targetText
     ?? glyph
 })
+const deniedMessage = ref('')
 const speechStatusText = computed(() => {
   if (speechState.value === 'listening') return '말하는 중이에요!'
   if (speechState.value === 'evaluating') return '목소리를 확인하고 있어요!'
   if (speechState.value === 'retry') return '한 번 더 말해봐요!'
   if (speechState.value === 'success') return '잘 들었어요!'
+  if (speechState.value === 'denied') return deniedMessage.value || '마이크를 켜 주세요'
   return '글자를 따라 읽어요!'
 })
 
@@ -134,7 +136,12 @@ const startSpeech = async () => {
 
   await recorder.start()
   if (recorder.state.status !== 'recording') {
-    setRetry(recorder.state.errorMessage ?? '마이크를 확인해 주세요.')
+    // 마이크가 아예 열리지 않으면(권한 거부·장치 분리) 1.1초 재시도 루프에
+    // 갇히지 않도록 이유를 화면에 밝히고 멈춘다.
+    stopSpeech()
+    if (retryTimer) clearTimeout(retryTimer)
+    deniedMessage.value = recorder.state.errorMessage ?? '마이크를 켜 주세요'
+    speechState.value = 'denied'
     return
   }
   // 한 글자 발화에 충분한 시간을 준 뒤 자동으로 녹음을 끝낸다.
