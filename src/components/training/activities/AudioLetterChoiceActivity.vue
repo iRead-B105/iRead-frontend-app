@@ -50,7 +50,7 @@ watch(
     <h1>{{ question.instruction }}</h1>
 
     <div class="learning-area">
-      <div class="listen-panel">
+      <div class="listen-panel" data-training-tutorial-target="listen">
         <SoundButton
           :text="question.audioText ?? ''"
           size="large"
@@ -58,7 +58,7 @@ watch(
         />
       </div>
 
-      <div class="choices" aria-label="글자 선택지">
+      <div class="choices" data-training-tutorial-target="choices" aria-label="글자 선택지">
         <template v-for="choice in choices" :key="choice.id">
           <LetterCard
             v-if="choice.letter"
