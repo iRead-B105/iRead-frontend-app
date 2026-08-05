@@ -45,6 +45,7 @@ import { learnerTestRepository } from '@/features/learner/test'
 import { presentTrainingHint } from '@/features/learner/training/hintPresentation'
 import { getTrainingTemplateMapping } from '@/features/learner/content/trainingTemplateMapping'
 import { isApiError } from '@/lib/api'
+import { cursorGazeFallbackEnabled } from '@/lib/cursorGazeFallback'
 
 const route = useRoute()
 const router = useRouter()
@@ -219,7 +220,6 @@ const displayedHint = computed(() => presentTrainingHint(
   session.currentHint.value,
   session.progressState.hintLevel,
 ))
-const cursorGazeFallbackEnabled = import.meta.env.VITE_CURSOR_GAZE_FALLBACK !== 'false'
 const gazeDeviceFallbackEnabled = cursorGazeFallbackEnabled
 
 const gazeTransferSource = () => {

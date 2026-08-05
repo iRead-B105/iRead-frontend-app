@@ -6,6 +6,7 @@ import { useDeviceStatus } from '@/composables/useDeviceStatus'
 import { useVoiceRecorder } from '@/composables/useVoiceRecorder'
 import checkIcon from '@/assets/icons/check.svg'
 import microphoneIcon from '@/assets/icons/microphone.svg'
+import { cursorGazeFallbackEnabled } from '@/lib/cursorGazeFallback'
 
 const props = defineProps<{ question: TrainingQuestion }>()
 type VoiceEvaluationControls = {
@@ -99,14 +100,14 @@ const stopSpeech = () => {
 }
 
 // 단어 하나 통과 → 초록 체크. 마지막 단어면 세션에도 완료 기록.
-const finishWord = (wordIndex: number, isMock: boolean, blob: Blob | null) => {
+const finishWord = (wordIndex: number, blob: Blob | null) => {
   stopSpeech()
   const word = items.value[wordIndex]
   if (word && !completedIds.value.includes(word.id)) {
     completedIds.value = [...completedIds.value, word.id]
   }
   if (allComplete.value) {
-    session.markRecordingComplete({ isMock, audioUrl: null, blob: blob ?? undefined })
+    session.markRecordingComplete({ audioUrl: null, blob: blob ?? undefined })
   }
   speechState.value = allComplete.value ? 'success' : 'waiting'
   activeIndex.value = null
@@ -158,7 +159,7 @@ watch(() => recorder.state.status, (status) => {
   speechState.value = 'evaluating'
   const completesQuestion = completedIds.value.length === items.value.length - 1
   emit('voiceRecorded', blob, {
-    success: () => finishWord(wordIndex, false, blob),
+    success: () => finishWord(wordIndex, blob),
     retry: () => setRetry(wordIndex),
   }, {
     expectedText: word.text,
@@ -197,7 +198,10 @@ const updateGaze = (clientX: number, clientY: number, emitWordHit = false) => {
 }
 
 const onPointerMove = (event: PointerEvent) => {
-  if (!virtualEyeTrackerConnected.value) updateGaze(event.clientX, event.clientY, true)
+  // 가상 아이트래커는 iread:gaze 이벤트로 시선을 보내므로 pointermove는 무시한다.
+  // 커서 폴백이 꺼져 있으면(기본값) 마우스로 시선 히트를 만들지 않는다.
+  if (virtualEyeTrackerConnected.value || !cursorGazeFallbackEnabled) return
+  updateGaze(event.clientX, event.clientY, true)
 }
 const onPointerLeave = () => {
   gazeVisible.value = false

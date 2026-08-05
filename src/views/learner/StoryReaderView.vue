@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
-import storySceneFallback from '../../assets/story/story-reader-turtle-scene-mock.png'
 import {
   getCachedStudent,
   getStoryDetail,
@@ -17,19 +16,12 @@ import { useVoiceRecorder } from '@/composables/useVoiceRecorder'
 import { useLearnerErrorModalStore } from '@/stores/learnerErrorModal'
 import microphoneIcon from '@/assets/icons/microphone.svg'
 import checkIcon from '@/assets/icons/check.svg'
-
-const MOCK_TRANSPARENT_SCENE =
-  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII='
-
-const resolveStoryScene = (imageUrl: string | null): string =>
-  !imageUrl || imageUrl === MOCK_TRANSPARENT_SCENE
-    ? storySceneFallback
-    : imageUrl
+import { cursorGazeFallbackEnabled } from '@/lib/cursorGazeFallback'
 
 interface StoryPage {
   lineId: string
   lines: string[]
-  image: string
+  image: string | null
   imagePosition?: string
   readAt: string | null
   requiresBranchInput: boolean
@@ -65,7 +57,7 @@ const story = ref<Story>({
   dayComplete: false,
   pages: [{
     lineId: '',
-    image: '',
+    image: null,
     lines: ['이야기를 준비하고 있어요.'],
     readAt: null,
     requiresBranchInput: false,
@@ -99,7 +91,7 @@ async function loadStory(): Promise<boolean> {
       dayComplete: detail.dayComplete,
       pages: detail.pages.map((page) => ({
         lineId: page.lineId,
-        image: resolveStoryScene(page.imageUrl),
+        image: page.imageUrl,
         imagePosition: page.imagePosition,
         lines: [...page.lines],
         readAt: page.readAt,
@@ -374,6 +366,9 @@ function recordStoryGazeSample(
   source: StoryGazeSource,
   force = false,
 ) {
+  // 커서 폴백이 꺼져 있으면(기본값) 마우스 좌표를 시선 샘플로 기록하지 않는다.
+  // 실제 아이트래커('tracker') 샘플만 백엔드로 전송된다.
+  if (source === 'cursor' && !cursorGazeFallbackEnabled) return
   if (!storyGazeSessionId.value) return
   const lineId = Number(page.value.lineId)
   if (!Number.isInteger(lineId) || lineId <= 0) return
@@ -1002,7 +997,10 @@ onMounted(async () => {
   await resetReadingProgressForPage()
   window.addEventListener('pointermove', onPointerMove)
   window.addEventListener('iread:gaze', onExternalGaze)
-  cursorGazeSampleTimer = window.setInterval(sampleCursorGaze, CURSOR_GAZE_SAMPLE_INTERVAL_MS)
+  // 커서 폴백이 켜진 경우에만 마우스 위치를 주기적으로 시선 샘플로 수집한다.
+  if (cursorGazeFallbackEnabled) {
+    cursorGazeSampleTimer = window.setInterval(sampleCursorGaze, CURSOR_GAZE_SAMPLE_INTERVAL_MS)
+  }
 })
 onBeforeRouteLeave(async () => {
   await finishStoryGazeSession()
@@ -1033,7 +1031,7 @@ onBeforeUnmount(() => {
         <button class="reader-back reader-exit" type="button" @click="exitToStorySelection">
           그만 보기
         </button>
-        <img :src="page.image" :alt="`${story.title} 이야기 장면`" :style="{ objectPosition: page.imagePosition ?? 'center' }" />
+        <img v-if="page.image" :src="page.image" :alt="`${story.title} 이야기 장면`" :style="{ objectPosition: page.imagePosition ?? 'center' }" />
         <div class="scene-shade" aria-hidden="true" />
         <div ref="textPanel" class="reading-panel" aria-live="polite" @pointerleave="onPointerLeave">
           <div class="story-lines">
@@ -1066,7 +1064,7 @@ onBeforeUnmount(() => {
         <button class="reader-back reader-exit" type="button" @click="exitToStorySelection">
           그만 보기
         </button>
-        <img :src="page.image" alt="" :style="{ objectPosition: page.imagePosition ?? 'center' }" />
+        <img v-if="page.image" :src="page.image" alt="" :style="{ objectPosition: page.imagePosition ?? 'center' }" />
         <div class="question-backdrop" aria-hidden="true" />
         <section
           class="question-card"

@@ -1,5 +1,4 @@
 import fallbackCover from '@/assets/story/ui/new-book-icon.png'
-import fallbackScene from '@/assets/story/story-reader-turtle-scene-mock.png'
 import { learnerApiClient } from '../learnerApiClient'
 import { resolveAuthenticatedStoryImage } from '../story/authenticatedStoryImage'
 import { getGrowthAreaId, resolveTrainingMapping } from './trainingTemplateMapping'
@@ -232,11 +231,12 @@ export class ApiLearnerContentRepository implements LearnerContentRepository {
         lineId: String(line.lineId),
         order: line.lineOrder,
         lines: [line.lineText],
+        // 서버가 삽화를 주지 않으면 null 그대로 둔다(화면에서 이미지 영역을 숨긴다).
         imageUrl: await resolveAuthenticatedStoryImage(
           studentId,
           storyId,
           line.imageUrl,
-        ) || fallbackScene,
+        ),
         readAt: line.readAt,
         requiresBranchInput: line.requiresBranchInput,
         branchPrompt: line.branchPrompt,
