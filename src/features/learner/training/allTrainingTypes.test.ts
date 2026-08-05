@@ -180,4 +180,25 @@ describe('all backend training types', () => {
       { id: 'reading-6', text: '노래한다', targetIndex: 1, tokenIndex: 6 },
     ])
   })
+
+  it('maps sentence repeat to word gaze items with whole-sentence audio', () => {
+    const mapped = mapTrainingQuestion({
+      trainingId: '191130',
+      questionNumber: 1,
+      totalQuestions: 1,
+      question: {
+        questionType: 'SENTENCE_REPEAT',
+        responseType: 'AUDIO',
+        content: { sentence: '토끼가 산으로 가요.', emotion: 'HAPPY' },
+        answer: { expectedText: '토끼가 산으로 가요.' },
+        requiredInputs: ['VOICE', 'GAZE'],
+        recordingTargets: [{ targetIndex: 0, text: '토끼가 산으로 가요.' }],
+        recommendedRecordingTargetIndex: 0,
+      },
+    })
+
+    expect(mapped.question.readingAudioMode).toBe('whole-sentence')
+    expect(mapped.question.readingItems?.map((item) => item.text))
+      .toEqual(['토끼가', '산으로', '가요.'])
+  })
 })

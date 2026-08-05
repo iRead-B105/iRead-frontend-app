@@ -22,7 +22,7 @@ type WordEval = {
 }
 const emit = defineEmits<{
   next: []
-  voiceRecorded: [blob: Blob, controls: VoiceEvaluationControls, word: WordEval]
+  voiceRecorded: [blob: Blob, controls: VoiceEvaluationControls, word?: WordEval]
 }>()
 
 type SpeechState = 'waiting' | 'listening' | 'evaluating' | 'retry' | 'success' | 'denied'
@@ -76,11 +76,18 @@ const singleItemNeedsWrapping = computed(() => {
   return items.value.length === 1 && (text.length > 7 || /\s/.test(text))
 })
 const allComplete = computed(() => items.value.length > 0 && completedIds.value.length === items.value.length)
+const wholeSentenceRecording = computed(() => props.question.readingAudioMode === 'whole-sentence')
+const canProceed = computed(() => allComplete.value && speechState.value === 'success')
 const isBusy = computed(() => speechState.value === 'listening' || speechState.value === 'evaluating')
 
 const recordingMsFor = (wordIndex: number) => {
   const length = items.value[wordIndex]?.text.length ?? 2
   return Math.min(8_000, Math.max(3_000, length * 650 + 1_800))
+}
+
+const recordingMsForSentence = () => {
+  const length = props.question.targetText?.length ?? items.value.reduce((sum, item) => sum + item.text.length, 0)
+  return Math.min(15_000, Math.max(5_000, length * 260 + 2_500))
 }
 
 const speechStatusText = computed(() => {
@@ -116,6 +123,12 @@ const finishWord = (wordIndex: number, blob: Blob | null) => {
   activeIndex.value = null
   dwellStartedAt = 0
   dwellProgress.value = 0
+}
+
+const finishWholeSentence = (blob: Blob | null) => {
+  stopSpeech()
+  speechState.value = 'success'
+  session.markRecordingComplete({ audioUrl: null, blob: blob ?? undefined })
 }
 
 const retryMessage = ref('')
@@ -164,11 +177,49 @@ const startSpeech = async (wordIndex: number) => {
   fallbackTimer = setTimeout(() => recorder.stop(), recordingMsFor(wordIndex))
 }
 
-// 녹음이 끝나면 해당 단어만 Azure 평가로 보낸다(부모 evaluateActivityVoice가 단어별 평가).
+const startWholeSentenceSpeech = async () => {
+  if (disposed || !allComplete.value || isBusy.value || speechState.value === 'success') return
+  stopSpeech()
+  if (retryTimer) {
+    clearTimeout(retryTimer)
+    retryTimer = null
+  }
+  recorder.reset()
+  submittedBlob = null
+  activeIndex.value = null
+  speechState.value = 'listening'
+
+  await recorder.start()
+  if (disposed) return
+  if (recorder.state.status !== 'recording') {
+    stopSpeech()
+    deniedMessage.value = recorder.state.errorMessage ?? '마이크를 확인해 주세요.'
+    speechState.value = 'denied'
+    return
+  }
+  fallbackTimer = setTimeout(() => recorder.stop(), recordingMsForSentence())
+}
+
+// 녹음이 끝나면 활동 모드에 따라 단어 또는 문장 전체를 Azure 평가로 보낸다.
 watch(() => recorder.state.status, (status) => {
   const blob = recorder.audioBlob.value
   if (status !== 'recorded' || !blob || blob === submittedBlob) return
   const wordIndex = activeIndex.value
+  if (wholeSentenceRecording.value) {
+    submittedBlob = blob
+    speechState.value = 'evaluating'
+    emit('voiceRecorded', blob, {
+      success: () => finishWholeSentence(blob),
+      retry: (message) => {
+        stopSpeech()
+        recorder.reset()
+        retryMessage.value = message || ''
+        speechState.value = 'retry'
+        retryTimer = setTimeout(() => void startWholeSentenceSpeech(), 1_100)
+      },
+    })
+    return
+  }
   if (wordIndex === null) return
   const word = items.value[wordIndex]
   if (!word) return
@@ -211,6 +262,13 @@ const updateGaze = (clientX: number, clientY: number, emitWordHit = false) => {
   gazeIndex.value = nextGazeIndex
   if (emitWordHit && nextGazeIndex !== null) {
     emitGazeWordHit(clientX, clientY, nextGazeIndex)
+    if (wholeSentenceRecording.value) {
+      const item = items.value[nextGazeIndex]
+      if (item && !completedIds.value.includes(item.id)) {
+        completedIds.value = [...completedIds.value, item.id]
+        if (completedIds.value.length === items.value.length) void startWholeSentenceSpeech()
+      }
+    }
   }
 }
 
@@ -250,7 +308,7 @@ onMounted(() => {
   window.addEventListener('iread:gaze', onGaze)
   // 시선 드웰: 응시한 미완료 카드 → 해당 단어 녹음 시작(녹음/평가 중에는 무시).
   stateTimer = setInterval(() => {
-    if (disposed || allComplete.value || isBusy.value || speechState.value === 'success') return
+    if (disposed || allComplete.value || isBusy.value || speechState.value === 'success' || wholeSentenceRecording.value) return
     const idx = gazeIndex.value
     if (idx === null) {
       dwellStartedAt = 0
@@ -285,7 +343,7 @@ onBeforeUnmount(() => {
 <template>
   <section class="activity" :aria-label="question.instruction">
     <header class="activity-heading">
-      <h1>{{ allComplete ? '다 읽었어!' : question.instruction }}</h1>
+      <h1>{{ canProceed ? '다 읽었어!' : question.instruction }}</h1>
     </header>
 
     <div class="reading-layout" @pointermove="onPointerMove" @pointerleave="onPointerLeave">
@@ -342,7 +400,7 @@ onBeforeUnmount(() => {
     </div>
 
     <footer class="action-bar">
-      <button v-if="allComplete" class="next-button shared-next-source" type="button" @click="$emit('next')">다음</button>
+      <button v-if="canProceed" class="next-button shared-next-source" type="button" @click="$emit('next')">다음</button>
     </footer>
   </section>
 </template>
