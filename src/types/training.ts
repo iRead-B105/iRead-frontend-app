@@ -114,6 +114,7 @@ export interface ReadingItem {
   id: string
   text: string
   targetIndex: number
+  tokenIndex?: number
 }
 
 export interface ReadingSentence {

@@ -2,9 +2,19 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { TrainingChoice, TrainingQuestion } from '@/types/training'
 import { useTrainingSession } from '@/composables/useTrainingSession'
+import { useVoiceRecorder } from '@/composables/useVoiceRecorder'
 
 const props = defineProps<{ question: TrainingQuestion }>()
-defineEmits<{ next: [] }>()
+type VoiceEvaluationControls = {
+  success: (message?: string) => void
+  retry: (message?: string) => void
+}
+const emit = defineEmits<{
+  next: []
+  voiceRecorded: [blob: Blob, controls: VoiceEvaluationControls]
+}>()
+
+type SpeechState = 'waiting' | 'listening' | 'evaluating' | 'retry' | 'success' | 'denied'
 
 const session = useTrainingSession()
 const choices = computed<TrainingChoice[]>(() => props.question.choices ?? [])
@@ -41,43 +51,118 @@ const toneStyle = (choiceId: string) => {
   const tone = TONE_COLORS[toneOf(choiceId)]
   return { '--word-frame-border': tone.border, '--word-frame-dash': tone.dash }
 }
+const speechState = ref<SpeechState>('waiting')
 const speechMessage = ref('')
+const recorder = useVoiceRecorder()
 let wrongTimer: ReturnType<typeof setTimeout> | null = null
+let speechRetryTimer: ReturnType<typeof setTimeout> | null = null
+let autoStopTimer: ReturnType<typeof setTimeout> | null = null
+let submittedBlob: Blob | null = null
 
 const isFilled = computed(() => placedChoice.value?.id === props.question.answer)
 const showHint = computed(() => attempts.value >= 2 && !isFilled.value)
-const isComplete = computed(() => session.progressState.isCurrentCorrect === true)
+const isComplete = computed(() => speechState.value === 'success')
 
-const normalize = (value: string) => value.replace(/[\s.,!?~'"’“”]/g, '').toLowerCase()
+// 문장 길이에 비례한 녹음 시간(3~12초). 끝나면 자동으로 평가로 넘어간다.
+const recordingMs = computed(() =>
+  Math.min(12_000, Math.max(3_000, completedSentence.value.length * 650 + 1_800)),
+)
 
-const sentenceMatches = (transcript: string) => {
-  const heard = normalize(transcript)
-  const answer = normalize(completedSentence.value)
-  return Boolean(answer && (heard === answer || heard.includes(answer)))
+const stopAutoTimer = () => {
+  if (autoStopTimer) clearTimeout(autoStopTimer)
+  autoStopTimer = null
 }
 
-// 정답 카드를 채우면 낭독 단계 없이 바로 답안을 제출해 문항을 완료한다.
-// 단어 시도 로그는 백엔드가 답안 완료 시점에 만들어 시선 병합과 연결된다.
-const submitFilledAnswer = async () => {
+const finishSpeech = (message = '다 읽었어!') => {
   if (isComplete.value) return
-  session.selectAnswer(props.question.answer)
-  const completed = await session.submitAnswer()
-  if (completed) speechMessage.value = '잘 골랐어!'
+  speechState.value = 'success'
+  speechMessage.value = message
+  session.markRecordingComplete({
+    isMock: false,
+    audioUrl: recorder.audioUrl.value,
+    blob: recorder.audioBlob.value,
+  })
 }
+
+const retrySpeech = (message = '한 번 더 읽어봐!') => {
+  if (isComplete.value) return
+  recorder.reset()
+  speechState.value = 'retry'
+  speechMessage.value = message
+  if (speechRetryTimer) clearTimeout(speechRetryTimer)
+  speechRetryTimer = setTimeout(() => void startSpeech(), 1_100)
+}
+
+// 완성한 문장을 실제로 녹음해 백엔드 발음 평가로 보낸다(부모 evaluateActivityVoice).
+const startSpeech = async () => {
+  if (!isFilled.value || isComplete.value) return
+  if (
+    recorder.state.status === 'recording'
+    || recorder.state.status === 'requesting'
+    || speechState.value === 'evaluating'
+  ) return
+  recorder.reset()
+  submittedBlob = null
+  speechState.value = 'listening'
+  speechMessage.value = '문장을 읽어봐!'
+  await recorder.start()
+  if ((recorder.state.status as string) !== 'recording') {
+    speechState.value = 'denied'
+    speechMessage.value = recorder.state.errorMessage ?? '마이크를 켜고 다시 눌러요'
+    return
+  }
+  stopAutoTimer()
+  autoStopTimer = setTimeout(() => recorder.stop(), recordingMs.value)
+}
+
+watch(() => recorder.state.status, (status) => {
+  const blob = recorder.audioBlob.value
+  if (status !== 'recorded' || !blob || blob === submittedBlob) return
+  stopAutoTimer()
+  submittedBlob = blob
+  speechState.value = 'evaluating'
+  speechMessage.value = '확인 중이에요!'
+  emit('voiceRecorded', blob, {
+    success: (message) => finishSpeech(message),
+    retry: (message) => retrySpeech(message),
+  })
+})
 
 watch(isFilled, (filled) => {
-  if (filled) void submitFilledAnswer()
+  if (!filled) return
+  if (speechRetryTimer) clearTimeout(speechRetryTimer)
+  speechRetryTimer = setTimeout(() => void startSpeech(), 450)
 })
 
 const evaluateChoice = (choiceId: string) => {
-  if (isFilled.value) return
+  if (placedChoice.value || isComplete.value) return
   const choice = choices.value.find((item) => item.id === choiceId)
   if (!choice) return
 
   if (choice.id === props.question.answer) {
     placedChoice.value = choice
     wrongChoiceId.value = null
+    speechState.value = 'waiting'
     speechMessage.value = ''
+    // 채운 답을 세션 제출 경로로 저장해 백엔드에 응답 기록을 남긴다.
+    session.selectAnswer(choice.id)
+    void session.submitAnswer()
+    if (session.assessmentMode.value) {
+      // 검사는 따라 읽기 없이 바로 다음으로 진행한다.
+      speechState.value = 'success'
+      speechMessage.value = '다 채웠어!'
+    }
+    return
+  }
+
+  if (session.assessmentMode.value) {
+    // 검사는 틀린 선택도 그대로 기록하고 재시도 없이 다음으로 진행한다.
+    placedChoice.value = choice
+    wrongChoiceId.value = null
+    session.selectAnswer(choice.id)
+    void session.submitAnswer()
+    speechState.value = 'success'
+    speechMessage.value = '기록했어! 다음으로 가자'
     return
   }
 
@@ -95,7 +180,7 @@ const pointIsOverBlank = (clientX: number, clientY: number) => {
   return Boolean(rect && clientX >= rect.left && clientX <= rect.right && clientY >= rect.top && clientY <= rect.bottom)
 }
 const startPointerDrag = (event: PointerEvent, choice: TrainingChoice) => {
-  if (isFilled.value || event.button !== 0) return
+  if (placedChoice.value || isComplete.value || event.button !== 0) return
   event.preventDefault()
   const card = event.currentTarget as HTMLElement | null
   const rect = card?.getBoundingClientRect()
@@ -143,15 +228,18 @@ onBeforeUnmount(() => {
   window.removeEventListener('pointermove', onPointerMove)
   window.removeEventListener('pointerup', finishPointerDrag)
   window.removeEventListener('pointercancel', cancelPointerDrag)
+  stopAutoTimer()
+  recorder.stop()
   if (wrongTimer) clearTimeout(wrongTimer)
+  if (speechRetryTimer) clearTimeout(speechRetryTimer)
 })
 </script>
 
 <template>
   <section class="activity activity--fill-blank" :aria-label="question.instruction">
     <header class="activity-heading">
-      <h1>빈칸에 낱말을 넣어봐!</h1>
-      <p v-if="speechMessage" class="status-message" role="status" aria-live="polite">
+      <h1>{{ isFilled ? '완성한 문장을 읽어봐!' : '빈칸에 낱말을 넣어봐!' }}</h1>
+      <p v-if="speechMessage" class="status-message" :class="speechState" role="status" aria-live="polite">
         {{ speechMessage }}
       </p>
     </header>
@@ -206,6 +294,14 @@ onBeforeUnmount(() => {
     </Teleport>
 
     <footer class="action-bar">
+      <button
+        v-if="speechState === 'denied'"
+        class="next-button"
+        type="button"
+        @click="startSpeech"
+      >
+        말하기
+      </button>
       <button v-if="isComplete" class="next-button shared-next-source" type="button" @click="$emit('next')">다음</button>
     </footer>
   </section>

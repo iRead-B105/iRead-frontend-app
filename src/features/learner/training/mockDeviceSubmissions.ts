@@ -110,10 +110,13 @@ function wordPositionsForQuestion(question: MappedTrainingQuestion): GazeWordPos
   if (question.question.readingItems?.length) {
     return question.question.readingItems.flatMap((item) => {
       const words = wordsFrom(item.text)
+      // 백엔드는 (questionNo, targetIndex, tokenIndex)가 중복된 단어 지표를 거부한다.
+      // 같은 문장의 청크들은 targetIndex를 공유하므로, 매퍼가 부여한 전역 tokenIndex를 써야
+      // 청크마다 0부터 다시 세면서 생기는 중복을 막고 발음 시도 기록과도 짝이 맞는다.
       return words.map((text, tokenIndex) => ({
         text,
         targetIndex: item.targetIndex,
-        tokenIndex,
+        tokenIndex: item.tokenIndex ?? tokenIndex,
       }))
     })
   }

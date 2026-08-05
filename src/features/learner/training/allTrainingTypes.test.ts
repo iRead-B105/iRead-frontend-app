@@ -150,4 +150,34 @@ describe('all backend training types', () => {
         .toBe(listeningPromptTypes.has(fixture.questionType))
     },
   )
+
+  it('maps passage reading to backend sentence recording targets', () => {
+    const mapped = mapTrainingQuestion({
+      trainingId: '141154',
+      questionNumber: 1,
+      totalQuestions: 1,
+      question: {
+        questionType: 'SHORT_PASSAGE_READING',
+        responseType: 'AUDIO',
+        content: { sentences: ['아기는 사과를 먹는다.', '나무 위에서 새가 노래한다.'] },
+        answer: { expectedText: '아기는 사과를 먹는다. 나무 위에서 새가 노래한다.' },
+        requiredInputs: ['VOICE', 'GAZE'],
+        recordingTargets: [
+          { targetIndex: 0, text: '아기는 사과를 먹는다.' },
+          { targetIndex: 1, text: '나무 위에서 새가 노래한다.' },
+        ],
+        recommendedRecordingTargetIndex: 0,
+      },
+    })
+
+    expect(mapped.question.readingItems).toEqual([
+      { id: 'reading-0', text: '아기는', targetIndex: 0, tokenIndex: 0 },
+      { id: 'reading-1', text: '사과를', targetIndex: 0, tokenIndex: 1 },
+      { id: 'reading-2', text: '먹는다', targetIndex: 0, tokenIndex: 2 },
+      { id: 'reading-3', text: '나무', targetIndex: 1, tokenIndex: 3 },
+      { id: 'reading-4', text: '위에서', targetIndex: 1, tokenIndex: 4 },
+      { id: 'reading-5', text: '새가', targetIndex: 1, tokenIndex: 5 },
+      { id: 'reading-6', text: '노래한다', targetIndex: 1, tokenIndex: 6 },
+    ])
+  })
 })

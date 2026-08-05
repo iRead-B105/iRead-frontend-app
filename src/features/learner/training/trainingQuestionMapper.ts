@@ -258,6 +258,8 @@ function mapChoice(number: number, source: StudentQuestionDto): {
     audioText,
     targetText: source.questionType === 'SAME_INITIAL_WORD_CHOICE' ? audioText : undefined,
     targetImage: optionalString(source.content, 'imageUrl') ?? undefined,
+    // 이미지 생성 정책 확정 전까지 imageUrl 대신 imagePrompt 텍스트를 자리 표시로 보여 준다.
+    targetImageLabel: optionalString(source.content, 'imagePrompt') ?? undefined,
     audioPromptEnabled,
     choiceAudioEnabled: audioPromptEnabled && !isConsonantVowelClassification,
     choices,
@@ -389,8 +391,22 @@ function withReadingItems(
   source: StudentQuestionDto,
   layout: 'cards' | 'segments',
 ): TrainingQuestion {
+  if (question.readingSentences?.length) {
+    let tokenIndex = 0
+    const readingItems = question.readingSentences.flatMap((sentence, sentenceIndex) => {
+      const sentenceText = sentence.chunks.join(' ')
+      const targetIndex = source.recordingTargets.find((target) => target.text === sentenceText)?.targetIndex
+        ?? sentenceIndex
+      return sentence.chunks.map((text) => ({
+        id: `reading-${tokenIndex}`,
+        text,
+        targetIndex,
+        tokenIndex: tokenIndex++,
+      }))
+    })
+    return { ...question, readingItems, readingLayout: layout }
+  }
   const chunks: string[] = question.readingWords?.map((word) => word.text)
-    ?? question.readingSentences?.flatMap((sentence) => sentence.chunks)
     ?? question.phraseChunks
     ?? (question.targetText ? [question.targetText] : [])
   const readingItems: ReadingItem[] = chunks.map((text, index) => ({
@@ -423,7 +439,7 @@ function mapAudio(number: number, source: StudentQuestionDto): {
       ? [{ id: 'sentence-0', chunks: stringArray(source.content, 'tokens') }]
       : stringArray(source.content, 'sentences').map((text, index) => ({
         id: `sentence-${index}`,
-        chunks: text.split(/\s+/),
+        chunks: text.split(/\s+/).map((word) => word.replace(/[.,!?。！？]/g, '')),
       }))
     return {
       activityType: 'word-reading-grid',

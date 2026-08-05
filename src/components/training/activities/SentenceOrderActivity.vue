@@ -2,9 +2,19 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { TrainingChoice, TrainingQuestion } from '@/types/training'
 import { useTrainingSession } from '@/composables/useTrainingSession'
+import { useVoiceRecorder } from '@/composables/useVoiceRecorder'
 
 const props = defineProps<{ question: TrainingQuestion }>()
-defineEmits<{ next: [] }>()
+type VoiceEvaluationControls = {
+  success: (message?: string) => void
+  retry: (message?: string) => void
+}
+const emit = defineEmits<{
+  next: []
+  voiceRecorded: [blob: Blob, controls: VoiceEvaluationControls]
+}>()
+
+type SpeechState = 'waiting' | 'listening' | 'evaluating' | 'retry' | 'success' | 'denied'
 
 const session = useTrainingSession()
 const slotsElement = ref<HTMLElement | null>(null)
@@ -15,6 +25,7 @@ const attempts = ref(0)
 const wrongIndices = ref<number[]>([])
 const assemblyCorrect = ref(false)
 const statusMessage = ref('')
+const speechState = ref<SpeechState>('waiting')
 const draggingChoiceId = ref<string | null>(null)
 const draggingFromSlot = ref<number | null>(null)
 const dragPoint = ref({ x: 0, y: 0 })
@@ -23,6 +34,10 @@ const dragSize = ref({ width: 0, height: 0 })
 const dragTextStyle = ref<Record<string, string>>({})
 const overSlotIndex = ref<number | null>(null)
 let wrongTimer: ReturnType<typeof setTimeout> | null = null
+let speechRetryTimer: ReturnType<typeof setTimeout> | null = null
+let autoStopTimer: ReturnType<typeof setTimeout> | null = null
+let submittedBlob: Blob | null = null
+const recorder = useVoiceRecorder()
 
 const placed = computed(() => slots.value.map((id) => choices.value.find((choice) => choice.id === id) ?? null))
 const remaining = computed(() => choices.value.filter((choice) => !slots.value.includes(choice.id)))
@@ -47,7 +62,7 @@ const dragTone = computed(() =>
   draggingChoiceId.value ? toneOf(draggingChoiceId.value) : null,
 )
 const allFilled = computed(() => slots.value.length > 0 && slots.value.every(Boolean))
-const isComplete = computed(() => session.progressState.isCurrentCorrect === true)
+const isComplete = computed(() => speechState.value === 'success')
 const nextEmptyIndex = computed(() => slots.value.findIndex((value) => value === null))
 const hintChoiceId = computed(() => {
   if (attempts.value < 2 || assemblyCorrect.value) return null
@@ -61,31 +76,90 @@ const reset = () => {
   wrongIndices.value = []
   assemblyCorrect.value = false
   statusMessage.value = ''
+  speechState.value = 'waiting'
   draggingChoiceId.value = null
   draggingFromSlot.value = null
   overSlotIndex.value = null
+  if (autoStopTimer) clearTimeout(autoStopTimer)
+  autoStopTimer = null
+  recorder.reset()
+  submittedBlob = null
   if (wrongTimer) clearTimeout(wrongTimer)
 }
 watch(() => props.question.id, reset, { immediate: true })
 
-const normalize = (value: string) => value.replace(/[\s.,!?~'"’“”]/g, '').toLowerCase()
-const sentenceMatches = (transcript: string) => {
-  const heard = normalize(transcript)
-  const answer = normalize(props.question.targetText ?? '')
-  return Boolean(answer && (heard === answer || heard.includes(answer)))
+// 조립한 문장 텍스트(따라 읽기 기준). targetResult가 완성 문장이다.
+const assembledSentence = computed(() => props.question.targetResult ?? props.question.targetText ?? '')
+
+// 문장 길이에 비례한 녹음 시간(3~12초). 끝나면 자동으로 평가로 넘어간다.
+const recordingMs = computed(() =>
+  Math.min(12_000, Math.max(3_000, assembledSentence.value.length * 650 + 1_800)),
+)
+
+const stopAutoTimer = () => {
+  if (autoStopTimer) clearTimeout(autoStopTimer)
+  autoStopTimer = null
 }
 
-// 조립이 맞으면 낭독 단계 없이 바로 답안을 제출해 문항을 완료한다.
-// 단어 시도 로그는 백엔드가 답안 완료 시점에 만들어 시선 병합과 연결된다.
-const submitAssembly = async () => {
+const finishSpeech = (message = '다 읽었어!') => {
   if (isComplete.value) return
-  session.selectAnswer(props.question.answer)
-  const completed = await session.submitAnswer()
-  if (completed) statusMessage.value = '잘 만들었어!'
+  speechState.value = 'success'
+  statusMessage.value = message
+  session.markRecordingComplete({
+    isMock: false,
+    audioUrl: recorder.audioUrl.value,
+    blob: recorder.audioBlob.value,
+  })
 }
+
+const retrySpeech = (message = '한 번 더 읽어봐!') => {
+  if (isComplete.value) return
+  recorder.reset()
+  speechState.value = 'retry'
+  statusMessage.value = message
+  if (speechRetryTimer) clearTimeout(speechRetryTimer)
+  speechRetryTimer = setTimeout(() => void startSpeech(), 1_100)
+}
+
+// 조립한 문장을 실제로 녹음해 백엔드 발음 평가로 보낸다(부모 evaluateActivityVoice).
+const startSpeech = async () => {
+  if (!assemblyCorrect.value || isComplete.value) return
+  if (
+    recorder.state.status === 'recording'
+    || recorder.state.status === 'requesting'
+    || speechState.value === 'evaluating'
+  ) return
+  recorder.reset()
+  submittedBlob = null
+  speechState.value = 'listening'
+  statusMessage.value = '문장을 읽어봐!'
+  await recorder.start()
+  if ((recorder.state.status as string) !== 'recording') {
+    speechState.value = 'denied'
+    statusMessage.value = recorder.state.errorMessage ?? '마이크를 켜고 다시 눌러요'
+    return
+  }
+  stopAutoTimer()
+  autoStopTimer = setTimeout(() => recorder.stop(), recordingMs.value)
+}
+
+watch(() => recorder.state.status, (status) => {
+  const blob = recorder.audioBlob.value
+  if (status !== 'recorded' || !blob || blob === submittedBlob) return
+  stopAutoTimer()
+  submittedBlob = blob
+  speechState.value = 'evaluating'
+  statusMessage.value = '확인 중이에요!'
+  emit('voiceRecorded', blob, {
+    success: (message) => finishSpeech(message),
+    retry: (message) => retrySpeech(message),
+  })
+})
 
 watch(assemblyCorrect, (correct) => {
-  if (correct) void submitAssembly()
+  if (!correct) return
+  if (speechRetryTimer) clearTimeout(speechRetryTimer)
+  speechRetryTimer = setTimeout(() => void startSpeech(), 450)
 })
 
 const evaluateSentence = () => {
@@ -97,6 +171,25 @@ const evaluateSentence = () => {
   if (wrong.length === 0) {
     assemblyCorrect.value = true
     statusMessage.value = ''
+    speechState.value = 'waiting'
+    // 완성한 순서를 세션 제출 경로로 저장해 백엔드에 응답 기록을 남긴다.
+    session.selectAnswer(slots.value.filter((id): id is string => id !== null).join('|'))
+    void session.submitAnswer()
+    if (session.assessmentMode.value) {
+      // 검사는 따라 읽기 없이 바로 다음으로 진행한다.
+      speechState.value = 'success'
+      statusMessage.value = '다 만들었어!'
+    }
+    return
+  }
+
+  if (session.assessmentMode.value) {
+    // 검사는 틀린 배치도 그대로 기록하고 재시도 없이 다음으로 진행한다.
+    session.selectAnswer(slots.value.filter((id): id is string => id !== null).join('|'))
+    void session.submitAnswer()
+    assemblyCorrect.value = true
+    speechState.value = 'success'
+    statusMessage.value = '기록했어! 다음으로 가자'
     return
   }
 
@@ -186,15 +279,18 @@ onBeforeUnmount(() => {
   window.removeEventListener('pointermove', onPointerMove)
   window.removeEventListener('pointerup', finishPointerDrag)
   window.removeEventListener('pointercancel', cancelPointerDrag)
+  stopAutoTimer()
+  recorder.stop()
   if (wrongTimer) clearTimeout(wrongTimer)
+  if (speechRetryTimer) clearTimeout(speechRetryTimer)
 })
 </script>
 
 <template>
   <section class="activity activity--sentence-order" :aria-label="question.instruction">
     <header class="activity-heading">
-      <h1>문장을 만들어봐!</h1>
-      <p v-if="statusMessage" class="status-message" role="status" aria-live="polite">{{ statusMessage }}</p>
+      <h1>{{ assemblyCorrect ? '완성한 문장을 읽어봐!' : '문장을 만들어봐!' }}</h1>
+      <p v-if="statusMessage" class="status-message" :class="speechState" role="status" aria-live="polite">{{ statusMessage }}</p>
     </header>
 
     <div ref="slotsElement" class="slots" :style="{ '--slot-count': slots.length }">
@@ -254,6 +350,14 @@ onBeforeUnmount(() => {
     </Teleport>
 
     <footer class="action-bar">
+      <button
+        v-if="speechState === 'denied'"
+        class="next-button"
+        type="button"
+        @click="startSpeech"
+      >
+        말하기
+      </button>
       <button v-if="isComplete" class="next-button shared-next-source" type="button" @click="$emit('next')">다음</button>
     </footer>
   </section>

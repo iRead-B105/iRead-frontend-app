@@ -7,7 +7,6 @@ import { useTrainingSession } from '@/composables/useTrainingSession'
 import type { TrainingActivityType, TrainingQuestion } from '@/types/training'
 import SoundButton from '@/components/training/SoundButton.vue'
 import GazeTraceActivity from './GazeTraceActivity.vue'
-import WordReadingGridActivity from './WordReadingGridActivity.vue'
 import SentenceReadingActivity from './SentenceReadingActivity.vue'
 import ReadAloudActivity from './ReadAloudActivity.vue'
 
@@ -56,24 +55,9 @@ describe('mock voice activities', () => {
     vi.useRealTimers()
   })
 
-  it('낱말 읽기를 마이크 없이 완료한다', async () => {
-    const question: TrainingQuestion = {
-      id: 'word-reading',
-      instruction: '낱말을 읽어요',
-      answer: '사과 나무',
-      readingWords: [
-        { id: 'word-1', text: '사과' },
-        { id: 'word-2', text: '나무' },
-      ],
-    }
-    startQuestion('word-reading-grid', question)
-    const wrapper = mount(WordReadingGridActivity, { props: { question } })
-
-    await vi.waitFor(() => expect(session.progressState.isCurrentCorrect).toBe(true))
-    expect(wrapper.find('.start-button').exists()).toBe(false)
-    expect(wrapper.find('.next-button').exists()).toBe(true)
-    wrapper.unmount()
-  })
+  // NOTE: 낱말 읽기(word-reading-grid)는 시선 응시로 단어별 녹음을 시작하는 구조로 바뀌어
+  // 자동 완료를 전제한 기존 케이스는 유효하지 않다(jsdom에서는 응시 히트 계산이 불가능).
+  // 시선 상호작용 테스트는 통합 테스트에서 다룬다.
 
   it('문장 읽기를 마이크 없이 완료한다', async () => {
     const question: TrainingQuestion = {
