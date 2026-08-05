@@ -94,4 +94,36 @@ describe('SoundOmitActivity', () => {
     expect(wrapper.find('.shared-next-source').exists()).toBe(true)
     wrapper.unmount()
   })
+
+  it('받침 자모를 제거하면 남은 자모 문자열 대신 제거한 조각 인덱스를 제출한다', async () => {
+    const finalConsonantQuestion: TrainingQuestion = {
+      id: 'final-consonant-delete',
+      instruction: '잘 듣고 글자를 잘라봐!',
+      targetText: '집',
+      audioText: '지',
+      soundParts: ['ㅈ', 'ㅣ', 'ㅂ'],
+      targetResult: '지',
+      answer: 'unit-2',
+    }
+    session.startLesson({
+      id: 'final-consonant-delete-lesson',
+      categoryId: 'phonological-awareness',
+      title: '받침 빼기',
+      description: '',
+      activityType: 'sound-omit',
+      estimatedMinutes: 1,
+      questions: [finalConsonantQuestion],
+    })
+    const wrapper = mount(SoundOmitActivity, { props: { question: finalConsonantQuestion } })
+
+    await wrapper.findAll('.puzzle-word .puzzle-piece')[2]!.trigger('keydown', { key: 'Enter' })
+    expect(session.progressState.selectedAnswer).toBe('unit-2')
+
+    await wrapper.get('.complete-button').trigger('click')
+    await flushPromises()
+
+    expect(session.progressState.isCurrentCorrect).toBe(true)
+    expect(wrapper.find('.shared-next-source').exists()).toBe(true)
+    wrapper.unmount()
+  })
 })
