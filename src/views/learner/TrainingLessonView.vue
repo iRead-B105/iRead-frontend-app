@@ -59,6 +59,7 @@ const {
   enabled: isDeveloperMode,
   latestVoiceScore,
   recordVoiceScore,
+  recordVoiceIssue,
   clearVoiceScore,
   pushDevGaze,
 } = useDeveloperMode()
@@ -769,9 +770,10 @@ const evaluateActivityVoice = async (
         controls.success('횟수를 다 썼어요. 다음으로 넘어가요.')
         return
       }
-      controls.retry(
-        error instanceof Error ? error.message : '목소리를 확인하지 못했어요. 다시 말해 주세요.',
-      )
+      const message =
+        error instanceof Error ? error.message : '목소리를 확인하지 못했어요. 다시 말해 주세요.'
+      recordVoiceIssue(`발음 평가 실패: ${message}`, mapped.questionNumber, word.expectedText)
+      controls.retry(message)
     } finally {
       voiceSubmitting.value = false
     }
@@ -823,11 +825,12 @@ const evaluateActivityVoice = async (
       controls.success('끝까지 잘 했어요! 다음 문제로 넘어가요.')
       return
     }
-    controls.retry(
+    const message =
       error instanceof Error
         ? error.message
-        : '목소리를 확인하지 못했어요. 다시 말해 주세요.',
-    )
+        : '목소리를 확인하지 못했어요. 다시 말해 주세요.'
+    recordVoiceIssue(`발음 평가 실패: ${message}`, mapped.questionNumber, mapped.expectedText ?? '')
+    controls.retry(message)
   } finally {
     voiceSubmitting.value = false
   }

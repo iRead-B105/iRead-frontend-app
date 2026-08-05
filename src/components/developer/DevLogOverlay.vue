@@ -84,12 +84,18 @@ const startDrag = (event: PointerEvent) => {
           <li
             v-for="(entry, index) in devVoiceLog"
             :key="`voice-${index}`"
-            :class="entry.passed ? 'pass' : 'fail'"
+            :class="entry.issue ? 'fail' : entry.passed ? 'pass' : 'fail'"
           >
             <span class="ts">{{ entry.capturedAt }}</span>
-            <span class="score">{{ entry.score }}/{{ entry.threshold }}점</span>
-            <span class="word">{{ entry.expectedText }}</span>
-            <span class="res">{{ entry.passed ? '정답' : '재시도' }}</span>
+            <template v-if="entry.issue">
+              <span class="word">{{ entry.expectedText }}</span>
+              <span class="res">⚠ {{ entry.issue }}</span>
+            </template>
+            <template v-else>
+              <span class="score">{{ entry.score }}/{{ entry.threshold }}점</span>
+              <span class="word">{{ entry.expectedText }}</span>
+              <span class="res">{{ entry.passed ? '정답' : '재시도' }}</span>
+            </template>
           </li>
           <li v-if="!devVoiceLog.length" class="empty">음성 평가 대기 중…</li>
         </ul>

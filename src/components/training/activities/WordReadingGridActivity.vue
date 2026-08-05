@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { ReadingItem, TrainingQuestion } from '@/types/training'
 import { useTrainingSession } from '@/composables/useTrainingSession'
 import { useDeviceStatus } from '@/composables/useDeviceStatus'
+import { useDeveloperMode } from '@/composables/useDeveloperMode'
 import { useVoiceRecorder } from '@/composables/useVoiceRecorder'
 import checkIcon from '@/assets/icons/check.svg'
 import microphoneIcon from '@/assets/icons/microphone.svg'
@@ -24,10 +25,11 @@ const emit = defineEmits<{
   voiceRecorded: [blob: Blob, controls: VoiceEvaluationControls, word: WordEval]
 }>()
 
-type SpeechState = 'waiting' | 'listening' | 'evaluating' | 'retry' | 'success'
+type SpeechState = 'waiting' | 'listening' | 'evaluating' | 'retry' | 'success' | 'denied'
 
 const session = useTrainingSession()
 const recorder = useVoiceRecorder()
+const { recordVoiceIssue } = useDeveloperMode()
 const { virtualEyeTrackerConnected } = useDeviceStatus()
 const grid = ref<HTMLElement | null>(null)
 const activeIndex = ref<number | null>(null)
@@ -85,7 +87,8 @@ const speechStatusText = computed(() => {
   switch (speechState.value) {
     case 'listening': return '말하는 중이에요!'
     case 'evaluating': return '확인 중이에요!'
-    case 'retry': return '다시 읽어봐요!'
+    case 'retry': return retryMessage.value || '다시 읽어봐요!'
+    case 'denied': return deniedMessage.value || '마이크를 켜 주세요'
     case 'success': return '잘 읽었어요!'
     default: return '읽을 낱말을 바라봐요'
   }
@@ -115,9 +118,13 @@ const finishWord = (wordIndex: number, blob: Blob | null) => {
   dwellProgress.value = 0
 }
 
-const setRetry = (wordIndex: number) => {
+const retryMessage = ref('')
+const deniedMessage = ref('')
+
+const setRetry = (wordIndex: number, message = '') => {
   stopSpeech()
   if (retryTimer) clearTimeout(retryTimer)
+  retryMessage.value = message
   speechState.value = 'retry'
   retryTimer = setTimeout(() => void startSpeech(wordIndex), 1_100)
 }
@@ -140,7 +147,17 @@ const startSpeech = async (wordIndex: number) => {
   await recorder.start()
   if (disposed) return
   if (recorder.state.status !== 'recording') {
-    setRetry(wordIndex)
+    // 마이크가 아예 열리지 않으면 조용한 재시도 루프 대신 이유를 화면에 밝힌다.
+    // (권한 거부·미지원 브라우저·다른 앱이 마이크 점유 등)
+    stopSpeech()
+    deniedMessage.value = recorder.state.errorMessage ?? '마이크를 켜 주세요'
+    speechState.value = 'denied'
+    activeIndex.value = null
+    recordVoiceIssue(
+      `마이크 시작 실패(${recorder.state.status}): ${deniedMessage.value}`,
+      session.currentQuestionNumber.value,
+      word.text,
+    )
     return
   }
   // 낱말 하나 발화에 충분한 시간을 준 뒤 자동으로 녹음을 끝낸다.
@@ -160,7 +177,7 @@ watch(() => recorder.state.status, (status) => {
   const completesQuestion = completedIds.value.length === items.value.length - 1
   emit('voiceRecorded', blob, {
     success: () => finishWord(wordIndex, blob),
-    retry: () => setRetry(wordIndex),
+    retry: (message) => setRetry(wordIndex, message),
   }, {
     expectedText: word.text,
     targetIndex: word.targetIndex,

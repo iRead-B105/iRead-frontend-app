@@ -36,6 +36,8 @@ export interface DevGazeLogEntry {
 
 export interface DevVoiceLogEntry extends DeveloperVoiceScore {
   readonly capturedAt: string
+  // 평가 결과가 아니라 파이프라인 오류(마이크 실패·저장 실패 등)를 기록한 항목.
+  readonly issue?: string
 }
 
 // DEV 로그: 시선 단어 히트 + 음성 정답/정확도 결과를 최근 DEV_LOG_CAP개까지 보관.
@@ -75,6 +77,23 @@ const registerLogoClick = () => {
   return false
 }
 
+// 음성 파이프라인이 평가에 도달하지 못한 이유를 로그에 남긴다(같은 증상 재발 시 원인 식별용).
+const recordVoiceIssue = (issue: string, questionNumber: number, expectedText = '') => {
+  devVoiceLog.value = [
+    {
+      score: 0,
+      threshold: 0,
+      passed: false,
+      canRetry: true,
+      expectedText,
+      questionNumber,
+      issue,
+      capturedAt: new Date().toLocaleTimeString(),
+    },
+    ...devVoiceLog.value,
+  ].slice(0, DEV_LOG_CAP)
+}
+
 const recordVoiceScore = (score: DeveloperVoiceScore) => {
   latestVoiceScore.value = score
   devVoiceLog.value = [
@@ -108,6 +127,7 @@ export const useDeveloperMode = () => ({
   toggle,
   registerLogoClick,
   recordVoiceScore,
+  recordVoiceIssue,
   clearVoiceScore,
   pushDevGaze,
   clearDevLogs,
