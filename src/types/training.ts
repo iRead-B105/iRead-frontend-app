@@ -216,13 +216,12 @@ export type RecordingStatus =
   | 'requesting' // 마이크 권한 요청 중
   | 'recording' // 녹음 중
   | 'recorded' // 녹음 완료
-  | 'unsupported' // MediaRecorder 미지원(목업 녹음)
+  | 'unsupported' // MediaRecorder 미지원
   | 'denied' // 마이크 권한 거부
 
 export interface RecordingState {
   status: RecordingStatus
   elapsedMs: number
-  isMock: boolean // 실제 분석이 아닌 목업 녹음 여부
   hasRecording: boolean
   errorMessage: string | null
 }

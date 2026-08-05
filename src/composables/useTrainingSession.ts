@@ -4,8 +4,8 @@
 // 여러 컴포넌트(뷰, 헤더, 진행 바, 액티비티)가 동일한 세션 상태를 공유하도록 하여
 // 진행도/선택/저장 상태가 화면 어디서나 일관되게 표시되도록 합니다.
 //
-// 본 파일은 UI 상태/목업 저장 로직만 담당합니다.
-// 실제 평가/진단/커리큘럼 자동 생성은 수행하지 않습니다.
+// 본 파일은 세션 UI 상태만 담당합니다. 서버 제출·평가는 각 화면이
+// setAnswerEvaluator 등으로 연결한 리포지토리 계층에서 수행합니다.
 
 import { computed, reactive, ref } from 'vue'
 import type {
@@ -60,11 +60,11 @@ type AnswerCompletedHandler = () => Promise<void> | void
 let answerEvaluator: AnswerEvaluator | null = null
 let answerCompletedHandler: AnswerCompletedHandler | null = null
 
-// 문제별 목업 저장소: 선택한 정답
+// 문제별 세션 저장소: 선택한 정답
 const storedAnswers = reactive<Record<string, string | string[]>>({})
-// 문제별 목업 저장소: 녹음 결과(실제 분석 아님)
+// 문제별 세션 저장소: 액티비티에서 담아 둔 녹음 결과(최종 제출에 재사용)
 const storedRecordings = reactive<
-  Record<string, { isMock: boolean; audioUrl: string | null; blob: Blob | null }>
+  Record<string, { audioUrl: string | null; blob: Blob | null }>
 >({})
 
 // ---- 계산된 값 ----
@@ -246,9 +246,8 @@ const submitAnswer = async (): Promise<boolean> => {
   return isCorrect
 }
 
-// 따라 읽기(녹음)는 정답 판별 대신 녹음 완료를 곧 완료로 처리(목업).
+// 따라 읽기(녹음)는 정답 판별 대신 녹음 완료를 곧 완료로 처리.
 const markRecordingComplete = (payload: {
-  isMock: boolean
   audioUrl: string | null
   blob?: Blob | null
 }): void => {
@@ -259,7 +258,6 @@ const markRecordingComplete = (payload: {
     progressState.completedQuestionIds.push(question.id)
   }
   storedRecordings[question.id] = {
-    isMock: payload.isMock,
     audioUrl: payload.audioUrl,
     blob: payload.blob ?? null,
   }
@@ -283,33 +281,9 @@ const nextQuestion = (): boolean => {
   return true
 }
 
-// 결과 저장 중에는 입력을 잠급니다. 실제 API 연결 시 같은 로딩 화면 안에서
-// 최초 요청과 자동 재시도 2회를 수행하고, 모두 실패한 경우에만 일반 오류를 표시합니다.
-const saveResult = async (): Promise<boolean> => {
-  if (savingState.status === 'saving') return Promise.resolve(false)
-
-  savingState.status = 'saving'
-  savingState.errorMessage = null
-
-  // TODO: 백엔드 연결 시 아래 목업 성공 응답을 최대 3회 API 요청으로 교체합니다.
-  const succeeded = await new Promise<boolean>((resolve) => {
-    window.setTimeout(() => resolve(true), 700)
-  })
-
-  savingState.attemptCount += 1
-  if (succeeded) {
-    savingState.status = 'success'
-    return true
-  }
-
-  savingState.status = 'failed'
-  savingState.errorMessage = '학습을 마무리하지 못했어. 다시 해보자!'
-  return false
-}
-
 const completeLesson = (): void => {
   progressState.isCompleted = true
-  // 목업 완료 타임스탬프
+  // 레슨 완료 시점 기록(서버 저장이 끝난 뒤 화면 전환 판단에 사용)
   progressState.completedAt = new Date().toISOString()
 }
 
@@ -380,7 +354,6 @@ export function useTrainingSession() {
     markRecordingComplete,
     showHint,
     nextQuestion,
-    saveResult,
     completeLesson,
     resetSession,
   }
