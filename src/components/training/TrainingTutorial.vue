@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import type { TrainingActivityType } from '@/types/training'
+import { useAudioPlayer } from '@/composables/useAudioPlayer'
 
 export type TrainingTutorialStep = {
   title: string
@@ -19,9 +20,10 @@ const props = defineProps<{
 const emit = defineEmits<{ finish: [] }>()
 const currentIndex = ref(0)
 const targetRect = ref<{ left: number; top: number; width: number; height: number } | null>(null)
-const viewportTick = ref(0)
 const viewportWidth = ref(typeof window === 'undefined' ? 0 : window.innerWidth)
 const viewportHeight = ref(typeof window === 'undefined' ? 0 : window.innerHeight)
+const ttsLocked = ref(false)
+const audioPlayer = useAudioPlayer()
 
 const introCopyByActivity: Partial<Record<TrainingActivityType, { title: string; description: string }>> = {
   'word-reading-grid': { title: '처음부터 차례대로 읽어요', description: '문장을 앞에서부터 차례대로 읽어봐요.' },
@@ -100,58 +102,6 @@ const spotlightBounds = computed(() => {
   }
 })
 
-const cardStyle = computed(() => {
-  void viewportTick.value
-  const target = targetRect.value
-  if (!target) return {}
-
-  const viewportWidth = window.innerWidth
-  const viewportHeight = window.innerHeight
-  const cardWidth = Math.min(430, viewportWidth - 32)
-  // 카드가 실제로 렌더링된 높이보다 작게 잡히면 하이라이트를 가릴 수 있어
-  // 여유 있게 계산한다. 화면 크기에 맞춰 아래 후보 위치를 자동 보정한다.
-  const cardHeight = Math.min(350, viewportHeight - 32)
-  const gap = 24
-  const margin = 16
-  const targetRight = target.left + target.width
-  const targetBottom = target.top + target.height
-
-  const candidates = [
-    { left: target.left + (target.width - cardWidth) / 2, top: targetBottom + gap },
-    { left: target.left + (target.width - cardWidth) / 2, top: target.top - cardHeight - gap },
-    { left: targetRight + gap, top: target.top + (target.height - cardHeight) / 2 },
-    { left: target.left - cardWidth - gap, top: target.top + (target.height - cardHeight) / 2 },
-  ].map((candidate) => ({
-    left: Math.max(margin, Math.min(candidate.left, viewportWidth - cardWidth - margin)),
-    top: Math.max(margin, Math.min(candidate.top, viewportHeight - cardHeight - margin)),
-  }))
-
-  const overlapArea = (candidate: { left: number; top: number }) => {
-    const overlapWidth = Math.max(
-      0,
-      Math.min(candidate.left + cardWidth, targetRight) - Math.max(candidate.left, target.left),
-    )
-    const overlapHeight = Math.max(
-      0,
-      Math.min(candidate.top + cardHeight, targetBottom) - Math.max(candidate.top, target.top),
-    )
-    return overlapWidth * overlapHeight
-  }
-
-  const best = candidates.reduce((selected, candidate) => {
-    const selectedScore = overlapArea(selected)
-    const candidateScore = overlapArea(candidate)
-    return candidateScore < selectedScore ? candidate : selected
-  })
-
-  return {
-    left: `${best.left}px`,
-    top: `${best.top}px`,
-    width: `${cardWidth}px`,
-    transform: 'none',
-  }
-})
-
 let retryTimer: ReturnType<typeof setTimeout> | null = null
 
 const updateTarget = () => {
@@ -174,11 +124,13 @@ const updateTarget = () => {
 }
 
 const finish = () => {
+  if (ttsLocked.value || audioPlayer.isPlaying.value) return
   window.localStorage.setItem(storageKey.value, 'completed')
   emit('finish')
 }
 
 const next = () => {
+  if (ttsLocked.value || audioPlayer.isPlaying.value) return
   if (currentIndex.value >= steps.value.length - 1) {
     finish()
     return
@@ -187,28 +139,46 @@ const next = () => {
   void nextTick(() => requestAnimationFrame(() => requestAnimationFrame(updateTarget)))
 }
 
+const speakCurrentStep = () => {
+  const description = currentStep.value?.description?.trim()
+  if (!description || !props.visible) return
+
+  ttsLocked.value = true
+  void audioPlayer.speak(description, 0.9).finally(() => {
+    ttsLocked.value = false
+  })
+}
+
 watch(() => props.visible, (visible) => {
-  if (!visible) return
+  if (!visible) {
+    audioPlayer.stop()
+    ttsLocked.value = false
+    return
+  }
   currentIndex.value = 0
   void nextTick(() => requestAnimationFrame(() => requestAnimationFrame(updateTarget)))
+  speakCurrentStep()
 })
-watch(currentStep, () => void nextTick(() => requestAnimationFrame(() => requestAnimationFrame(updateTarget))))
+watch(currentStep, () => {
+  void nextTick(() => requestAnimationFrame(() => requestAnimationFrame(updateTarget)))
+  if (props.visible) speakCurrentStep()
+})
 const onResize = () => {
   viewportWidth.value = window.innerWidth
   viewportHeight.value = window.innerHeight
-  viewportTick.value += 1
   updateTarget()
 }
 window.addEventListener('resize', onResize)
 onBeforeUnmount(() => {
   window.removeEventListener('resize', onResize)
   if (retryTimer) clearTimeout(retryTimer)
+  audioPlayer.stop()
 })
 </script>
 
 <template>
   <Teleport to="body">
-    <div v-if="visible && targetRect && spotlightBounds" class="training-tutorial" role="dialog" aria-modal="true" aria-labelledby="training-tutorial-title">
+    <div v-if="visible && targetRect && spotlightBounds" class="training-tutorial" role="dialog" aria-modal="true">
       <div class="training-tutorial__backdrop">
         <div
           class="training-tutorial__shade training-tutorial__shade--top"
@@ -241,6 +211,12 @@ onBeforeUnmount(() => {
       </div>
       <div
         class="training-tutorial__spotlight"
+        role="button"
+        tabindex="0"
+        aria-label="다음 안내 보기"
+        @click.stop="next"
+        @keydown.enter.prevent="next"
+        @keydown.space.prevent="next"
         :style="{
           left: `${spotlightBounds.left}px`,
           top: `${spotlightBounds.top}px`,
@@ -248,18 +224,6 @@ onBeforeUnmount(() => {
           height: `${spotlightBounds.bottom - spotlightBounds.top}px`,
         }"
       ></div>
-      <section class="training-tutorial__card" :style="cardStyle">
-        <div class="training-tutorial__meta">
-          <span>{{ currentIndex + 1 }} / {{ steps.length }}</span>
-          <button type="button" @click="finish">건너뛰기</button>
-        </div>
-        <p>처음이라면 이렇게 해보세요</p>
-        <h2 id="training-tutorial-title">{{ currentStep?.title }}</h2>
-        <div class="training-tutorial__description">{{ currentStep?.description }}</div>
-        <button class="training-tutorial__next" type="button" @click="next">
-          {{ currentIndex === steps.length - 1 ? '훈련 시작하기' : '다음' }}
-        </button>
-      </section>
     </div>
   </Teleport>
 </template>
@@ -271,12 +235,5 @@ onBeforeUnmount(() => {
 .training-tutorial__shade--top, .training-tutorial__shade--bottom { left: 0; width: 100%; }
 .training-tutorial__shade--left { left: 0; }
 .training-tutorial__shade--right { right: 0; }
-.training-tutorial__spotlight { position: fixed; z-index: 1; border: 4px solid #ffd65a; border-radius: 22px; box-shadow: 0 0 0 9999px rgba(21, 29, 53, .72), 0 0 0 10px rgba(255, 214, 90, .24), 0 14px 30px rgba(21, 29, 53, .28); pointer-events: none; transition: all .22s ease; }
-.training-tutorial__card { position: absolute; z-index: 2; padding: 22px 24px 20px; border: 2px solid #dbe6f7; border-radius: 22px; background: #fff; box-shadow: 0 22px 56px rgba(18, 32, 63, .32); color: #1f2a3d; pointer-events: auto; transition: left .22s ease, top .22s ease; }
-.training-tutorial__meta { display: flex; justify-content: space-between; align-items: center; color: #6b7a91; font-size: 13px; font-weight: 850; }
-.training-tutorial__meta button { min-height: auto; padding: 0; border: 0; background: transparent; color: #7b8ba4; font-size: 13px; }
-.training-tutorial__card > p { margin: 18px 0 7px; color: #7a61d4; font-size: 13px; font-weight: 900; }
-.training-tutorial__card h2 { margin: 0 0 8px; font-size: 25px; }
-.training-tutorial__description { color: #61718a; line-height: 1.55; }
-.training-tutorial__next { width: 100%; min-height: 48px; margin-top: 18px; border: 0; border-radius: 13px; background: #4f80e8; color: #fff; font-size: 16px; font-weight: 850; }
+.training-tutorial__spotlight { position: fixed; z-index: 1; border: 4px solid #ffd65a; border-radius: 22px; box-shadow: 0 0 0 9999px rgba(21, 29, 53, .72), 0 0 0 10px rgba(255, 214, 90, .24), 0 14px 30px rgba(21, 29, 53, .28); cursor: pointer; pointer-events: auto; transition: all .22s ease; }
 </style>
