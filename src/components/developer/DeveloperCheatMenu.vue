@@ -80,7 +80,24 @@ const forceMoveToNextTraining = async () => {
     const currentTraining = dailyCurriculum.curriculumItems[currentTrainingIndex]
 
     if (!currentTraining || !dailyCurriculum.curriculumItems[currentTrainingIndex + 1]) {
-      window.alert('다음 훈련이 없습니다.')
+      // 현재 회차의 마지막 훈련이면 다음 날(다음 회차) 진행으로 자동 폴백한다.
+      if (!window.confirm('현재 회차의 마지막 훈련입니다. 다음 회차(다음 날)로 넘어갈까요?')) {
+        return
+      }
+      const advanced = await advanceDemoLearningDay(activeStudent.value.studentId)
+      await dailyCurriculum.reloadCurrentCurriculum()
+      const firstNext = dailyCurriculum.curriculumItems.find((item) => item.status !== 'LOCKED')
+        ?? dailyCurriculum.curriculumItems[0]
+      if (!firstNext) {
+        window.alert(`다음 회차 커리큘럼(#${advanced.curriculumId})에 진행 가능한 훈련이 없습니다.`)
+        return
+      }
+      close()
+      await router.push({
+        name: 'training-lesson',
+        params: { categoryId: firstNext.categoryId, lessonId: firstNext.lesson.id },
+        query: { trainingId: firstNext.trainingId },
+      })
       return
     }
 
