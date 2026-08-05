@@ -515,7 +515,10 @@ export function mapTrainingQuestion(payload: LearnerTrainingQuestionPayload): Ma
   if (['VOWEL_TRACE', 'CONSONANT_TRACE', 'SYLLABLE_TRACE'].includes(source.questionType)) {
     activityType = 'gaze-trace'
     question = mapTrace(payload.questionNumber, source)
-    expectedText = requiredString(source.content, 'soundText')
+    // 발음 평가 제출 텍스트는 문항에 저장된 표시 글자와 일치해야 한다.
+    // soundText는 TTS 안내 문구(예: "ㅁ를 따라 써요")일 수 있어 제출에 쓰면
+    // 백엔드가 "요청한 텍스트가 문항과 일치하지 않습니다"로 거부한다.
+    expectedText = requiredString(source.content, 'target')
   } else if (source.questionType === 'FILL_IN_THE_BLANK') {
     activityType = 'fill-blank'
     question = mapFillBlank(payload.questionNumber, source)
