@@ -1194,9 +1194,13 @@ const isSavingFailed = computed(() => session.savingState.status === 'failed')
       <p v-if="gazeTransferDebug.lastError">{{ gazeTransferDebug.lastError }}</p>
     </aside>
 
-    <!-- 로딩: API 모드 비동기 페칭 중 -->
+    <!-- 로딩: API 모드 비동기 페칭 중 (이야기 나라 생성 로딩과 같은 연출) -->
     <div v-if="lessonLoading" class="lesson-loading" role="status" aria-live="polite">
-      <p>학습을 준비하고 있어요…</p>
+      <section class="lesson-loading-card">
+        <h1 class="lesson-loading-title">학습을 준비하고 있어요!</h1>
+        <p>재미있는 문제를 고르고 있어요.</p>
+        <span class="making-dots" aria-label="학습 준비 중"><i/><i/><i/></span>
+      </section>
     </div>
     <!-- 폴백: 알 수 없는 레슨 -->
     <div v-else-if="!lesson" class="fallback">

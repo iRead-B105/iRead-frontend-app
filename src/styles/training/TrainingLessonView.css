@@ -1094,10 +1094,67 @@
   padding: var(--learner-space-4);
 }
 
-.lesson-loading p {
+/* 이야기 나라의 '다음 이야기를 만들고 있어요' 카드와 같은 연출 */
+.lesson-loading-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: min(82%, 850px);
+  min-height: min(60%, 460px);
+  padding: clamp(24px, 4cqh, 46px) clamp(28px, 5cqw, 70px);
+  border: var(--learner-frame-border);
+  border-radius: var(--learner-frame-radius);
+  background: var(--learner-frame-background);
+  box-shadow: var(--learner-shadow-floating);
+  text-align: center;
+}
+
+.lesson-loading-title {
   margin: 0;
-  font-size: var(--learner-font-size-page);
+  font-size: clamp(36px, 4.5cqw, 60px);
   font-weight: var(--learner-font-weight-heavy);
+}
+
+.lesson-loading-card > p {
+  margin: 4px 0 18px;
+  color: #687697;
+  font-size: clamp(18px, 2cqw, 25px);
+  font-weight: var(--learner-font-weight-bold);
+}
+
+.lesson-loading-card .making-dots {
+  display: flex;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.lesson-loading-card .making-dots i {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #5b86e5;
+  animation: lesson-making-dot 1s ease-in-out infinite;
+}
+
+.lesson-loading-card .making-dots i:nth-child(2) {
+  animation-delay: .15s;
+}
+
+.lesson-loading-card .making-dots i:nth-child(3) {
+  animation-delay: .3s;
+}
+
+@keyframes lesson-making-dot {
+  0%, 100% {
+    transform: translateY(0);
+    opacity: .45;
+  }
+
+  50% {
+    transform: translateY(-10px);
+    opacity: 1;
+  }
 }
 
 .gaze-debug-panel {
@@ -1211,7 +1268,8 @@
 @media (prefers-reduced-motion: reduce) {
   .saving-spinner,
   .inline-voice-icon--listening,
-  .inline-voice-icon--listening::after {
+  .inline-voice-icon--listening::after,
+  .lesson-loading-card .making-dots i {
     animation: none;
   }
 }
