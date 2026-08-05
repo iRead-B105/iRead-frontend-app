@@ -53,9 +53,11 @@ const gardens = reactive<Garden[]>([
 const route = useRoute()
 
 const stageNames = ['흙', '새싹', '꽃봉', '꽃', '만개'] as const
-// TODO: 백엔드가 영역별 다음 단계 필요 학습량을 제공하면 고정 임계값을 교체합니다.
 const learningCounts = reactive<Record<GardenId, number>>({ 1: 0, 2: 0, 3: 0 })
 const stages = reactive<Record<GardenId, number>>({ 1: 1, 2: 1, 3: 1 })
+// 다음 단계 승급 조건 대비 실제 진행률·힌트(백엔드 계산). null이면 구버전 응답.
+const nextStageProgress = reactive<Record<GardenId, number | null>>({ 1: null, 2: null, 3: null })
+const nextStageHints = reactive<Record<GardenId, string | null>>({ 1: null, 2: null, 3: null })
 const currentCurriculum = ref<LearnerCurrentCurriculum | null>(null)
 const storyLibrary = ref<LearnerStoryLibrary | null>(null)
 const studyDay = ref(1)
@@ -77,6 +79,10 @@ const storyGoalComplete = computed(() =>
 )
 const progressFor = (garden: Garden) => {
   if (stages[garden.id] >= 5) return 100
+  // 백엔드가 계산한 승급 조건 진행률(바가 가득 차는 순간 = 꽃 진화 시점)을 우선 사용한다.
+  const serverProgress = nextStageProgress[garden.id]
+  if (serverProgress !== null) return serverProgress
+  // 구버전 백엔드 호환: 단계당 고정 학습량 휴리스틱.
   const completedInStage =
     learningCounts[garden.id] - (stages[garden.id] - 1) * lessonsPerGrowthStage
   return Math.min(100, Math.max(0, completedInStage * (100 / lessonsPerGrowthStage)))
@@ -195,8 +201,26 @@ const progressLabel = (garden: Garden) => (
   stages[garden.id] === 5 ? '만개' : `${stages[garden.id]}단계`
 )
 
-// 성장 단계는 서버 데이터로만 표시한다(클릭 성장 치트는 mock 모드와 함께 제거).
-const grow = (_garden: Garden) => {}
+// 성장 단계는 서버 데이터로만 바뀐다. 화단을 누르면 다음 단계까지 남은
+// 조건(백엔드 병목 힌트)을 말풍선으로 알려준다.
+const hintGarden = ref<GardenId | null>(null)
+const hintMessage = ref('')
+let hintTimer: ReturnType<typeof setTimeout> | undefined
+
+const grow = (garden: Garden) => {
+  const stage = stages[garden.id]
+  const message = stage >= 5
+    ? '활짝 피었어! 정말 대단해!'
+    : nextStageHints[garden.id] ?? '오늘 학습을 하면 꽃이 자라나요!'
+  hintGarden.value = garden.id
+  hintMessage.value = message
+  announcement.value = `${garden.title} 화단. ${message}`
+  window.clearTimeout(hintTimer)
+  hintTimer = window.setTimeout(() => {
+    hintGarden.value = null
+    hintTimer = undefined
+  }, 3200)
+}
 
 onMounted(async () => {
   placedFriendIds.value = loadPlacedFriendIds()
@@ -213,6 +237,8 @@ onMounted(async () => {
     growthAreas.forEach((area) => {
       learningCounts[area.areaId] = area.learningCount
       stages[area.areaId] = Math.min(5, Math.max(1, area.stage))
+      nextStageProgress[area.areaId] = area.nextStageProgressPercent
+      nextStageHints[area.areaId] = area.nextStageHint
       const garden = gardens.find((item) => item.id === area.areaId)
       if (garden) garden.title = area.name
     })
@@ -279,6 +305,7 @@ const showGardenHint = (garden: Garden) => {
 onBeforeUnmount(() => {
   window.clearTimeout(growthTimer)
   window.clearTimeout(friendTimer)
+  window.clearTimeout(hintTimer)
 })
 </script>
 
@@ -380,6 +407,9 @@ onBeforeUnmount(() => {
         @blur="showGardenHint(garden)"
         @click="grow(garden)"
       >
+        <span v-if="hintGarden === garden.id" class="garden-hint-bubble">
+          {{ hintMessage }}
+        </span>
         <span
           class="garden-progress-card"
           :class="{ 'garden-progress-card--complete': progressFor(garden) === 100 }"

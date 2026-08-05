@@ -143,7 +143,15 @@ describe('API learner content repository', () => {
           { trainingTemplateId: 30, trainingTemplateName: '문장 따라 읽기', completedCount: 1 },
         ],
         growthAreas: [
-          { areaId: 1, name: '파닉스', stage: 2, completedCount: 3, updatedAt: null },
+          {
+            areaId: 1,
+            name: '파닉스',
+            stage: 2,
+            completedCount: 3,
+            nextStageProgressPercent: 37,
+            nextStageHint: '훈련을 5번 더 하면 자라나요!',
+            updatedAt: null,
+          },
           { areaId: 2, name: '읽기', stage: 3, completedCount: 8, updatedAt: null },
           { areaId: 3, name: '유창성', stage: 1, completedCount: 1, updatedAt: null },
         ],
@@ -179,6 +187,12 @@ describe('API learner content repository', () => {
     ])
     expect(growth.map((area) => area.learningCount)).toEqual([3, 8, 1])
     expect(growth.map((area) => area.stage)).toEqual([2, 3, 1])
+    expect(growth.map((area) => area.nextStageProgressPercent)).toEqual([37, null, null])
+    expect(growth.map((area) => area.nextStageHint)).toEqual([
+      '훈련을 5번 더 하면 자라나요!',
+      null,
+      null,
+    ])
   })
 
   it('화면 매핑이 없는 훈련 템플릿을 조용히 누락하지 않는다', async () => {

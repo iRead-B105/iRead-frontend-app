@@ -116,6 +116,10 @@ export interface LearnerGrowthArea {
   readonly name: string
   readonly learningCount: number
   readonly stage: number
+  /** 다음 단계 승급 조건 대비 진행률(0~100). 구버전 백엔드에서는 null. */
+  readonly nextStageProgressPercent: number | null
+  /** 병목 승급 조건을 아이 말로 설명한 힌트. 만개(5단계)면 null. */
+  readonly nextStageHint: string | null
   readonly updatedAt: string
 }
 

@@ -102,6 +102,8 @@ interface GrowthDto {
     readonly name: string
     readonly stage: number
     readonly completedCount: number
+    readonly nextStageProgressPercent?: number | null
+    readonly nextStageHint?: string | null
     readonly updatedAt: string | null
   }[]
 }
@@ -286,6 +288,10 @@ export class ApiLearnerContentRepository implements LearnerContentRepository {
         name: area.name,
         learningCount: area.completedCount,
         stage: Math.min(5, Math.max(1, area.stage)),
+        nextStageProgressPercent: typeof area.nextStageProgressPercent === 'number'
+          ? Math.min(100, Math.max(0, area.nextStageProgressPercent))
+          : null,
+        nextStageHint: area.nextStageHint ?? null,
         updatedAt: area.updatedAt ?? '',
       }))
     }
@@ -307,6 +313,8 @@ export class ApiLearnerContentRepository implements LearnerContentRepository {
       name: names[areaId],
       learningCount: learningCounts[areaId],
       stage: Math.min(5, Math.max(1, learningCounts[areaId] + 1)),
+      nextStageProgressPercent: null,
+      nextStageHint: null,
       updatedAt: '',
     }))
   }

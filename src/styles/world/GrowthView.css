@@ -542,3 +542,22 @@
     transition: none;
   }
 }
+
+.garden-hint-bubble {
+  position: absolute;
+  z-index: 6;
+  bottom: 102%;
+  left: 50%;
+  width: clamp(200px, 20cqw, 290px);
+  padding: 12px 16px;
+  border: 3px solid rgb(255 255 255 / 90%);
+  border-radius: var(--learner-radius-card);
+  background: var(--learner-color-surface);
+  color: var(--learner-color-text);
+  box-shadow: var(--learner-shadow-card);
+  font-family: var(--learner-font-display);
+  font-size: clamp(16px, 1.25cqw, 20px);
+  font-weight: var(--learner-font-weight-heavy);
+  line-height: 1.35;
+  transform: translateX(-50%);
+}
