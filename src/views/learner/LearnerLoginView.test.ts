@@ -46,6 +46,9 @@ describe('LearnerLoginView 학습 진입 흐름', () => {
       { global: { plugins: [pinia, router] } },
     )
 
+    expect(wrapper.get('#login-title').text()).toBe('선생님이 먼저 로그인해 주세요.')
+    expect(wrapper.get('#login-title').find('br').exists()).toBe(false)
+
     await wrapper.get('input[aria-label="선생님 아이디"]').setValue('teacher@example.com')
     await wrapper.get('input[aria-label="비밀번호"]').setValue('password')
     await wrapper.get('form.login-form').trigger('submit')
@@ -90,8 +93,10 @@ describe('LearnerLoginView 학습 진입 흐름', () => {
     await wrapper.get('form.login-form').trigger('submit')
     await flushPromises()
 
-    expect(wrapper.get('#login-title').text()).toBe('학습할 친구를골라 주세요.')
-    expect(wrapper.get('#login-title').find('br').exists()).toBe(true)
+    expect(wrapper.get('#login-title').text()).toBe('아동 프로필을 선택해 주세요.')
+    expect(wrapper.get('#login-title').find('br').exists()).toBe(false)
+    expect(wrapper.get('.student-page-button--previous').attributes('aria-label')).toBe('이전 아동 목록')
+    expect(wrapper.get('.student-page-button--next').attributes('aria-label')).toBe('다음 아동 목록')
     expect(wrapper.findAll('.student-card small').map((item) => item.text())).not.toContain('학습자')
     expect(wrapper.get('.student-avatar img').attributes('src')).toBe('/images/student-profile.png')
     expect(wrapper.findAll('[role="radio"]')).toHaveLength(3)

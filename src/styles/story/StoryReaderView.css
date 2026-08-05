@@ -173,6 +173,7 @@
   color: #fff;
   font-size: clamp(34px, min(3.2cqw, 5.4cqh), 52px);
   font-weight: 900;
+  -webkit-text-stroke: .35px currentcolor;
   line-height: 1.72;
   letter-spacing: .045em;
   text-shadow: 0 2px 8px rgb(0 0 0 / 52%);
@@ -228,20 +229,29 @@
   padding: 0 .09em;
   border-radius: .3em;
   white-space: nowrap;
-  transition: color var(--learner-duration-fast),background-color var(--learner-duration-fast),box-shadow var(--learner-duration-fast);
+  transform-origin: center bottom;
+  transition: color var(--learner-duration-fast),background var(--learner-duration-fast),filter var(--learner-duration-fast);
 }
 
 .story-word--read {
-  color: #315d8c;
-  background: #e7f1fb;
+  color: #f4f8ff;
+  background: linear-gradient(transparent 62%,rgb(126 190 255 / 18%) 62%);
+}
+
+.story-word--just-read {
+  animation: word-read-settle 480ms cubic-bezier(.2,.75,.25,1);
 }
 
 .story-word--next {
-  color: #183f78;
-  background: #fff0a6;
-  outline: 3px solid rgb(230 188 45 / 35%);
-  box-shadow: none;
-  animation: return-cue 1.15s ease-in-out infinite;
+  color: #fff;
+  background: linear-gradient(transparent 58%,rgb(255 221 92 / 24%) 58%);
+  animation: return-cue 1.8s ease-in-out infinite;
+}
+
+.story-word--returning {
+  color: #fff;
+  background: linear-gradient(transparent 58%,rgb(255 221 92 / 34%) 58%);
+  animation: word-return-flash 420ms ease-out;
 }
 
 .gaze-ring {
@@ -923,12 +933,36 @@
 }
 
 @keyframes return-cue {
-  0%,100% {
+  0%,65%,100% {
     transform: scale(1);
   }
 
-  50% {
-    transform: scale(1.055);
+  32% {
+    transform: scale(1.018);
+  }
+}
+
+@keyframes word-read-settle {
+  from {
+    filter: brightness(1.18);
+    transform: scale(1.02);
+  }
+
+  to {
+    filter: brightness(1);
+    transform: scale(1);
+  }
+}
+
+@keyframes word-return-flash {
+  from {
+    filter: brightness(1.2);
+    transform: scale(1.018);
+  }
+
+  to {
+    filter: brightness(1);
+    transform: scale(1);
   }
 }
 
@@ -1105,7 +1139,7 @@
 }
 
 @media (prefers-reduced-motion:reduce) {
-  .story-word--next,.gaze-ring--dwelling,.listening-mic--active,.making-dots i,.story-next,.reward-rays {
+  .story-word--just-read,.story-word--next,.story-word--returning,.gaze-ring--dwelling,.listening-mic--active,.making-dots i,.story-next,.reward-rays {
     animation: none;
   }
 

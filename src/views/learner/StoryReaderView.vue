@@ -130,6 +130,8 @@ const rewardedFriend = ref<VillageItem | null>(null)
 const readThrough = ref(-1)
 const gaze = ref({ x: 0, y: 0, visible: false })
 const showReturnCue = ref(false)
+const recentlyReadIndex = ref<number | null>(null)
+const returningWordIndex = ref<number | null>(null)
 const textPanel = ref<HTMLElement | null>(null)
 const dwellTargetIndex = ref<number | null>(null)
 const dwellDurationMs = ref(100)
@@ -159,6 +161,8 @@ const storyGazeSamples: StoryGazeSample[] = []
 const storyGazeSampleSources = new Map<number, StoryGazeSource>()
 let leaveTimer: number | undefined
 let dwellTimer: number | undefined
+let recentlyReadTimer: number | undefined
+let returningWordTimer: number | undefined
 let lastExternalGazeAt = 0
 let lastStoryGazeSampleAt = 0
 let cursorGazeSampleTimer: number | undefined
@@ -187,7 +191,6 @@ const pageWords = computed(() => displayTextLines.value.flatMap((line, lineIndex
 const isLastPage = computed(() => currentPage.value === allPages.value.length - 1)
 const isPageRead = computed(() => readThrough.value >= pageWords.value.length - 1)
 const isActiveReadingPage = computed(() => page.value.readAt === null)
-const showReadingFeedback = computed(() => isActiveReadingPage.value && gaze.value.visible)
 const isListening = computed(() =>
   voiceRecorder.state.status === 'requesting'
   || voiceRecorder.state.status === 'recording',
@@ -224,6 +227,15 @@ function clearDwell() {
   dwellTargetIndex.value = null
 }
 
+function clearWordFeedback() {
+  if (recentlyReadTimer !== undefined) window.clearTimeout(recentlyReadTimer)
+  if (returningWordTimer !== undefined) window.clearTimeout(returningWordTimer)
+  recentlyReadTimer = undefined
+  returningWordTimer = undefined
+  recentlyReadIndex.value = null
+  returningWordIndex.value = null
+}
+
 function getDwellDuration(_word: string) {
   // 아동 화면의 읽음 진행 기준을 시선 분석·리플레이 기준과 동일하게 맞춘다.
   return 1_000
@@ -232,6 +244,7 @@ function getDwellDuration(_word: string) {
 function beginDwell(index: number) {
   if (index !== readThrough.value + 1) {
     clearDwell()
+    scheduleReturnCue()
     return
   }
   // 아동 화면의 진행은 응시 시간이 아니라 단어를 한 번 확인했는지를 기준으로 한다.
@@ -240,6 +253,14 @@ function beginDwell(index: number) {
 
   clearDwell()
   clearLeaveTimer()
+  if (showReturnCue.value) {
+    if (returningWordTimer !== undefined) window.clearTimeout(returningWordTimer)
+    returningWordIndex.value = index
+    returningWordTimer = window.setTimeout(() => {
+      returningWordIndex.value = null
+      returningWordTimer = undefined
+    }, 420)
+  }
   showReturnCue.value = false
   dwellTargetIndex.value = index
   dwellDurationMs.value = getDwellDuration(pageWords.value[index]?.word ?? '')
@@ -249,14 +270,22 @@ function beginDwell(index: number) {
 }
 
 function scheduleReturnCue() {
-  clearLeaveTimer()
-  if (readThrough.value >= pageWords.value.length - 1) return
-  leaveTimer = window.setTimeout(() => { showReturnCue.value = true }, 3000)
+  if (
+    readThrough.value >= pageWords.value.length - 1
+    || showReturnCue.value
+    || leaveTimer !== undefined
+  ) return
+
+  leaveTimer = window.setTimeout(() => {
+    showReturnCue.value = true
+    leaveTimer = undefined
+  }, 3000)
 }
 
 async function resetReadingProgressForPage() {
   readThrough.value = page.value.readAt ? pageWords.value.length - 1 : -1
   clearDwell()
+  clearWordFeedback()
   showReturnCue.value = false
   gaze.value.visible = false
   clearLeaveTimer()
@@ -299,6 +328,12 @@ function setProgress(index: number) {
       )
     }
     readThrough.value += 1
+    if (recentlyReadTimer !== undefined) window.clearTimeout(recentlyReadTimer)
+    recentlyReadIndex.value = index
+    recentlyReadTimer = window.setTimeout(() => {
+      recentlyReadIndex.value = null
+      recentlyReadTimer = undefined
+    }, 480)
   }
   clearDwell()
   showReturnCue.value = false
@@ -1011,6 +1046,7 @@ onBeforeUnmount(() => {
   void finishStoryGazeSession()
   clearLeaveTimer()
   clearDwell()
+  clearWordFeedback()
   if (cursorGazeSampleTimer !== undefined) window.clearInterval(cursorGazeSampleTimer)
   cursorGazeSampleTimer = undefined
   lastCursorPoint = null
@@ -1043,8 +1079,10 @@ onBeforeUnmount(() => {
                   v-if="item.lineIndex === lineIndex"
                   class="story-word"
                   :class="{
-                    'story-word--read': showReadingFeedback && index <= readThrough,
-                    'story-word--next': showReadingFeedback && showReturnCue && index === readThrough + 1,
+                    'story-word--read': index <= readThrough,
+                    'story-word--just-read': isActiveReadingPage && index === recentlyReadIndex,
+                    'story-word--next': isActiveReadingPage && showReturnCue && index === readThrough + 1,
+                    'story-word--returning': isActiveReadingPage && index === returningWordIndex,
                   }"
                   :data-word-index="index"
                 >{{ item.word }}</span>

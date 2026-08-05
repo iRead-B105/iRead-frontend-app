@@ -132,10 +132,10 @@ const changeStudentPage = (offset: number) => {
         <p class="login-step">{{ loginStep === 'teacher' ? '1 / 2' : '2 / 2' }}</p>
         <h1 id="login-title" class="login-title">
           <template v-if="loginStep === 'teacher'">
-            선생님이 먼저<br />로그인해 주세요.
+            선생님이 먼저 로그인해 주세요.
           </template>
           <template v-else>
-            학습할 친구를<br />골라 주세요.
+            아동 프로필을 선택해 주세요.
           </template>
         </h1>
         <section v-if="learnerSession.authenticated" class="student-empty" aria-live="polite">
@@ -186,54 +186,62 @@ const changeStudentPage = (offset: number) => {
         </form>
 
         <form v-else-if="linkedStudents.length" class="student-form" @submit.prevent="handleStudentLogin">
-          <div class="student-grid" role="radiogroup" aria-label="연결된 아동">
+          <div class="student-browser">
             <button
-              v-for="student in paginatedStudents"
-              :key="student.studentId"
-              class="student-card"
-              :class="{ selected: selectedStudentId === student.studentId }"
+              v-if="totalStudentPages > 1"
               type="button"
-              role="radio"
-              :aria-checked="selectedStudentId === student.studentId"
-              @click="selectedStudentId = student.studentId; errorMessage = ''"
+              class="student-page-button student-page-button--previous"
+              :disabled="studentPage === 0"
+              aria-label="이전 아동 목록"
+              @click="changeStudentPage(-1)"
             >
-              <span class="student-avatar" :style="{ '--profile-color': student.profileColor }">
-                <img
-                  v-if="student.profileImageUrl"
-                  :src="student.profileImageUrl"
-                  alt=""
-                  aria-hidden="true"
-                />
-                <template v-else>{{ student.name.slice(0, 1) }}</template>
-              </span>
-              <strong>{{ student.name }}</strong>
-              <small v-if="student.age !== null">{{ student.age }}세</small>
+              <span aria-hidden="true">‹</span>
+            </button>
+
+            <div class="student-grid" role="radiogroup" aria-label="연결된 아동">
+              <button
+                v-for="student in paginatedStudents"
+                :key="student.studentId"
+                class="student-card"
+                :class="{ selected: selectedStudentId === student.studentId }"
+                type="button"
+                role="radio"
+                :aria-checked="selectedStudentId === student.studentId"
+                @click="selectedStudentId = student.studentId; errorMessage = ''"
+              >
+                <span class="student-avatar" :style="{ '--profile-color': student.profileColor }">
+                  <img
+                    v-if="student.profileImageUrl"
+                    :src="student.profileImageUrl"
+                    alt=""
+                    aria-hidden="true"
+                  />
+                  <template v-else>{{ student.name.slice(0, 1) }}</template>
+                </span>
+                <strong>{{ student.name }}</strong>
+                <small v-if="student.age !== null">{{ student.age }}세</small>
+              </button>
+            </div>
+
+            <button
+              v-if="totalStudentPages > 1"
+              type="button"
+              class="student-page-button student-page-button--next"
+              :disabled="studentPage >= totalStudentPages - 1"
+              aria-label="다음 아동 목록"
+              @click="changeStudentPage(1)"
+            >
+              <span aria-hidden="true">›</span>
             </button>
           </div>
 
-          <nav
+          <p
             v-if="totalStudentPages > 1"
-            class="student-pagination"
-            aria-label="학습자 목록 페이지"
+            class="student-page-status"
+            aria-live="polite"
           >
-            <button
-              type="button"
-              class="student-page-button"
-              :disabled="studentPage === 0"
-              @click="changeStudentPage(-1)"
-            >
-              이전
-            </button>
-            <span aria-live="polite">{{ studentPage + 1 }} / {{ totalStudentPages }}</span>
-            <button
-              type="button"
-              class="student-page-button"
-              :disabled="studentPage >= totalStudentPages - 1"
-              @click="changeStudentPage(1)"
-            >
-              다음
-            </button>
-          </nav>
+            {{ studentPage + 1 }} / {{ totalStudentPages }}
+          </p>
 
           <p v-if="errorMessage" class="login-error" role="alert">{{ errorMessage }}</p>
 
