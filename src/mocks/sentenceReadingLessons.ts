@@ -4,7 +4,8 @@ const sentence = (id: string, chunks: string[]) => ({
   id,
   instruction: '문장을 읽어봐요',
   targetText: chunks.join(' '),
-  phraseChunks: chunks,
+  phraseChunks: chunks.flatMap((chunk) => chunk.split(/\s+/).filter(Boolean)),
+  readingGranularity: 'word' as const,
   answer: id,
   feedback: {
     correct: '다 읽었어요!',

@@ -60,7 +60,10 @@ const items = computed<ReadingItem[]>(() => {
   const chunks = props.question.readingSentences?.flatMap((sentence) => sentence.chunks)
     ?? props.question.phraseChunks
   if (chunks?.length) {
-    return chunks.map((text, index) => ({ id: `reading-${index}`, text, targetIndex: index }))
+    const normalizedChunks = props.question.readingGranularity === 'word'
+      ? chunks.flatMap((chunk) => chunk.split(/\s+/).filter(Boolean))
+      : chunks
+    return normalizedChunks.map((text, index) => ({ id: `reading-${index}`, text, targetIndex: index }))
   }
   const text = props.question.targetText?.trim()
   return text ? [{ id: `${props.question.id}-reading`, text, targetIndex: 0 }] : []

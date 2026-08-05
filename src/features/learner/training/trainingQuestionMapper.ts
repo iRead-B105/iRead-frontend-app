@@ -453,6 +453,7 @@ function mapAudio(number: number, source: StudentQuestionDto): {
         ...baseQuestion(number, '처음부터 차례대로 읽어요', expectedText),
         targetText: expectedText,
         readingSentences: sentences,
+        readingGranularity: source.questionType === 'SENTENCE_READING' ? 'word' : 'segment',
       }, source, 'segments'),
     }
   }

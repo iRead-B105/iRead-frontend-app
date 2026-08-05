@@ -190,6 +190,7 @@ export interface TrainingQuestion {
   // 시선 주도 읽기용 통일 항목(낱말/청크) + 레이아웃(cards=카드, segments=문장 흐름)
   readingItems?: ReadingItem[]
   readingLayout?: 'cards' | 'segments'
+  readingGranularity?: 'word' | 'segment'
   /** 음성 평가 단위. 기본값은 reading item별, 문장 따라 읽기는 문장 전체. */
   readingAudioMode?: 'per-item' | 'whole-sentence'
 
