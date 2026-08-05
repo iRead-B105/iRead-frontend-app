@@ -140,7 +140,7 @@ export const selectableTrainingTemplates: readonly SelectableTrainingTemplate[] 
   { templateId: 21, name: '음절 바꾸기', trainingType: 'SYLLABLE_REPLACE' },
   { templateId: 22, name: '낱말 읽기', trainingType: 'WORD_READING' },
   { templateId: 23, name: '새 낱말 읽기', trainingType: 'NONWORD_READING' },
-  { templateId: 25, name: '문장 읽기', trainingType: 'SENTENCE_READING' },
+  { templateId: 25, name: '어절별로 읽기', trainingType: 'SENTENCE_READING' },
   { templateId: 26, name: '짧은 글 읽기', trainingType: 'SHORT_PASSAGE_READING' },
   { templateId: 27, name: '문장 전체 조립', trainingType: 'SENTENCE_ASSEMBLY' },
   { templateId: 28, name: '빈칸에 알맞은 단어 넣기', trainingType: 'FILL_IN_THE_BLANK' },
@@ -148,7 +148,7 @@ export const selectableTrainingTemplates: readonly SelectableTrainingTemplate[] 
   { templateId: 30, name: '문장 따라 읽기', trainingType: 'SENTENCE_REPEAT' },
   { templateId: 31, name: '단어 이어 읽기', trainingType: 'WORD_CHAIN_READING' },
   { templateId: 32, name: '끊어 읽기', trainingType: 'PHRASE_READING' },
-  { templateId: 33, name: '같은 문장 다시 읽기', trainingType: 'REPEATED_SENTENCE_READING' },
+  { templateId: 33, name: '한번에 읽기', trainingType: 'REPEATED_SENTENCE_READING' },
   { templateId: 34, name: '짧은 이야기 읽기', trainingType: 'SHORT_STORY_READING' },
 ]
 
