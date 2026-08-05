@@ -178,29 +178,46 @@ const completeTrace = async () => {
   await startSpeech()
 }
 
+// 안내점 간격(38px)보다 넉넉한 판정 반경. 아동 시선의 미세한 보정 오차를 흡수한다.
+const HIT_RADIUS_PX = 56
+// 시선은 사카드(점프)로 움직여 중간 점을 건너뛰므로, 진행 순서상 조금 앞의
+// 점까지 내다보고 반경에 들어온 가장 먼 점까지 한 번에 채운다.
+const LOOKAHEAD_POINTS = 5
+
 const advanceFromClientPoint = (clientX: number, clientY: number) => {
   const svg = stage.value
-  const target = currentPoint.value
-  if (!svg || !target || traceCompleted.value) return
+  if (!svg || traceCompleted.value) return
 
   const screenMatrix = svg.getScreenCTM()
   if (!screenMatrix) return
   const localPoint = new DOMPoint(clientX, clientY).matrixTransform(screenMatrix.inverse())
   const x = localPoint.x
   const y = localPoint.y
-  if (Math.hypot(x - target.x, y - target.y) > 46) return
+
+  const guidePoints = flatPoints.value
+  let hitIndex = -1
+  const lookaheadEnd = Math.min(guidePoints.length - 1, progress.value + LOOKAHEAD_POINTS)
+  for (let index = progress.value; index <= lookaheadEnd; index += 1) {
+    const candidate = guidePoints[index]!
+    if (Math.hypot(x - candidate.x, y - candidate.y) <= HIT_RADIUS_PX) hitIndex = index
+  }
+  if (hitIndex < 0) return
 
   emitGazeWordHit(clientX, clientY)
   if (traceStartedAt === 0) traceStartedAt = Date.now()
-  const strokeIndex = strokeIndexAt(progress.value)
-  const points = recordedStrokes.value[strokeIndex] ?? []
-  if (!recordedStrokes.value[strokeIndex]) recordedStrokes.value[strokeIndex] = points
-  points.push({
-    x: Math.max(0, x),
-    y: Math.max(0, y),
-    elapsedMs: Date.now() - traceStartedAt,
-  })
-  progress.value += 1
+  while (progress.value <= hitIndex) {
+    const target = guidePoints[progress.value]!
+    const isGazePoint = progress.value === hitIndex
+    const strokeIndex = strokeIndexAt(progress.value)
+    const points = recordedStrokes.value[strokeIndex] ?? []
+    if (!recordedStrokes.value[strokeIndex]) recordedStrokes.value[strokeIndex] = points
+    points.push({
+      x: Math.max(0, isGazePoint ? x : target.x),
+      y: Math.max(0, isGazePoint ? y : target.y),
+      elapsedMs: Date.now() - traceStartedAt,
+    })
+    progress.value += 1
+  }
 }
 
 const onPointerMove = (event: PointerEvent) => {
