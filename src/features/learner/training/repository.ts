@@ -88,7 +88,7 @@ export interface LearnerTrainingRecordingInput {
 }
 
 export interface LearnerTrainingRepository {
-  readonly source: 'mock' | 'api'
+  readonly source: 'api'
   readonly getIntro: (
     studentId: string,
     trainingId: string,

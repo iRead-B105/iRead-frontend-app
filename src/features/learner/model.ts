@@ -90,7 +90,7 @@ export interface LearnerStoryPage {
   readonly lineId: string
   readonly order: number
   readonly lines: readonly string[]
-  readonly imageUrl: string
+  readonly imageUrl: string | null
   readonly imagePosition?: string
   readonly readAt: string | null
   readonly requiresBranchInput: boolean

@@ -12,6 +12,6 @@ export interface LearnerLearningEntry {
 }
 
 export interface LearnerStudentRepository {
-  readonly source: 'mock' | 'api'
+  readonly source: 'api'
   readonly getLearningEntry: (studentId: string) => Promise<LearnerLearningEntry>
 }

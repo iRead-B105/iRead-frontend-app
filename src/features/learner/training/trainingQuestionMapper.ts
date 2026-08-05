@@ -435,11 +435,16 @@ function mapAudio(number: number, source: StudentQuestionDto): {
     }
   }
   if (['SENTENCE_READING', 'SHORT_PASSAGE_READING'].includes(source.questionType)) {
+    // 문장은 반드시 전체를 단어 단위로 표시한다. content.tokens는 타겟 단어 발췌일 수
+    // 있어 그대로 쓰면 (1) 문장이 일부만 보이고 (2) 화면 순번이 백엔드 words의
+    // wordIndex와 어긋나 발음·시선 좌표가 깨진다.
+    const sentenceToChunks = (text: string) =>
+      text.split(/\s+/).map((word) => word.replace(/[.,!?。！？]/g, '')).filter(Boolean)
     const sentences: ReadingSentence[] = source.questionType === 'SENTENCE_READING'
-      ? [{ id: 'sentence-0', chunks: stringArray(source.content, 'tokens') }]
+      ? [{ id: 'sentence-0', chunks: sentenceToChunks(requiredString(source.content, 'sentence')) }]
       : stringArray(source.content, 'sentences').map((text, index) => ({
         id: `sentence-${index}`,
-        chunks: text.split(/\s+/).map((word) => word.replace(/[.,!?。！？]/g, '')),
+        chunks: sentenceToChunks(text),
       }))
     return {
       activityType: 'word-reading-grid',

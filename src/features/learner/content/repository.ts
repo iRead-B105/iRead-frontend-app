@@ -10,7 +10,7 @@ import type {
 } from '../model'
 
 export interface LearnerContentRepository {
-  readonly source: 'mock' | 'api'
+  readonly source: 'api'
   readonly getCurrentCurriculum: (
     studentId: string,
     options?: LearnerRequestOptions,

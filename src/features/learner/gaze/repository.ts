@@ -20,7 +20,7 @@ export interface LearnerGazeSession {
 }
 
 export interface LearnerGazeRepository {
-  readonly source: 'mock' | 'api'
+  readonly source: 'api'
   readonly start: (input: LearnerGazeStartInput) => Promise<LearnerGazeSession>
   readonly end: (
     gazeSessionId: string,

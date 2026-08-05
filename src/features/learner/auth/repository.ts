@@ -6,7 +6,7 @@ import type {
 } from '../model'
 
 export interface LearnerAuthRepository {
-  readonly source: 'mock' | 'api'
+  readonly source: 'api'
   readonly loginTeacher: (input: LearnerTeacherLoginInput) => Promise<LearnerTeacherBootstrap>
   readonly loginStudent: (
     student: LearnerStudent,

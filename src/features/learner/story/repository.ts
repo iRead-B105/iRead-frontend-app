@@ -44,7 +44,7 @@ export interface LearnerStoryTtsResult {
 }
 
 export interface LearnerStoryRepository {
-  readonly source: 'mock' | 'api'
+  readonly source: 'api'
   readonly markLineRead: (
     studentId: string,
     storyId: string,
