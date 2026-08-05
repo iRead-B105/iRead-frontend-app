@@ -181,7 +181,9 @@ describe('all backend training types', () => {
     ])
   })
 
-  it('maps sentence repeat to word gaze items with whole-sentence audio', () => {
+  // whole-sentence 모드는 시선 완주 전까지 녹음이 시작되지 않아 문항이 막히므로 되돌렸다.
+  // 문장 전체를 항목 하나로 두고 per-item 으로 평가한다.
+  it('maps sentence repeat to a single whole-sentence reading item', () => {
     const mapped = mapTrainingQuestion({
       trainingId: '191130',
       questionNumber: 1,
@@ -197,8 +199,8 @@ describe('all backend training types', () => {
       },
     })
 
-    expect(mapped.question.readingAudioMode).toBe('whole-sentence')
+    expect(mapped.question.readingAudioMode).toBe('per-item')
     expect(mapped.question.readingItems?.map((item) => item.text))
-      .toEqual(['토끼가', '산으로', '가요.'])
+      .toEqual(['토끼가 산으로 가요.'])
   })
 })
