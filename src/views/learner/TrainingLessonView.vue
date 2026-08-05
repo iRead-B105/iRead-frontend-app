@@ -601,10 +601,13 @@ watch(
       if (phase.value === 'intro') void startPlaying()
     }
 
-    if (currentPhase !== 'playing' || completed) {
+    // intro 단계에서도 차단 상태를 유지해야 한다. 여기서 지우면 시작 전에 걸린
+    // 차단(마이크·아이트래커)이 안내 없이 사라져 빈 화면이 된다.
+    if (currentPhase === 'saving' || completed) {
       deviceBlocker.value = null
       return
     }
+    if (currentPhase !== 'playing') return
     if (!gazeDeviceFallbackEnabled && gazeRequired.value && !eyeConnected) deviceBlocker.value = 'eye-tracker'
     else if (currentQuestionRequiresMicrophone.value && !micAvailable) deviceBlocker.value = 'microphone'
   },
@@ -1079,8 +1082,9 @@ const isSavingFailed = computed(() => session.savingState.status === 'failed')
     </Transition>
 
     <Transition name="fade">
+      <!-- 시작 전(intro)에 걸린 차단도 안내해야 한다. playing 한정이면 빈 화면이 된다. -->
       <div
-        v-if="deviceBlocker && phase === 'playing' && !session.progressState.isCompleted"
+        v-if="deviceBlocker && !session.progressState.isCompleted"
         class="device-blocker"
         role="alertdialog"
         aria-modal="true"
