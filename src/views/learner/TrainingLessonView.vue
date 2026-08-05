@@ -178,16 +178,25 @@ const gazeRequired = computed(() =>
       ? gazeRequiredActivities.has(lesson.value.activityType)
       : false,
 )
+// 조립형 활동은 답안 제출만으로 문항이 완료되므로 낭독(말하기) 단계를 두지 않는다.
+// 단어 시도 로그는 백엔드가 답안 완료 시점에 만들어 시선 병합과 연결된다.
+const voiceExemptActivities = new Set<TrainingActivityType>(['sentence-order', 'fill-blank'])
+const requiresVoiceFlow = (
+  question?: MappedTrainingQuestion,
+): question is MappedTrainingQuestion =>
+  question?.requiredInputs.includes('VOICE') === true
+  && !voiceExemptActivities.has(question.activityType)
+
 const microphoneRequired = computed(() =>
   learnerDataSource === 'api'
-    ? serverQuestions.value.some((question) => question.requiredInputs.includes('VOICE'))
+    ? serverQuestions.value.some((question) => requiresVoiceFlow(question))
     : lesson.value
       ? microphoneRequiredActivities.has(lesson.value.activityType)
       : false,
 )
 const currentQuestionRequiresMicrophone = computed(() =>
   learnerDataSource === 'api'
-    ? serverQuestions.value[session.progressState.currentQuestionIndex]?.requiredInputs.includes('VOICE') === true
+    ? requiresVoiceFlow(serverQuestions.value[session.progressState.currentQuestionIndex])
     : microphoneRequired.value,
 )
 
@@ -847,7 +856,7 @@ const goNext = async (response?: LearnerTraceSubmissionResponse) => {
   if (learnerDataSource === 'api' && !debugMode.value) {
     const mapped = serverQuestions.value[session.progressState.currentQuestionIndex]
     if (
-      mapped?.requiredInputs.includes('VOICE')
+      requiresVoiceFlow(mapped)
       && !recordedQuestionNumbers.has(mapped.questionNumber)
       && !mockVoiceSubmissionsEnabled
     ) {
@@ -872,7 +881,7 @@ const goNext = async (response?: LearnerTraceSubmissionResponse) => {
       }
       if (
         mockVoiceSubmissionsEnabled
-        && mapped.requiredInputs.includes('VOICE')
+        && requiresVoiceFlow(mapped)
         && !recordedQuestionNumbers.has(mapped.questionNumber)
       ) {
         await submitMockVoice(mapped, itemId)
@@ -1166,7 +1175,7 @@ watch(
     if (!correct || learnerDataSource !== 'api' || debugMode.value || mockVoiceSubmissionsEnabled) return
     const mapped = serverQuestions.value[session.progressState.currentQuestionIndex]
     if (
-      !mapped?.requiredInputs.includes('VOICE')
+      !requiresVoiceFlow(mapped)
       || recordedQuestionNumbers.has(mapped.questionNumber)
       || voiceGateOpen.value
     ) return

@@ -6,23 +6,6 @@ import { useTrainingSession } from '@/composables/useTrainingSession'
 const props = defineProps<{ question: TrainingQuestion }>()
 defineEmits<{ next: [] }>()
 
-interface SpeechResultEvent extends Event {
-  results: { [index: number]: { [index: number]: { transcript: string } } }
-}
-interface SpeechErrorEvent extends Event { error?: string }
-interface SpeechRecognitionLike {
-  lang: string
-  interimResults: boolean
-  continuous: boolean
-  onresult: ((event: SpeechResultEvent) => void) | null
-  onerror: ((event: SpeechErrorEvent) => void) | null
-  onend: (() => void) | null
-  start: () => void
-  stop: () => void
-}
-type SpeechRecognitionConstructor = new () => SpeechRecognitionLike
-type SpeechState = 'waiting' | 'listening' | 'retry' | 'success' | 'denied'
-
 const session = useTrainingSession()
 const choices = computed<TrainingChoice[]>(() => props.question.choices ?? [])
 const sentenceParts = computed(() => (props.question.targetText ?? '').split(/___|\{\{blank\}\}/))
@@ -58,15 +41,12 @@ const toneStyle = (choiceId: string) => {
   const tone = TONE_COLORS[toneOf(choiceId)]
   return { '--word-frame-border': tone.border, '--word-frame-dash': tone.dash }
 }
-const speechState = ref<SpeechState>('waiting')
 const speechMessage = ref('')
-let recognition: SpeechRecognitionLike | null = null
 let wrongTimer: ReturnType<typeof setTimeout> | null = null
-let speechRetryTimer: ReturnType<typeof setTimeout> | null = null
 
 const isFilled = computed(() => placedChoice.value?.id === props.question.answer)
 const showHint = computed(() => attempts.value >= 2 && !isFilled.value)
-const isComplete = computed(() => speechState.value === 'success')
+const isComplete = computed(() => session.progressState.isCurrentCorrect === true)
 
 const normalize = (value: string) => value.replace(/[\s.,!?~'"’“”]/g, '').toLowerCase()
 
@@ -76,69 +56,17 @@ const sentenceMatches = (transcript: string) => {
   return Boolean(answer && (heard === answer || heard.includes(answer)))
 }
 
-const finishSpeech = () => {
+// 정답 카드를 채우면 낭독 단계 없이 바로 답안을 제출해 문항을 완료한다.
+// 단어 시도 로그는 백엔드가 답안 완료 시점에 만들어 시선 병합과 연결된다.
+const submitFilledAnswer = async () => {
   if (isComplete.value) return
-  speechState.value = 'success'
-  speechMessage.value = '다 읽었어!'
-  session.markRecordingComplete({ isMock: false, audioUrl: null })
-}
-
-const handleTranscript = (transcript: string) => {
-  if (!isFilled.value || speechState.value !== 'listening') return
-  if (sentenceMatches(transcript)) finishSpeech()
-  else {
-    speechState.value = 'retry'
-    speechMessage.value = '한 번 더 읽어봐!'
-    speechRetryTimer = setTimeout(startSpeech, 900)
-  }
-}
-
-const startSpeech = () => {
-  if (!isFilled.value || speechState.value === 'listening' || isComplete.value) return
-  speechState.value = 'listening'
-  speechMessage.value = '문장을 읽어봐!'
-
-  const speechWindow = window as typeof window & {
-    SpeechRecognition?: SpeechRecognitionConstructor
-    webkitSpeechRecognition?: SpeechRecognitionConstructor
-  }
-  const Recognition = speechWindow.SpeechRecognition ?? speechWindow.webkitSpeechRecognition
-  if (!Recognition) return
-
-  recognition?.stop()
-  recognition = new Recognition()
-  recognition.lang = 'ko-KR'
-  recognition.interimResults = false
-  recognition.continuous = false
-  recognition.onresult = (event) => handleTranscript(event.results[0]?.[0]?.transcript ?? '')
-  recognition.onerror = (event) => {
-    if (event.error === 'not-allowed' || event.error === 'service-not-allowed' || event.error === 'audio-capture') {
-      window.dispatchEvent(new CustomEvent('iread:microphone-state', { detail: { active: false, available: false } }))
-      speechState.value = 'denied'
-      speechMessage.value = '마이크를 켜고 다시 눌러요'
-      return
-    }
-    if (event.error !== 'aborted') {
-      speechState.value = 'retry'
-      speechMessage.value = '한 번 더 읽어봐!'
-      speechRetryTimer = setTimeout(startSpeech, 900)
-    }
-  }
-  recognition.onend = () => {
-    if (speechState.value === 'listening') {
-      speechState.value = 'retry'
-      speechMessage.value = '한 번 더 읽어봐!'
-      speechRetryTimer = setTimeout(startSpeech, 900)
-    }
-    recognition = null
-  }
-  recognition.start()
+  session.selectAnswer(props.question.answer)
+  const completed = await session.submitAnswer()
+  if (completed) speechMessage.value = '잘 골랐어!'
 }
 
 watch(isFilled, (filled) => {
-  if (!filled) return
-  if (speechRetryTimer) clearTimeout(speechRetryTimer)
-  speechRetryTimer = setTimeout(startSpeech, 450)
+  if (filled) void submitFilledAnswer()
 })
 
 const evaluateChoice = (choiceId: string) => {
@@ -149,7 +77,6 @@ const evaluateChoice = (choiceId: string) => {
   if (choice.id === props.question.answer) {
     placedChoice.value = choice
     wrongChoiceId.value = null
-    speechState.value = 'waiting'
     speechMessage.value = ''
     return
   }
@@ -207,33 +134,24 @@ const cancelPointerDrag = () => {
   draggingChoiceId.value = null
   isOverBlank.value = false
 }
-const onExternalSpeech = (event: Event) => {
-  const detail = (event as CustomEvent<{ transcript?: string }>).detail
-  if (detail?.transcript) handleTranscript(detail.transcript)
-}
-
 onMounted(() => {
-  window.addEventListener('iread:speech', onExternalSpeech)
   window.addEventListener('pointermove', onPointerMove)
   window.addEventListener('pointerup', finishPointerDrag)
   window.addEventListener('pointercancel', cancelPointerDrag)
 })
 onBeforeUnmount(() => {
-  window.removeEventListener('iread:speech', onExternalSpeech)
   window.removeEventListener('pointermove', onPointerMove)
   window.removeEventListener('pointerup', finishPointerDrag)
   window.removeEventListener('pointercancel', cancelPointerDrag)
-  recognition?.stop()
   if (wrongTimer) clearTimeout(wrongTimer)
-  if (speechRetryTimer) clearTimeout(speechRetryTimer)
 })
 </script>
 
 <template>
   <section class="activity activity--fill-blank" :aria-label="question.instruction">
     <header class="activity-heading">
-      <h1>{{ isFilled ? '완성한 문장을 읽어봐!' : '빈칸에 낱말을 넣어봐!' }}</h1>
-      <p v-if="speechMessage" class="status-message" :class="speechState" role="status" aria-live="polite">
+      <h1>빈칸에 낱말을 넣어봐!</h1>
+      <p v-if="speechMessage" class="status-message" role="status" aria-live="polite">
         {{ speechMessage }}
       </p>
     </header>

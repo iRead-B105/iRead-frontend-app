@@ -6,23 +6,6 @@ import { useTrainingSession } from '@/composables/useTrainingSession'
 const props = defineProps<{ question: TrainingQuestion }>()
 defineEmits<{ next: [] }>()
 
-interface SpeechResultEvent extends Event {
-  results: { [index: number]: { [index: number]: { transcript: string } } }
-}
-interface SpeechErrorEvent extends Event { error?: string }
-interface SpeechRecognitionLike {
-  lang: string
-  interimResults: boolean
-  continuous: boolean
-  onresult: ((event: SpeechResultEvent) => void) | null
-  onerror: ((event: SpeechErrorEvent) => void) | null
-  onend: (() => void) | null
-  start: () => void
-  stop: () => void
-}
-type SpeechRecognitionConstructor = new () => SpeechRecognitionLike
-type SpeechState = 'waiting' | 'listening' | 'retry' | 'success' | 'denied'
-
 const session = useTrainingSession()
 const slotsElement = ref<HTMLElement | null>(null)
 const choices = computed<TrainingChoice[]>(() => props.question.choices ?? [])
@@ -32,7 +15,6 @@ const attempts = ref(0)
 const wrongIndices = ref<number[]>([])
 const assemblyCorrect = ref(false)
 const statusMessage = ref('')
-const speechState = ref<SpeechState>('waiting')
 const draggingChoiceId = ref<string | null>(null)
 const draggingFromSlot = ref<number | null>(null)
 const dragPoint = ref({ x: 0, y: 0 })
@@ -41,8 +23,6 @@ const dragSize = ref({ width: 0, height: 0 })
 const dragTextStyle = ref<Record<string, string>>({})
 const overSlotIndex = ref<number | null>(null)
 let wrongTimer: ReturnType<typeof setTimeout> | null = null
-let recognition: SpeechRecognitionLike | null = null
-let speechRetryTimer: ReturnType<typeof setTimeout> | null = null
 
 const placed = computed(() => slots.value.map((id) => choices.value.find((choice) => choice.id === id) ?? null))
 const remaining = computed(() => choices.value.filter((choice) => !slots.value.includes(choice.id)))
@@ -67,7 +47,7 @@ const dragTone = computed(() =>
   draggingChoiceId.value ? toneOf(draggingChoiceId.value) : null,
 )
 const allFilled = computed(() => slots.value.length > 0 && slots.value.every(Boolean))
-const isComplete = computed(() => speechState.value === 'success')
+const isComplete = computed(() => session.progressState.isCurrentCorrect === true)
 const nextEmptyIndex = computed(() => slots.value.findIndex((value) => value === null))
 const hintChoiceId = computed(() => {
   if (attempts.value < 2 || assemblyCorrect.value) return null
@@ -81,12 +61,9 @@ const reset = () => {
   wrongIndices.value = []
   assemblyCorrect.value = false
   statusMessage.value = ''
-  speechState.value = 'waiting'
   draggingChoiceId.value = null
   draggingFromSlot.value = null
   overSlotIndex.value = null
-  recognition?.stop()
-  recognition = null
   if (wrongTimer) clearTimeout(wrongTimer)
 }
 watch(() => props.question.id, reset, { immediate: true })
@@ -98,66 +75,17 @@ const sentenceMatches = (transcript: string) => {
   return Boolean(answer && (heard === answer || heard.includes(answer)))
 }
 
-const finishSpeech = () => {
+// 조립이 맞으면 낭독 단계 없이 바로 답안을 제출해 문항을 완료한다.
+// 단어 시도 로그는 백엔드가 답안 완료 시점에 만들어 시선 병합과 연결된다.
+const submitAssembly = async () => {
   if (isComplete.value) return
-  speechState.value = 'success'
-  statusMessage.value = '다 읽었어!'
-  session.markRecordingComplete({ isMock: false, audioUrl: null })
-}
-const handleTranscript = (transcript: string) => {
-  if (!assemblyCorrect.value || speechState.value !== 'listening') return
-  if (sentenceMatches(transcript)) finishSpeech()
-  else {
-    speechState.value = 'retry'
-    statusMessage.value = '한 번 더 읽어봐!'
-    speechRetryTimer = setTimeout(startSpeech, 900)
-  }
-}
-const startSpeech = () => {
-  if (!assemblyCorrect.value || speechState.value === 'listening' || isComplete.value) return
-  speechState.value = 'listening'
-  statusMessage.value = '문장을 읽어봐!'
-  const speechWindow = window as typeof window & {
-    SpeechRecognition?: SpeechRecognitionConstructor
-    webkitSpeechRecognition?: SpeechRecognitionConstructor
-  }
-  const Recognition = speechWindow.SpeechRecognition ?? speechWindow.webkitSpeechRecognition
-  if (!Recognition) return
-
-  recognition?.stop()
-  recognition = new Recognition()
-  recognition.lang = 'ko-KR'
-  recognition.interimResults = false
-  recognition.continuous = false
-  recognition.onresult = (event) => handleTranscript(event.results[0]?.[0]?.transcript ?? '')
-  recognition.onerror = (event) => {
-    if (event.error === 'not-allowed' || event.error === 'service-not-allowed' || event.error === 'audio-capture') {
-      window.dispatchEvent(new CustomEvent('iread:microphone-state', { detail: { active: false, available: false } }))
-      speechState.value = 'denied'
-      statusMessage.value = '마이크를 켜고 다시 눌러요'
-      return
-    }
-    if (event.error !== 'aborted') {
-      speechState.value = 'retry'
-      statusMessage.value = '한 번 더 읽어봐!'
-      speechRetryTimer = setTimeout(startSpeech, 900)
-    }
-  }
-  recognition.onend = () => {
-    if (speechState.value === 'listening') {
-      speechState.value = 'retry'
-      statusMessage.value = '한 번 더 읽어봐!'
-      speechRetryTimer = setTimeout(startSpeech, 900)
-    }
-    recognition = null
-  }
-  recognition.start()
+  session.selectAnswer(props.question.answer)
+  const completed = await session.submitAnswer()
+  if (completed) statusMessage.value = '잘 만들었어!'
 }
 
 watch(assemblyCorrect, (correct) => {
-  if (!correct) return
-  if (speechRetryTimer) clearTimeout(speechRetryTimer)
-  speechRetryTimer = setTimeout(startSpeech, 450)
+  if (correct) void submitAssembly()
 })
 
 const evaluateSentence = () => {
@@ -169,7 +97,6 @@ const evaluateSentence = () => {
   if (wrong.length === 0) {
     assemblyCorrect.value = true
     statusMessage.value = ''
-    speechState.value = 'waiting'
     return
   }
 
@@ -250,33 +177,24 @@ const cancelPointerDrag = () => {
   draggingFromSlot.value = null
   overSlotIndex.value = null
 }
-const onExternalSpeech = (event: Event) => {
-  const detail = (event as CustomEvent<{ transcript?: string }>).detail
-  if (detail?.transcript) handleTranscript(detail.transcript)
-}
-
 onMounted(() => {
   window.addEventListener('pointermove', onPointerMove)
   window.addEventListener('pointerup', finishPointerDrag)
   window.addEventListener('pointercancel', cancelPointerDrag)
-  window.addEventListener('iread:speech', onExternalSpeech)
 })
 onBeforeUnmount(() => {
   window.removeEventListener('pointermove', onPointerMove)
   window.removeEventListener('pointerup', finishPointerDrag)
   window.removeEventListener('pointercancel', cancelPointerDrag)
-  window.removeEventListener('iread:speech', onExternalSpeech)
-  recognition?.stop()
   if (wrongTimer) clearTimeout(wrongTimer)
-  if (speechRetryTimer) clearTimeout(speechRetryTimer)
 })
 </script>
 
 <template>
   <section class="activity activity--sentence-order" :aria-label="question.instruction">
     <header class="activity-heading">
-      <h1>{{ assemblyCorrect ? '완성한 문장을 읽어봐!' : '문장을 만들어봐!' }}</h1>
-      <p v-if="statusMessage" class="status-message" :class="speechState" role="status" aria-live="polite">{{ statusMessage }}</p>
+      <h1>문장을 만들어봐!</h1>
+      <p v-if="statusMessage" class="status-message" role="status" aria-live="polite">{{ statusMessage }}</p>
     </header>
 
     <div ref="slotsElement" class="slots" :style="{ '--slot-count': slots.length }">
