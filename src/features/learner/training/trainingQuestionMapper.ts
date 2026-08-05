@@ -454,6 +454,9 @@ function mapAudio(number: number, source: StudentQuestionDto): {
         targetText: expectedText,
         readingSentences: sentences,
         readingGranularity: source.questionType === 'SENTENCE_READING' ? 'word' : 'segment',
+        // 문장에 시선이 닿으면 바로 전체 문장 녹음을 시작하고, 발화가 끝나면
+        // 즉시 평가한다(어절별 응시 900ms→녹음 반복은 흐름이 끊긴다).
+        readingAudioMode: 'whole-sentence',
       }, source, 'segments'),
     }
   }
@@ -487,11 +490,10 @@ function mapAudio(number: number, source: StudentQuestionDto): {
       phraseChunks,
       focusWord,
       audioPromptEnabled: source.questionType === 'SENTENCE_REPEAT',
-      // SENTENCE_REPEAT 의 whole-sentence 모드는 되돌렸다. 그 모드에서는 문장의 모든 단어에
-      // 시선이 닿아야만 녹음이 시작되고(WordReadingGridActivity 의 시선 히트 처리), 한 단어라도
-      // 놓치면 speechState 가 success 로 가지 못해 문항이 영구히 진행 불가가 된다.
-      // whole-sentence 경로 자체는 남겨 두었으니 시선 완주 조건을 손본 뒤 다시 켜면 된다.
-      readingAudioMode: 'per-item',
+      // whole-sentence 모드는 이제 시선이 문장에 처음 닿는 순간 녹음을 시작한다
+      // (모든 어절 완주 요구는 WordReadingGridActivity 에서 제거). 문장 따라 말하기는
+      // 문장 전체를 한 번에 녹음·평가하는 편이 흐름이 자연스럽다.
+      readingAudioMode: source.questionType === 'SENTENCE_REPEAT' ? 'whole-sentence' : 'per-item',
     }, source, layout),
   }
 }

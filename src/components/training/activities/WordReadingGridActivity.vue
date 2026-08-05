@@ -42,6 +42,7 @@ const speechState = ref<SpeechState>('waiting')
 
 let stateTimer: ReturnType<typeof setInterval> | null = null
 let fallbackTimer: ReturnType<typeof setTimeout> | null = null
+let silenceTimer: ReturnType<typeof setInterval> | null = null
 let retryTimer: ReturnType<typeof setTimeout> | null = null
 let dwellStartedAt = 0
 let submittedBlob: Blob | null = null
@@ -109,6 +110,10 @@ const stopSpeech = () => {
     clearTimeout(fallbackTimer)
     fallbackTimer = null
   }
+  if (silenceTimer) {
+    clearInterval(silenceTimer)
+    silenceTimer = null
+  }
   recorder.stop()
 }
 
@@ -130,6 +135,9 @@ const finishWord = (wordIndex: number, blob: Blob | null) => {
 
 const finishWholeSentence = (blob: Blob | null) => {
   stopSpeech()
+  // 녹음은 첫 응시에 시작되므로 응시 흔적이 다 안 쌓였을 수 있다.
+  // 통과 시 전체를 완료로 칠해 결과가 화면에 분명히 보이게 한다.
+  completedIds.value = items.value.map((item) => item.id)
   speechState.value = 'success'
   session.markRecordingComplete({ audioUrl: null, blob: blob ?? undefined })
 }
@@ -181,7 +189,7 @@ const startSpeech = async (wordIndex: number) => {
 }
 
 const startWholeSentenceSpeech = async () => {
-  if (disposed || !allComplete.value || isBusy.value || speechState.value === 'success') return
+  if (disposed || isBusy.value || speechState.value === 'success') return
   stopSpeech()
   if (retryTimer) {
     clearTimeout(retryTimer)
@@ -192,6 +200,7 @@ const startWholeSentenceSpeech = async () => {
   activeIndex.value = null
   speechState.value = 'listening'
 
+  const startedAt = Date.now()
   await recorder.start()
   if (disposed) return
   if (recorder.state.status !== 'recording') {
@@ -201,6 +210,18 @@ const startWholeSentenceSpeech = async () => {
     return
   }
   fallbackTimer = setTimeout(() => recorder.stop(), recordingMsForSentence())
+  // 발화가 끝나면(음성 감지 후 1.3초 침묵) 최대 시간을 기다리지 않고
+  // 바로 녹음을 끝내 평가로 넘어간다.
+  silenceTimer = setInterval(() => {
+    if (recorder.state.status !== 'recording') return
+    const lastVoiceAt = recorder.lastVoiceActivityAt.value
+    if (
+      recorder.hasDetectedVoice.value
+      && lastVoiceAt !== null
+      && Date.now() - startedAt >= 1_500
+      && Date.now() - lastVoiceAt >= 1_300
+    ) recorder.stop()
+  }, 150)
 }
 
 // 녹음이 끝나면 활동 모드에 따라 단어 또는 문장 전체를 Azure 평가로 보낸다.
@@ -240,12 +261,23 @@ watch(() => recorder.state.status, (status) => {
   })
 })
 
+// 시선 보정 오차를 흡수하는 판정 여유. 정확한 박스 안만 인정하면
+// 살짝 어긋난 시선이 어절을 영영 못 맞춰 진행이 막힌다.
+const HIT_PADDING_X = 20
+const HIT_PADDING_Y = 26
+
 const cardIndexAt = (clientX: number, clientY: number) => {
   const cards = grid.value?.querySelectorAll<HTMLElement>('.reading-target')
   if (!cards) return null
   for (let index = 0; index < cards.length; index += 1) {
     const rect = cards[index]?.getBoundingClientRect()
-    if (rect && clientX >= rect.left && clientX <= rect.right && clientY >= rect.top && clientY <= rect.bottom) return index
+    if (
+      rect
+      && clientX >= rect.left - HIT_PADDING_X
+      && clientX <= rect.right + HIT_PADDING_X
+      && clientY >= rect.top - HIT_PADDING_Y
+      && clientY <= rect.bottom + HIT_PADDING_Y
+    ) return index
   }
   return null
 }
@@ -266,11 +298,14 @@ const updateGaze = (clientX: number, clientY: number, emitWordHit = false) => {
   if (emitWordHit && nextGazeIndex !== null) {
     emitGazeWordHit(clientX, clientY, nextGazeIndex)
     if (wholeSentenceRecording.value) {
+      // 시선이 문장에 처음 닿으면 바로 녹음을 시작한다. 모든 어절 완주를
+      // 요구하면 사카드(시선 점프)로 건너뛴 어절 하나 때문에 녹음이 영영
+      // 시작되지 않는다. 어절 응시 표시는 읽기 흔적 연출로만 쌓는다.
       const item = items.value[nextGazeIndex]
       if (item && !completedIds.value.includes(item.id)) {
         completedIds.value = [...completedIds.value, item.id]
-        if (completedIds.value.length === items.value.length) void startWholeSentenceSpeech()
       }
+      if (speechState.value === 'waiting') void startWholeSentenceSpeech()
     }
   }
 }

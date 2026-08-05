@@ -36,6 +36,9 @@ export function useVoiceRecorder() {
   const waveform = ref<number[]>(buildIdleWaveform())
   const hasDetectedVoice = ref(false)
   const voiceActivityDetectionAvailable = ref(false)
+  // 마지막으로 음성 에너지가 감지된 시각. 발화 후 침묵을 감지해 녹음을
+  // 일찍 끝내려는 화면(문장 따라 읽기 등)이 참조한다.
+  const lastVoiceActivityAt = ref<number | null>(null)
 
   // 실제 녹음 스트림/레코더/타이머
   let mediaStream: MediaStream | null = null
@@ -110,6 +113,7 @@ export function useVoiceRecorder() {
     detectedVoiceFrames = rms >= 0.015
       ? detectedVoiceFrames + 1
       : Math.max(0, detectedVoiceFrames - 1)
+    if (rms >= 0.015) lastVoiceActivityAt.value = Date.now()
     if (detectedVoiceFrames >= 2) hasDetectedVoice.value = true
   }
 
@@ -232,6 +236,7 @@ export function useVoiceRecorder() {
     state.hasRecording = false
     hasDetectedVoice.value = false
     voiceActivityDetectionAvailable.value = false
+    lastVoiceActivityAt.value = null
     detectedVoiceFrames = 0
     waveform.value = buildIdleWaveform()
   }
@@ -257,6 +262,7 @@ export function useVoiceRecorder() {
     audioUrl,
     audioBlob,
     hasDetectedVoice,
+    lastVoiceActivityAt,
     voiceActivityDetectionAvailable,
     checkAccess,
     start,
