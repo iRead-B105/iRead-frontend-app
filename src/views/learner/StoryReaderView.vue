@@ -1261,8 +1261,15 @@ onBeforeUnmount(() => {
             <button type="button" @click="router.push({ name: 'story-selection' })">
               이야기 나라로
             </button>
-            <button type="button" @click="router.push({ name: 'growth' })">
-              이야기 친구 보러 가기
+            <button
+              type="button"
+              @click="router.push(
+                rewardedFriend
+                  ? { name: 'growth', query: { placeFriend: rewardedFriend.id } }
+                  : { name: 'growth' },
+              )"
+            >
+              {{ rewardedFriend ? '정원에 데려가기' : '이야기 친구 보러 가기' }}
             </button>
           </div>
         </section>

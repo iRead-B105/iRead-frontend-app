@@ -139,6 +139,13 @@ const placeFriend = (friendId: string) => {
   placedFriendIds.value = [...placedFriendIds.value, friendId]
   savePlacedFriendIds()
   friendAnnouncement.value = `${friend.name}가 정원에 놀러 왔어!`
+  // 완독 보상 딥링크(?placeFriend=)로 온 경우 도착 인사가 보이도록 말풍선을 띄운다.
+  activeFriendId.value = friendId
+  window.clearTimeout(friendTimer)
+  friendTimer = window.setTimeout(() => {
+    activeFriendId.value = null
+    friendTimer = undefined
+  }, 3200)
 }
 
 const toggleFriendPlacement = (friendId: string) => {
