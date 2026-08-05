@@ -450,13 +450,13 @@ function mapAudio(number: number, source: StudentQuestionDto): {
       activityType: 'word-reading-grid',
       expectedText,
       question: withReadingItems({
-        ...baseQuestion(number, '처음부터 차례대로 읽어요', expectedText),
+        ...baseQuestion(number, '어절을 하나씩 차례대로 읽어요', expectedText),
         targetText: expectedText,
         readingSentences: sentences,
-        readingGranularity: source.questionType === 'SENTENCE_READING' ? 'word' : 'segment',
-        // 문장에 시선이 닿으면 바로 전체 문장 녹음을 시작하고, 발화가 끝나면
-        // 즉시 평가한다(어절별 응시 900ms→녹음 반복은 흐름이 끊긴다).
-        readingAudioMode: 'whole-sentence',
+        readingGranularity: 'word',
+        // '어절별로 읽기' 그룹(문장 읽기·짧은 글 읽기): 어절을 하나씩 응시하고
+        // 하나씩 정확히 읽는 해독 연습. 통낭독은 '한번에 읽기' 그룹이 담당한다.
+        readingAudioMode: 'per-item',
       }, source, 'segments'),
     }
   }
@@ -481,19 +481,25 @@ function mapAudio(number: number, source: StudentQuestionDto): {
     phraseChunks = [expectedText]
   }
   const layout: 'cards' | 'segments' = source.questionType === 'WORD_CHAIN_READING' ? 'cards' : 'segments'
+  // '한번에 읽기' 그룹: 따라 읽기·끊어 읽기·같은 문장 다시 읽기·짧은 이야기 읽기는
+  // 시선이 글에 닿으면 전체를 한 번에 녹음·평가한다(끊어 읽기의 구 표시,
+  // 따라 읽기의 모범 음성은 유지). 같은 문장 다시 읽기의 반복 횟수는 쓰지 않는다.
+  const readsAtOnce = [
+    'SENTENCE_REPEAT',
+    'PHRASE_READING',
+    'REPEATED_SENTENCE_READING',
+    'SHORT_STORY_READING',
+  ].includes(source.questionType)
   return {
     activityType: 'word-reading-grid',
     expectedText,
     question: withReadingItems({
-      ...baseQuestion(number, '소리 내어 읽어요', expectedText),
+      ...baseQuestion(number, readsAtOnce ? '처음부터 한 번에 읽어요' : '소리 내어 읽어요', expectedText),
       targetText: expectedText,
       phraseChunks,
       focusWord,
       audioPromptEnabled: source.questionType === 'SENTENCE_REPEAT',
-      // whole-sentence 모드는 이제 시선이 문장에 처음 닿는 순간 녹음을 시작한다
-      // (모든 어절 완주 요구는 WordReadingGridActivity 에서 제거). 문장 따라 말하기는
-      // 문장 전체를 한 번에 녹음·평가하는 편이 흐름이 자연스럽다.
-      readingAudioMode: source.questionType === 'SENTENCE_REPEAT' ? 'whole-sentence' : 'per-item',
+      readingAudioMode: readsAtOnce ? 'whole-sentence' : 'per-item',
     }, source, layout),
   }
 }

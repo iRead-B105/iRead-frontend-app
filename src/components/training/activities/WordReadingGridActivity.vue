@@ -186,6 +186,22 @@ const startSpeech = async (wordIndex: number) => {
   }
   // 낱말 하나 발화에 충분한 시간을 준 뒤 자동으로 녹음을 끝낸다.
   fallbackTimer = setTimeout(() => recorder.stop(), recordingMsFor(wordIndex))
+  startSilenceStop(1_200, 1_100)
+}
+
+// 발화 후 침묵이 이어지면 최대 녹음 시간을 기다리지 않고 바로 평가로 넘어간다.
+const startSilenceStop = (minRecordingMs: number, silenceMs: number) => {
+  const startedAt = Date.now()
+  silenceTimer = setInterval(() => {
+    if (recorder.state.status !== 'recording') return
+    const lastVoiceAt = recorder.lastVoiceActivityAt.value
+    if (
+      recorder.hasDetectedVoice.value
+      && lastVoiceAt !== null
+      && Date.now() - startedAt >= minRecordingMs
+      && Date.now() - lastVoiceAt >= silenceMs
+    ) recorder.stop()
+  }, 150)
 }
 
 const startWholeSentenceSpeech = async () => {
@@ -200,7 +216,6 @@ const startWholeSentenceSpeech = async () => {
   activeIndex.value = null
   speechState.value = 'listening'
 
-  const startedAt = Date.now()
   await recorder.start()
   if (disposed) return
   if (recorder.state.status !== 'recording') {
@@ -210,18 +225,7 @@ const startWholeSentenceSpeech = async () => {
     return
   }
   fallbackTimer = setTimeout(() => recorder.stop(), recordingMsForSentence())
-  // 발화가 끝나면(음성 감지 후 1.3초 침묵) 최대 시간을 기다리지 않고
-  // 바로 녹음을 끝내 평가로 넘어간다.
-  silenceTimer = setInterval(() => {
-    if (recorder.state.status !== 'recording') return
-    const lastVoiceAt = recorder.lastVoiceActivityAt.value
-    if (
-      recorder.hasDetectedVoice.value
-      && lastVoiceAt !== null
-      && Date.now() - startedAt >= 1_500
-      && Date.now() - lastVoiceAt >= 1_300
-    ) recorder.stop()
-  }, 150)
+  startSilenceStop(1_500, 1_300)
 }
 
 // 녹음이 끝나면 활동 모드에 따라 단어 또는 문장 전체를 Azure 평가로 보낸다.
