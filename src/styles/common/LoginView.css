@@ -4,12 +4,14 @@
 
 .login-page {
   position: relative;
-  min-height: 100dvh;
+  height: 100dvh;
   display: flex;
+  /* 공간이 부족하면 위(로고)만 잘리고 카드는 항상 온전히 보이게
+     아래 기준으로 정렬한다(스크롤 내려간 상태 고정). 스크롤바는 만들지 않는다. */
+  flex-direction: column-reverse;
   align-items: center;
-  justify-content: center;
-  overflow-x: hidden;
-  overflow-y: auto;
+  justify-content: safe center;
+  overflow: hidden;
   padding: clamp(24px, 4vw, 64px);
   background-color: #9edcff;
   background-image: var(--login-background-image);
@@ -27,8 +29,18 @@
 }
 
 .login-card {
+  /* 로고·페이지 패딩을 제외한 세로 공간(--login-vertical-reserve)보다 커지지 않게
+     상한을 두어, 낮은 창(일렉트론 1280×800 등)에서 페이지 스크롤이 생기지 않게 한다 */
+  --login-vertical-reserve: calc(
+    clamp(200px, 27vh, 277px) + var(--learner-space-6) + 2 * clamp(24px, 4vw, 64px)
+  );
   width: min(86vw, 680px);
-  height: clamp(530px, calc(466px + 6.4vw), 570px);
+  height: min(
+    clamp(530px, calc(466px + 6.4vw), 570px),
+    calc(100dvh - var(--login-vertical-reserve))
+  );
+  min-height: 400px;
+  overflow-y: auto;
   margin: 0 auto;
   padding: 40px;
   box-sizing: border-box;
@@ -579,6 +591,10 @@
 
 @media (max-height: 760px) {
   .login-card {
+    /* 로고가 170px 고정으로 줄어드므로 상한 계산도 함께 갱신한다 */
+    --login-vertical-reserve: calc(
+      170px + var(--learner-space-3) + 2 * clamp(24px, 4vw, 64px)
+    );
     padding-block: var(--learner-space-6);
   }
 
