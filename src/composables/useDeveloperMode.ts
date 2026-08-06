@@ -5,7 +5,7 @@ const CLICK_WINDOW_MS = 1_500
 const REQUIRED_CLICKS = 5
 
 const readInitialState = () => {
-  if (typeof window === 'undefined') return false
+  if (typeof window === 'undefined' || !window.localStorage) return false
   return window.localStorage.getItem(STORAGE_KEY) === 'on'
 }
 
@@ -45,7 +45,7 @@ const DEV_LOG_CAP = 30
 
 const setEnabled = (value: boolean) => {
   enabled.value = value
-  if (typeof window !== 'undefined') {
+  if (typeof window !== 'undefined' && window.localStorage) {
     window.localStorage.setItem(STORAGE_KEY, value ? 'on' : 'off')
   }
   if (!value) {

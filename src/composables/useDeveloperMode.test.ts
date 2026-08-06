@@ -1,7 +1,26 @@
 // @vitest-environment jsdom
 
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { useDeveloperMode } from './useDeveloperMode'
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+
+let useDeveloperMode: typeof import('./useDeveloperMode').useDeveloperMode
+
+beforeAll(async () => {
+  const values = new Map<string, string>()
+  Object.defineProperty(window, 'localStorage', {
+    configurable: true,
+    value: {
+      clear: () => values.clear(),
+      getItem: (key: string) => values.get(key) ?? null,
+      setItem: (key: string, value: string) => values.set(key, value),
+      removeItem: (key: string) => values.delete(key),
+      key: (index: number) => [...values.keys()][index] ?? null,
+      get length() {
+        return values.size
+      },
+    } satisfies Storage,
+  })
+  ;({ useDeveloperMode } = await import('./useDeveloperMode'))
+})
 
 describe('useDeveloperMode', () => {
   beforeEach(() => {
