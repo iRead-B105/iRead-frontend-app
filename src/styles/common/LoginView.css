@@ -352,6 +352,12 @@
   gap: 12px;
 }
 
+/* 아동이 3명 이하면 좌우 화살표 버튼이 없으므로 화살표 열을 제거해
+   카드 그리드가 56px 열에 갇히지 않고 전체 폭을 쓰게 한다 */
+.student-browser--single-page {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .student-grid {
   display: flex;
   justify-content: center;

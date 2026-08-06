@@ -44,6 +44,8 @@ import { learnerGazeRepository } from '@/features/learner/gaze'
 import { learnerTestRepository } from '@/features/learner/test'
 import { presentTrainingHint } from '@/features/learner/training/hintPresentation'
 import { getTrainingTemplateMapping } from '@/features/learner/content/trainingTemplateMapping'
+import { resolveAuthenticatedQuestionImage } from '@/features/learner/training/authenticatedQuestionImage'
+import { getTutorialFamily } from '@/features/learner/tutorial/tutorialFamily'
 import { isApiError } from '@/lib/api'
 import { cursorGazeFallbackActive } from '@/lib/cursorGazeFallback'
 import TrainingTutorial from '@/components/training/TrainingTutorial.vue'
@@ -139,11 +141,11 @@ const tutorialTrainingKey = computed(() =>
   `${challengeTrackId.value ? 'challenge' : 'training'}:${categoryId.value}:${lesson.value?.id ?? lessonId.value}:${lesson.value?.activityType ?? 'unknown'}`,
 )
 const tutorialStudentKey = computed(() => String(getCachedStudent().studentId))
+const tutorialFamily = computed(() => getTutorialFamily(tutorialTrainingKey.value))
 const tutorialStorageKeys = computed(() => {
   const key = tutorialTrainingKey.value
-  const normalizedKey = key.replace(/^(training|challenge):/, '')
   return [
-    `iread-training-tutorial:v2:${tutorialStudentKey.value}:${normalizedKey}`,
+    `iread-training-tutorial:v3:${tutorialStudentKey.value}:${tutorialFamily.value}`,
     `iread-training-tutorial:v2:${tutorialStudentKey.value}:${key}`,
     `iread-training-tutorial:v2:${tutorialStudentKey.value}:${key.replace(/^training:/, 'challenge:')}`,
     `iread-training-tutorial:v2:${tutorialStudentKey.value}:${key.replace(/^challenge:/, 'training:')}`,
@@ -442,6 +444,15 @@ onMounted(async () => {
           ),
         )
         const mappedQuestions = [firstPayload, ...remainingPayloads].map(mapTrainingQuestion)
+        // 그림 문항 삽화는 백엔드 인증 경로에 저장되므로 blob URL로 바꿔야 <img>가 그린다.
+        // 실패하면 targetImage를 비워 imagePrompt 텍스트 폴백으로 자연 저하.
+        await Promise.all(mappedQuestions.map(async (mapped) => {
+          if (!mapped.question.targetImage) return
+          mapped.question.targetImage = await resolveAuthenticatedQuestionImage(
+            studentId,
+            mapped.question.targetImage,
+          ).catch(() => undefined) ?? undefined
+        }))
         const activityType = mappedQuestions[0]?.activityType
         if (
           !activityType
