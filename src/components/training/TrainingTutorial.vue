@@ -2,6 +2,7 @@
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import type { TrainingActivityType } from '@/types/training'
 import { useAudioPlayer } from '@/composables/useAudioPlayer'
+import { getTutorialFamily } from '@/features/learner/tutorial/tutorialFamily'
 
 export type TrainingTutorialStep = {
   title: string
@@ -111,12 +112,10 @@ const steps = computed<TrainingTutorialStep[]>(() => {
   ]
 })
 
-// 테스트와 일반 훈련이 같은 레슨을 가리키는 경우에는 튜토리얼 완료 상태를 공유한다.
-// 기존 키(v2:training:..., v2:challenge:...)와의 호환을 위해 저장은 공통 키로 한다.
-const normalizedTrainingKey = computed(() =>
-  props.trainingKey.replace(/^(training|challenge):/, ''),
+// 같은 튜토리얼 흐름을 가진 테스트와 훈련은 완료 상태를 공유한다.
+const storageKey = computed(() =>
+  `iread-training-tutorial:v3:${props.studentKey}:${getTutorialFamily(props.trainingKey)}`,
 )
-const storageKey = computed(() => `iread-training-tutorial:v2:${props.studentKey}:${normalizedTrainingKey.value}`)
 const currentStep = computed(() => steps.value[currentIndex.value])
 
 const spotlightBounds = computed(() => {
