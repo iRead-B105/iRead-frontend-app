@@ -139,10 +139,18 @@ const tutorialTrainingKey = computed(() =>
   `${challengeTrackId.value ? 'challenge' : 'training'}:${categoryId.value}:${lesson.value?.id ?? lessonId.value}:${lesson.value?.activityType ?? 'unknown'}`,
 )
 const tutorialStudentKey = computed(() => String(getCachedStudent().studentId))
+const tutorialStorageKeys = computed(() => {
+  const key = tutorialTrainingKey.value
+  const normalizedKey = key.replace(/^(training|challenge):/, '')
+  return [
+    `iread-training-tutorial:v2:${tutorialStudentKey.value}:${normalizedKey}`,
+    `iread-training-tutorial:v2:${tutorialStudentKey.value}:${key}`,
+    `iread-training-tutorial:v2:${tutorialStudentKey.value}:${key.replace(/^training:/, 'challenge:')}`,
+    `iread-training-tutorial:v2:${tutorialStudentKey.value}:${key.replace(/^challenge:/, 'training:')}`,
+  ]
+})
 const tutorialCompleted = computed(() =>
-  window.localStorage.getItem(
-    `iread-training-tutorial:v2:${tutorialStudentKey.value}:${tutorialTrainingKey.value}`,
-  ) === 'completed',
+  tutorialStorageKeys.value.some((key) => window.localStorage.getItem(key) === 'completed'),
 )
 
 type Phase = 'intro' | 'playing' | 'saving'
