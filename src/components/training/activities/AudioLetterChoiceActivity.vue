@@ -6,7 +6,7 @@ import { useTrainingSession } from '@/composables/useTrainingSession'
 import LetterCard from '../LetterCard.vue'
 import SoundButton from '../SoundButton.vue'
 
-const props = defineProps<{ question: TrainingQuestion }>()
+const props = defineProps<{ question: TrainingQuestion; tutorialActive?: boolean }>()
 defineEmits<{ next: [] }>()
 
 const session = useTrainingSession()
@@ -39,8 +39,10 @@ const choose = async (choice: TrainingChoice) => {
 }
 
 watch(
-  () => props.question.id,
-  () => void nextTick(playQuestion),
+  () => [props.question.id, props.tutorialActive],
+  () => {
+    if (!props.tutorialActive) void nextTick(playQuestion)
+  },
   { immediate: true },
 )
 </script>
@@ -50,7 +52,7 @@ watch(
     <h1>{{ question.instruction }}</h1>
 
     <div class="learning-area">
-      <div class="listen-panel">
+      <div class="listen-panel" data-training-tutorial-target="listen">
         <SoundButton
           :text="question.audioText ?? ''"
           size="large"
@@ -58,7 +60,7 @@ watch(
         />
       </div>
 
-      <div class="choices" aria-label="글자 선택지">
+      <div class="choices" data-training-tutorial-target="choices" aria-label="글자 선택지">
         <template v-for="choice in choices" :key="choice.id">
           <LetterCard
             v-if="choice.letter"

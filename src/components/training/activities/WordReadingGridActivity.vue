@@ -388,8 +388,8 @@ onBeforeUnmount(() => {
       <h1>{{ canProceed ? '다 읽었어!' : question.instruction }}</h1>
     </header>
 
-    <div class="reading-layout" @pointermove="onPointerMove" @pointerleave="onPointerLeave">
-      <div v-if="layout === 'segments'" ref="grid" class="reading-segments">
+    <div class="reading-layout" data-training-tutorial-target="reading-layout" @pointermove="onPointerMove" @pointerleave="onPointerLeave">
+      <div v-if="layout === 'segments'" ref="grid" class="reading-segments" data-training-tutorial-target="reading-content">
         <span
           v-for="(item, index) in items"
           :key="item.id"
@@ -405,6 +405,7 @@ onBeforeUnmount(() => {
         v-else
         ref="grid"
         class="word-grid"
+        data-training-tutorial-target="reading-content"
         :class="{
           'word-grid--single': items.length === 1,
           'word-grid--single-row': items.length <= 2,
@@ -428,6 +429,7 @@ onBeforeUnmount(() => {
 
       <section
         class="speech-panel"
+        data-training-tutorial-target="speech"
         :class="`speech-panel--${speechState}`"
         aria-live="polite"
       >

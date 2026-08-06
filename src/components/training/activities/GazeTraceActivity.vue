@@ -301,7 +301,7 @@ onBeforeUnmount(() => {
           <!-- 외곽선 전체 → 중심선 전체 순서로 그려야 획 접점에 이음새가 안 생기고
                글자가 하나로 이어져 보인다. (획별로 번갈아 그리면 다음 획의 외곽선이
                이전 획의 중심을 덮어 ㅏ가 ㅣ·ㅡ 두 조각처럼 보인다) -->
-          <g class="glyph-body" aria-hidden="true">
+          <g class="glyph-body" data-training-tutorial-target="trace-glyph" aria-hidden="true">
             <polyline
               v-for="(stroke, strokeIndex) in strokes"
               :key="`outline-${strokeIndex}`"
@@ -341,7 +341,7 @@ onBeforeUnmount(() => {
       </div>
 
       <aside class="trace-side">
-        <section class="listen-panel">
+        <section class="listen-panel" data-training-tutorial-target="listen">
           <span class="panel-label">소리 듣기</span>
           <SoundButton
             :text="pronunciationText"
@@ -353,6 +353,7 @@ onBeforeUnmount(() => {
 
         <section
           class="speech-panel"
+          data-training-tutorial-target="speech"
           :class="`speech-panel--${speechState}`"
           aria-live="polite"
         >
