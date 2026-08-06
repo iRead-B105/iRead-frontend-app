@@ -155,6 +155,11 @@ const startSpeech = async () => {
 }
 
 watch(() => recorder.state.status, (status) => {
+  // 권한을 다시 허용하면 남아 있던 거부 안내를 걷어내고 다시 읽을 수 있게 한다.
+  if (speechState.value === 'denied' && status !== 'denied') {
+    deniedMessage.value = ''
+    speechState.value = 'waiting'
+  }
   const blob = recorder.audioBlob.value
   if (status !== 'recorded' || !blob || blob === submittedBlob) return
   submittedBlob = blob

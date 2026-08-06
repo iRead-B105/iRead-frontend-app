@@ -230,6 +230,11 @@ const startWholeSentenceSpeech = async () => {
 
 // 녹음이 끝나면 활동 모드에 따라 단어 또는 문장 전체를 Azure 평가로 보낸다.
 watch(() => recorder.state.status, (status) => {
+  // 권한을 다시 허용하면 남아 있던 거부 안내를 걷어내고 다시 읽을 수 있게 한다.
+  if (speechState.value === 'denied' && status !== 'denied') {
+    deniedMessage.value = ''
+    speechState.value = 'waiting'
+  }
   if (props.tutorialActive) return
   const blob = recorder.audioBlob.value
   if (status !== 'recorded' || !blob || blob === submittedBlob) return

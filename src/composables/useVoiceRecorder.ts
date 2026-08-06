@@ -9,7 +9,14 @@
 
 import { onScopeDispose, reactive, ref, shallowRef } from 'vue'
 import type { RecordingState } from '@/types/training'
-import { resolveMicrophoneErrorMessage } from '@/lib/media/microphoneErrorMessage'
+import {
+  MICROPHONE_PERMISSION_DENIED_MESSAGE,
+  resolveMicrophoneErrorMessage,
+} from '@/lib/media/microphoneErrorMessage'
+import {
+  watchMicrophonePermission,
+  type MicrophonePermission,
+} from '@/lib/media/microphonePermission'
 import { useDeviceStatus } from './useDeviceStatus'
 
 const MAX_RECORDING_MS = 30_000 // 최대 녹음 시간(안전장치)
@@ -34,6 +41,7 @@ export function useVoiceRecorder() {
   })
 
   const waveform = ref<number[]>(buildIdleWaveform())
+  const permission = ref<MicrophonePermission>('unsupported')
   const hasDetectedVoice = ref(false)
   const voiceActivityDetectionAvailable = ref(false)
   // 마지막으로 음성 에너지가 감지된 시각. 발화 후 침묵을 감지해 녹음을
@@ -250,8 +258,38 @@ export function useVoiceRecorder() {
     state.errorMessage = null
   }
 
+  // 브라우저 권한이 바뀌면 남아 있던 거부 안내를 스스로 걷어낸다.
+  //
+  // 권한을 껐다가 다시 허용해도 status='denied' 와 errorMessage 가 그대로 남아
+  // "마이크 사용 권한이 꺼져 있어요" 안내가 사라지지 않았다. 다음 녹음 시도가
+  // 있을 때까지 알 방법이 없었기 때문이다.
+  const stopPermissionWatch = watchMicrophonePermission((next) => {
+    permission.value = next
+    if (next === 'unsupported') return
+
+    if (next === 'granted') {
+      if (state.status === 'denied') {
+        state.status = 'idle'
+        state.errorMessage = null
+      }
+      return
+    }
+
+    // 녹음 중에 권한이 끊기면 진행 중인 녹음도 정리해야 한다.
+    if (state.status === 'recording' || state.status === 'requesting') {
+      clearTimers()
+      stopStream()
+    }
+    if (next === 'denied' && state.status !== 'recorded') {
+      state.status = 'denied'
+      state.errorMessage = MICROPHONE_PERMISSION_DENIED_MESSAGE
+      setMicrophoneState({ available: false, active: false })
+    }
+  })
+
   // 컴포넌트 언마운트 시 리소스 정리
   onScopeDispose(() => {
+    stopPermissionWatch()
     setMicrophoneState({ active: false })
     reset()
   })
@@ -259,6 +297,7 @@ export function useVoiceRecorder() {
   return {
     state,
     waveform,
+    permission,
     audioUrl,
     audioBlob,
     hasDetectedVoice,

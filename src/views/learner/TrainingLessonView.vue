@@ -678,6 +678,14 @@ const enableMicrophoneFromBlocker = async () => {
   }
 }
 
+// 아이가 브라우저 설정에서 마이크를 허용하면 '마이크 켜기'를 다시 누르지 않아도
+// 차단 화면이 걷히게 한다. 권한이 이미 허용된 상태라 추가 확인 창은 뜨지 않는다.
+watch(() => voiceRecorder.permission.value, (permission) => {
+  if (permission !== 'granted') return
+  if (deviceBlocker.value !== 'microphone') return
+  void enableMicrophoneFromBlocker()
+})
+
 const goNext = async (response?: LearnerTraceSubmissionResponse) => {
   if (submittingQuestion.value) return
   {
