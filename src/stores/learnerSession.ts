@@ -273,6 +273,10 @@ export const useLearnerSessionStore = defineStore('learner-session', {
         this.logoutPending = false
       }
     },
+    async invalidateDeletedStudentSession() {
+      this.reset({ preserveImageCache: true })
+      await clearLearnerImageCaches()
+    },
     cancelStudentSelection() {
       this.reset()
     },
