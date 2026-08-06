@@ -1078,6 +1078,7 @@ const isSavingFailed = computed(() => session.savingState.status === 'failed')
           v-if="displayQuestion && activityComponent"
           :key="displayQuestion.id"
           :question="displayQuestion"
+          :tutorial-active="tutorialVisible"
           @next="goNext"
           @voice-recorded="evaluateActivityVoice"
         />

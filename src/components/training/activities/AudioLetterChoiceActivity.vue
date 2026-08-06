@@ -6,7 +6,7 @@ import { useTrainingSession } from '@/composables/useTrainingSession'
 import LetterCard from '../LetterCard.vue'
 import SoundButton from '../SoundButton.vue'
 
-const props = defineProps<{ question: TrainingQuestion }>()
+const props = defineProps<{ question: TrainingQuestion; tutorialActive?: boolean }>()
 defineEmits<{ next: [] }>()
 
 const session = useTrainingSession()
@@ -39,8 +39,10 @@ const choose = async (choice: TrainingChoice) => {
 }
 
 watch(
-  () => props.question.id,
-  () => void nextTick(playQuestion),
+  () => [props.question.id, props.tutorialActive],
+  () => {
+    if (!props.tutorialActive) void nextTick(playQuestion)
+  },
   { immediate: true },
 )
 </script>

@@ -25,6 +25,29 @@ const viewportHeight = ref(typeof window === 'undefined' ? 0 : window.innerHeigh
 const ttsLocked = ref(false)
 const audioPlayer = useAudioPlayer()
 
+const trainingIntroCopyById: Record<string, { title: string; description: string }> = {
+  'first-sound': {
+    title: '첫소리 글자를 골라요',
+    description: '단어를 잘 듣고, 맨 앞에서 나는 소리와 같은 글자를 골라봐요.',
+  },
+  'word-first-sound-choice': {
+    title: '첫소리 글자를 골라요',
+    description: '들려주는 소리를 듣고 단어의 첫소리와 같은 글자 카드를 골라봐요.',
+  },
+  'last-sound': {
+    title: '끝소리 글자를 골라요',
+    description: '단어를 잘 듣고, 맨 끝에서 나는 소리와 같은 글자를 골라봐요.',
+  },
+  'same-sound': {
+    title: '같은 소리의 카드를 골라요',
+    description: '기준이 되는 소리를 듣고 같은 소리가 나는 글자나 카드를 골라봐요.',
+  },
+  'batchim-sound': {
+    title: '받침 소리를 골라요',
+    description: '음절의 끝에서 나는 받침 소리를 듣고 같은 소리의 글자를 골라봐요.',
+  },
+}
+
 const introCopyByActivity: Partial<Record<TrainingActivityType, { title: string; description: string }>> = {
   'word-reading-grid': { title: '처음부터 차례대로 읽어요', description: '문장을 앞에서부터 차례대로 읽어봐요.' },
   'listen-and-select': { title: '소리를 듣고 골라요', description: '소리를 잘 듣고 알맞은 글자나 그림을 골라봐요.' },
@@ -40,7 +63,8 @@ const introCopyByActivity: Partial<Record<TrainingActivityType, { title: string;
 }
 
 const steps = computed<TrainingTutorialStep[]>(() => {
-  const intro = introCopyByActivity[props.activityType] ?? {
+  const trainingId = props.trainingKey.split(':')[2] ?? ''
+  const intro = trainingIntroCopyById[trainingId] ?? introCopyByActivity[props.activityType] ?? {
     title: '문제 푸는 방법을 알아봐요',
     description: '화면에 있는 카드와 글자를 살펴보며 문제를 해결해봐요.',
   }
