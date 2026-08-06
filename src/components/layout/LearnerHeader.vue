@@ -10,6 +10,11 @@ import { useGazeCursorVisibility } from '../../composables/useGazeCursorVisibili
 import { useTobiiGazeBridge } from '../../composables/useTobiiGazeBridge'
 import { resolveAuthenticatedProfileImage } from '@/features/learner/auth'
 import { resolveMicrophoneErrorMessage } from '@/lib/media/microphoneErrorMessage'
+import {
+  queryMicrophonePermission,
+  watchMicrophonePermission,
+  type MicrophonePermission,
+} from '@/lib/media/microphonePermission'
 import { useLearnerSessionStore } from '@/stores/learnerSession'
 import { useLearnerErrorModalStore } from '@/stores/learnerErrorModal'
 import eyeTrackerIcon from '@/assets/icons/eye-tracker.svg'
@@ -26,7 +31,7 @@ const emit = defineEmits<{ brandClick: [] }>()
 const avatarSource = ref(defaultAvatar)
 
 type OpenMenu = 'eye' | 'microphone' | null
-type MicrophoneStatus = 'disconnected' | 'connecting' | 'connected' | 'recording' | 'ready' | 'playing'
+type MicrophoneStatus = 'disconnected' | 'denied' | 'connecting' | 'connected' | 'recording' | 'ready' | 'playing'
 
 const router = useRouter()
 const learnerSession = useLearnerSessionStore()
@@ -36,7 +41,9 @@ const openMenu = ref<OpenMenu>(null)
 const microphoneStatus = ref<MicrophoneStatus>('disconnected')
 const displayedEyeTrackerStatus = ref<'connected' | 'connecting' | 'disconnected'>('disconnected')
 const microphoneStream = ref<MediaStream | null>(null)
+const microphonePermission = ref<MicrophonePermission>('unsupported')
 const recordedAudioUrl = ref('')
+let stopMicrophonePermissionWatch: (() => void) | undefined
 let recorder: MediaRecorder | null = null
 let recordedChunks: Blob[] = []
 let testAudio: HTMLAudioElement | null = null
@@ -107,6 +114,8 @@ watch([microphoneAvailable, microphoneActive], ([available, active]) => {
     return
   }
   if (!available) {
+    // 권한이 차단된 상태는 '연결 안 됨'보다 구체적인 안내이므로 덮어쓰지 않는다.
+    if (microphoneStatus.value === 'denied') return
     if (!microphoneStream.value) microphoneStatus.value = 'disconnected'
     return
   }
@@ -121,12 +130,18 @@ watch([microphoneAvailable, microphoneActive], ([available, active]) => {
 
 const microphoneStatusLabel = computed(() => ({
   disconnected: '마이크 연결 안 됨',
+  denied: '마이크 권한 없음',
   connecting: '마이크 확인 중…',
   connected: '마이크 연결됨',
   recording: '테스트 녹음 중…',
   ready: '테스트 녹음 완료',
   playing: '테스트 소리 재생 중…',
 })[microphoneStatus.value])
+
+// 권한이 차단됐거나 아직 확인하지 않은 상태를 한 곳에서 판단한다.
+const microphoneUsable = computed(
+  () => microphoneStatus.value !== 'disconnected' && microphoneStatus.value !== 'denied',
+)
 
 const toggleMenu = (menu: Exclude<OpenMenu, null>) => {
   openMenu.value = openMenu.value === menu ? null : menu
@@ -170,6 +185,44 @@ const emitMicrophoneState = (available: boolean, active = false) => {
   }))
 }
 
+// 권한 차단·기기 분리처럼 우리가 멈추지 않았는데 트랙이 끝나는 경우를 잡는다.
+// 우리가 track.stop() 을 호출한 경우에는 ended 가 발생하지 않는다.
+const watchStreamRevocation = (stream: MediaStream) => {
+  stream.getTracks().forEach((track) => {
+    track.addEventListener('ended', () => {
+      if (microphoneStream.value !== stream) return
+      void refreshMicrophonePermission()
+    }, { once: true })
+  })
+}
+
+// 권한이 허용에서 벗어나면 이전에 확인해 둔 연결 상태를 더는 신뢰할 수 없다.
+const applyMicrophonePermission = (permission: MicrophonePermission) => {
+  microphonePermission.value = permission
+
+  // 조회할 수 없는 브라우저에서는 기존 동작(연결 확인 결과)을 그대로 둔다.
+  if (permission === 'unsupported') return
+
+  if (permission === 'granted') {
+    // 다시 허용됐으면 잠긴 안내를 풀고 연결 확인부터 하게 한다.
+    if (microphoneStatus.value === 'denied') microphoneStatus.value = 'disconnected'
+    return
+  }
+
+  // 'denied'(차단) 또는 'prompt'(다시 물어봄) — 어느 쪽도 허용 상태가 아니다.
+  const target: MicrophoneStatus = permission === 'denied' ? 'denied' : 'disconnected'
+  // 이미 그 상태로 정리돼 있으면 메뉴를 열 때마다 다시 끊지 않는다.
+  if (microphoneStatus.value === target && !microphoneStream.value) return
+
+  disconnectMicrophone()
+  // disconnectMicrophone 이 'disconnected' 로 두므로 차단 상태를 다시 덮어쓴다.
+  microphoneStatus.value = target
+}
+
+const refreshMicrophonePermission = async () => {
+  applyMicrophonePermission(await queryMicrophonePermission())
+}
+
 const connectMicrophone = async (keepStream = false) => {
   if (!navigator.mediaDevices?.getUserMedia) {
     errorModal.show('마이크를 사용할 수 없는 환경이에요')
@@ -180,12 +233,19 @@ const connectMicrophone = async (keepStream = false) => {
   try {
     stopMicrophoneTracks()
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-    if (keepStream) microphoneStream.value = stream
-    else stream.getTracks().forEach((track) => track.stop())
+    if (keepStream) {
+      microphoneStream.value = stream
+      watchStreamRevocation(stream)
+    } else {
+      stream.getTracks().forEach((track) => track.stop())
+    }
+    microphonePermission.value = 'granted'
     microphoneStatus.value = 'connected'
     emitMicrophoneState(true)
   } catch (error) {
-    microphoneStatus.value = 'disconnected'
+    const denied = error instanceof DOMException && error.name === 'NotAllowedError'
+    if (denied) microphonePermission.value = 'denied'
+    microphoneStatus.value = denied ? 'denied' : 'disconnected'
     emitMicrophoneState(false)
     errorModal.show(resolveMicrophoneErrorMessage(error), '마이크 연결 오류')
   }
@@ -269,11 +329,25 @@ const closeMenusFromEscape = (event: KeyboardEvent) => {
   nextTick(() => menuRoot.value?.querySelector<HTMLButtonElement>('.device-button')?.focus())
 }
 
+// 브라우저 설정은 다른 탭에서 바뀌므로, 돌아왔을 때 한 번 더 확인한다.
+// Permissions API 의 change 를 못 주는 브라우저를 위한 보강이다.
+const refreshMicrophonePermissionOnVisible = () => {
+  if (document.visibilityState === 'visible') void refreshMicrophonePermission()
+}
+
+// 마이크 메뉴를 열 때마다 최신 권한을 반영한다.
+watch(openMenu, (menu) => {
+  if (menu === 'microphone') void refreshMicrophonePermission()
+})
+
 onMounted(() => {
   window.addEventListener('iread:microphone-state', handleMicrophoneState)
   window.addEventListener('iread:eye-tracker-state', handleEyeTrackerState)
   document.addEventListener('pointerdown', closeMenusFromOutside)
   document.addEventListener('keydown', closeMenusFromEscape)
+  document.addEventListener('visibilitychange', refreshMicrophonePermissionOnVisible)
+  window.addEventListener('focus', refreshMicrophonePermissionOnVisible)
+  stopMicrophonePermissionWatch = watchMicrophonePermission(applyMicrophonePermission)
 })
 
 onBeforeUnmount(() => {
@@ -281,6 +355,10 @@ onBeforeUnmount(() => {
   window.removeEventListener('iread:eye-tracker-state', handleEyeTrackerState)
   document.removeEventListener('pointerdown', closeMenusFromOutside)
   document.removeEventListener('keydown', closeMenusFromEscape)
+  document.removeEventListener('visibilitychange', refreshMicrophonePermissionOnVisible)
+  window.removeEventListener('focus', refreshMicrophonePermissionOnVisible)
+  stopMicrophonePermissionWatch?.()
+  stopMicrophonePermissionWatch = undefined
   if (eyeReconnectFeedbackTimer !== undefined) window.clearTimeout(eyeReconnectFeedbackTimer)
   disconnectMicrophone()
 })
@@ -425,8 +503,8 @@ const handleLogout = async () => {
           class="device-button device-button--voice device-button--interactive"
           :class="{
             active: microphoneActive,
-            available: microphoneStatus !== 'disconnected' && !microphoneActive,
-            disconnected: microphoneStatus === 'disconnected',
+            available: microphoneUsable && !microphoneActive,
+            disconnected: !microphoneUsable,
           }"
           :aria-label="microphoneStatusLabel"
           :aria-expanded="openMenu === 'microphone'"
@@ -454,9 +532,14 @@ const handleLogout = async () => {
               </div>
             </div>
 
+            <p v-if="microphoneStatus === 'denied'" class="microphone-permission-hint">
+              브라우저에서 마이크 권한이 차단돼 있어요.<br />
+              주소창의 자물쇠 아이콘에서 마이크를 허용한 뒤 다시 확인해 주세요.
+            </p>
+
             <div class="device-menu-primary-slot">
               <button
-                v-if="microphoneStatus === 'disconnected' || microphoneStatus === 'connecting'"
+                v-if="!microphoneUsable || microphoneStatus === 'connecting'"
                 type="button"
                 class="device-menu-button device-menu-button--primary"
                 :disabled="microphoneStatus === 'connecting'"
@@ -500,7 +583,7 @@ const handleLogout = async () => {
             <button
               type="button"
               class="device-menu-button device-menu-button--quiet"
-              :disabled="microphoneStatus === 'disconnected'"
+              :disabled="!microphoneUsable"
               @click="disconnectMicrophone"
             >
               마이크 연결 해제
@@ -626,6 +709,17 @@ const handleLogout = async () => {
 .device-status[data-state='recording'] i {
   background: #ef5c61;
   animation: status-pulse .75s ease-in-out infinite;
+}
+
+.microphone-permission-hint {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: #fdecec;
+  color: #b3373d;
+  font-size: 14px;
+  font-weight: var(--learner-font-weight-bold);
+  line-height: 1.45;
 }
 
 .device-menu-primary-slot {
