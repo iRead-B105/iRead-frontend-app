@@ -110,6 +110,37 @@ describe('API learner content repository', () => {
     })
   })
 
+  it('이야기 상세 응답을 모든 인증 이미지 다운로드로 막지 않는다', async () => {
+    const generatedImage = '/uploads/images/123e4567-e89b-12d3-a456-426614174001.png'
+    vi.spyOn(learnerApiClient, 'request').mockResolvedValue({
+      storyId: 31,
+      storyStatus: 'IN_PROGRESS',
+      currentDay: 1,
+      availableDay: 1,
+      totalDays: 10,
+      pagesPerDay: 10,
+      dayComplete: false,
+      storyLines: [{
+        lineId: 8,
+        storyId: 31,
+        imageUrl: generatedImage,
+        requiresBranchInput: false,
+        lineText: '바로 읽을 수 있는 문장이에요.',
+        sceneOrder: 1,
+        lineOrder: 1,
+        readAt: null,
+        branchPrompt: null,
+      }],
+    })
+    const download = vi.spyOn(learnerApiClient, 'download')
+    const repository = new ApiLearnerContentRepository()
+
+    const result = await repository.getStoryDetail('101', '31')
+
+    expect(result.pages[0]?.imageUrl).toBe(generatedImage)
+    expect(download).not.toHaveBeenCalled()
+  })
+
   it('현재 커리큘럼과 성장 정보를 화면 모델로 변환한다', async () => {
     const request = vi.spyOn(learnerApiClient, 'request')
       .mockResolvedValueOnce({

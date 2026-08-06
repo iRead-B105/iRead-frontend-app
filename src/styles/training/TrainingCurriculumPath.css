@@ -18,7 +18,7 @@
   border: var(--learner-frame-border);
   border-radius: var(--learner-frame-radius);
   background-color: #fffaf2;
-  background-image: url('../../assets/backgrounds/curriculum-background.png');
+  background-image: url('../../assets/backgrounds/curriculum-background.webp');
   background-position: center;
   background-size: cover;
   background-repeat: no-repeat;

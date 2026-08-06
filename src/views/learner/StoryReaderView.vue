@@ -9,7 +9,9 @@ import {
 } from '@/services/learnerDataRepository'
 import type { VillageItem } from '@/types/village'
 import { learnerStoryRepository } from '@/features/learner/story'
+import { resolveAuthenticatedStoryImage } from '@/features/learner/story/authenticatedStoryImage'
 import { preloadStoryImage } from '@/features/learner/story/storyImagePreloader'
+import { shouldCollectStoryGaze } from '@/features/learner/story/storyGazeCollectionPolicy'
 import type { LearnerStoryBranchPrompt } from '@/features/learner/model'
 import { learnerGazeRepository } from '@/features/learner/gaze'
 import { useVoiceRecorder } from '@/composables/useVoiceRecorder'
@@ -22,6 +24,7 @@ interface StoryPage {
   lineId: string
   lines: string[]
   image: string | null
+  imageSource: string | null
   imagePosition?: string
   readAt: string | null
   requiresBranchInput: boolean
@@ -58,6 +61,7 @@ const story = ref<Story>({
   pages: [{
     lineId: '',
     image: null,
+    imageSource: null,
     lines: ['이야기를 준비하고 있어요.'],
     readAt: null,
     requiresBranchInput: false,
@@ -66,6 +70,7 @@ const story = ref<Story>({
 })
 const loadError = ref('')
 const storyReady = ref(false)
+const FIRST_IMAGE_WAIT_MS = 250
 
 function initialPageFor(nextStory: Story) {
   if (route.query.continue !== '1') return 0
@@ -75,7 +80,7 @@ function initialPageFor(nextStory: Story) {
     : Math.max(nextStory.pages.length - 1, 0)
 }
 
-async function loadStory(): Promise<boolean> {
+async function loadStory(preferredLineId?: string): Promise<boolean> {
   loadError.value = ''
   try {
     const detail = await getStoryDetail(storyId.value)
@@ -91,7 +96,8 @@ async function loadStory(): Promise<boolean> {
       dayComplete: detail.dayComplete,
       pages: detail.pages.map((page) => ({
         lineId: page.lineId,
-        image: page.imageUrl,
+        image: null,
+        imageSource: page.imageUrl,
         imagePosition: page.imagePosition,
         lines: [...page.lines],
         readAt: page.readAt,
@@ -99,8 +105,13 @@ async function loadStory(): Promise<boolean> {
         branchPrompt: page.branchPrompt,
       })),
     }
-    await preloadStoryImage(nextStory.pages[initialPageFor(nextStory)]?.image)
     story.value = nextStory
+    const preferredPage = preferredLineId
+      ? nextStory.pages.findIndex((item) => item.lineId === preferredLineId)
+      : -1
+    const firstPage = preferredPage >= 0 ? preferredPage : initialPageFor(nextStory)
+    await waitForPageImage(firstPage, FIRST_IMAGE_WAIT_MS)
+    warmFollowingPageImages(firstPage)
     return true
   } catch (error) {
     loadError.value = '이야기를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.'
@@ -167,6 +178,46 @@ const CURSOR_GAZE_SAMPLE_INTERVAL_MS = 80
 
 const allPages = computed(() => story.value.pages)
 const page = computed<StoryPage>(() => allPages.value[currentPage.value] ?? story.value.pages[0]!)
+
+const pageImageRequests = new Map<string, Promise<void>>()
+
+function preparePageImage(index: number): Promise<void> {
+  const target = story.value.pages[index]
+  if (!target || target.image || !target.imageSource) return Promise.resolve()
+
+  const requestKey = `${storyId.value}:${target.lineId}:${target.imageSource}`
+  const existing = pageImageRequests.get(requestKey)
+  if (existing) return existing
+
+  const pending = resolveAuthenticatedStoryImage(
+    getCachedStudent().studentId,
+    storyId.value,
+    target.imageSource,
+  ).then(async (resolved) => {
+    await preloadStoryImage(resolved)
+    if (resolved && story.value.pages.includes(target)) target.image = resolved
+  }).catch(() => {
+    // 삽화 하나의 실패가 읽기 텍스트까지 막지 않게 한다.
+  }).finally(() => {
+    pageImageRequests.delete(requestKey)
+  })
+  pageImageRequests.set(requestKey, pending)
+  return pending
+}
+
+function waitForPageImage(index: number, maximumWaitMs: number): Promise<void> {
+  return new Promise((resolve) => {
+    const timeout = window.setTimeout(resolve, maximumWaitMs)
+    void preparePageImage(index).finally(() => {
+      window.clearTimeout(timeout)
+      resolve()
+    })
+  })
+}
+
+function warmFollowingPageImages(index: number) {
+  void preparePageImage(index + 1).then(() => preparePageImage(index + 2))
+}
 const branchQuestion = computed(() => page.value.lines.join(' ').trim() || story.value.question)
 const branchOptions = computed(() => page.value.branchPrompt?.options ?? [])
 const displayTextLines = computed(() => {
@@ -182,7 +233,7 @@ const pageWords = computed(() => displayTextLines.value.flatMap((line, lineIndex
 ))
 const isLastPage = computed(() => currentPage.value === allPages.value.length - 1)
 const isPageRead = computed(() => readThrough.value >= pageWords.value.length - 1)
-const isActiveReadingPage = computed(() => page.value.readAt === null)
+const isActiveReadingPage = computed(() => shouldCollectStoryGaze(page.value.readAt))
 const isListening = computed(() =>
   voiceRecorder.state.status === 'requesting'
   || voiceRecorder.state.status === 'recording',
@@ -285,8 +336,10 @@ async function resetReadingProgressForPage() {
 
 async function moveToPage(index: number) {
   if (index < 0 || index >= allPages.value.length || index === currentPage.value) return
+  void preparePageImage(index)
   await finishStoryGazeSession()
   currentPage.value = index
+  warmFollowingPageImages(index)
   resetStoryGazeState()
   await startStoryGazeSession()
   await resetReadingProgressForPage()
@@ -399,6 +452,8 @@ function recordStoryGazeSample(
   source: StoryGazeSource,
   force = false,
 ) {
+  // 이미 진행한 페이지를 다시 볼 때 들어오는 포인터·트래커 이벤트는 저장하지 않는다.
+  if (!isActiveReadingPage.value) return
   // 커서 폴백은 아이트래커 미연결 시 자동으로 켜진다. 트래커가 연결되어
   // 있으면 마우스 좌표를 시선 샘플로 기록하지 않는다.
   if (source === 'cursor' && !cursorGazeFallbackActive.value) return
@@ -740,7 +795,8 @@ function resetStoryGazeState() {
 }
 
 async function startStoryGazeSession() {
-  if (storyGazeSessionId.value) return
+  // readAt이 있는 이전 페이지는 재조회 화면이므로 새 수집 세션을 만들지 않는다.
+  if (!isActiveReadingPage.value || storyGazeSessionId.value) return
   const storyNumericId = Number(storyId.value)
   if (!Number.isInteger(storyNumericId) || storyNumericId <= 0) return
   try {
@@ -799,6 +855,8 @@ async function goNext() {
     markStoryLibraryCacheStale()
     // 페이지 단위 리플레이를 위해, 다음 화면으로 넘어가기 전에 현재 페이지의
     // 시선 세션을 반드시 종료·분석 전송한다.
+    const nextPageIndex = currentPage.value + 1
+    if (!isLastPage.value) void preparePageImage(nextPageIndex)
     await finishStoryGazeSession()
 
     if (current.requiresBranchInput) {
@@ -835,6 +893,7 @@ async function goNext() {
     }
 
     currentPage.value += 1
+    warmFollowingPageImages(currentPage.value)
     resetStoryGazeState()
     await startStoryGazeSession()
     await resetReadingProgressForPage()
@@ -980,7 +1039,7 @@ async function submitBranchAnswer(
       await showStoryReward()
       return
     }
-    await loadStory()
+    await loadStory(result.nextLineId)
     const nextPageIndex = story.value.pages.findIndex(
       (item) => item.lineId === result.nextLineId,
     )
@@ -1060,6 +1119,7 @@ onBeforeUnmount(() => {
       <div
         v-else-if="screen === 'reading'"
         class="story-scene story-scene--image"
+        :class="{ 'story-scene--image-loading': page.imageSource && !page.image }"
       >
         <button class="reader-back reader-exit" type="button" @click="exitToStorySelection">
           그만 보기
@@ -1095,7 +1155,11 @@ onBeforeUnmount(() => {
         </button>
       </div>
 
-      <div v-else-if="screen === 'question' || screen === 'generating'" class="question-scene">
+      <div
+        v-else-if="screen === 'question' || screen === 'generating'"
+        class="question-scene"
+        :class="{ 'story-scene--image-loading': page.imageSource && !page.image }"
+      >
         <button class="reader-back reader-exit" type="button" @click="exitToStorySelection">
           그만 보기
         </button>

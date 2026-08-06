@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter, type RouteLocationRaw } from 'vue-router'
-import storyLandBackground from '../../assets/backgrounds/story-section-background.png'
+import storyLandBackground from '../../assets/backgrounds/story-section-background.webp'
 import otherBooksIcon from '../../assets/story/ui/other-books-icon.png'
 import newBookIcon from '../../assets/story/ui/new-book-icon.png'
 import continueStoryIcon from '../../assets/story/ui/continue-story-icon.png'
@@ -14,12 +14,14 @@ import threeLittlePigsCover from '../../assets/story/covers/three-little-pigs.pn
 import {
   deleteStorySession,
   fetchStoryLibrary,
+  getCachedStudent,
   getCachedStoryLibrary,
   startStorySession,
 } from '@/services/learnerDataRepository'
 import PageBackButton from '@/components/common/PageBackButton.vue'
 import progressStar from '@/assets/training/ui/progress-star.png'
 import { preloadStoryImages } from '@/features/learner/story/storyImagePreloader'
+import { resolveAuthenticatedStoryImage } from '@/features/learner/story/authenticatedStoryImage'
 
 type StoryStatus = 'UNREAD' | 'IN_PROGRESS' | 'COMPLETED'
 type LibraryMode = 'home' | 'other' | 'new'
@@ -40,6 +42,7 @@ interface StorySession extends StoryTemplate {
   status: StoryStatus
   progress: number
   entryImageUrl: string | null
+  entryImageSource: string | null
 }
 
 const router = useRouter()
@@ -87,7 +90,8 @@ function applyStoryLibrary(library: Awaited<ReturnType<typeof fetchStoryLibrary>
     coverImage: resolveStoryCover(story.title, story.coverImageUrl),
     status: story.status,
     progress: story.progress,
-    entryImageUrl: story.entryImageUrl,
+    entryImageUrl: null,
+    entryImageSource: story.entryImageUrl,
   }))
   storyTemplates.value = library.templates.map((template) => ({
     id: template.templateId,
@@ -106,7 +110,7 @@ onMounted(async () => {
   try {
     const library = await fetchStoryLibrary()
     applyStoryLibrary(library)
-    void preloadStoryImages(library.stories.map((story) => story.entryImageUrl))
+    void warmStoryEntryImages()
   } catch {
     requestError.value = '이야기 목록을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.'
   } finally {
@@ -123,6 +127,43 @@ const currentBook = computed(() =>
       return bTime - aTime
     })[0],
 )
+
+const entryImageRequests = new Map<string, Promise<void>>()
+
+function prepareStoryEntryImage(story: StorySession): Promise<void> {
+  if (story.entryImageUrl || !story.entryImageSource) return Promise.resolve()
+
+  const requestKey = `${story.sessionId}:${story.entryImageSource}`
+  const existing = entryImageRequests.get(requestKey)
+  if (existing) return existing
+
+  const pending = resolveAuthenticatedStoryImage(
+    getCachedStudent().studentId,
+    story.sessionId,
+    story.entryImageSource,
+  ).then(async (resolved) => {
+    await preloadStoryImages([resolved])
+    if (resolved && storySessions.value.includes(story)) story.entryImageUrl = resolved
+  }).catch(() => {
+    // 개별 썸네일 실패 시 표지 이미지 폴백을 유지한다.
+  }).finally(() => {
+    entryImageRequests.delete(requestKey)
+  })
+  entryImageRequests.set(requestKey, pending)
+  return pending
+}
+
+async function warmStoryEntryImages() {
+  const prioritized = currentBook.value
+    ? [currentBook.value, ...storySessions.value.filter((story) => story !== currentBook.value)]
+    : [...storySessions.value]
+
+  // 현재 읽던 책을 먼저 준비하고, 나머지는 두 장씩 내려받아 다른 요청과의 경쟁을 줄인다.
+  if (prioritized[0]) await prepareStoryEntryImage(prioritized[0])
+  for (let index = 1; index < prioritized.length; index += 2) {
+    await Promise.all(prioritized.slice(index, index + 2).map(prepareStoryEntryImage))
+  }
+}
 const inProgressBooks = computed(() =>
   [...storySessions.value]
     .filter((book) => book.status === 'IN_PROGRESS')

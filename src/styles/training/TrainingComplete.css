@@ -10,7 +10,7 @@
   padding: var(--learner-page-padding);
   overflow: hidden;
   background-color: #22c5ed;
-  background-image: url('../../assets/backgrounds/training-section-background.png');
+  background-image: url('../../assets/backgrounds/training-section-background.webp');
   background-position: center;
   background-size: cover;
   background-repeat: no-repeat;

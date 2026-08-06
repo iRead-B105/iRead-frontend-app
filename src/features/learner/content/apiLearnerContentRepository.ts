@@ -1,6 +1,5 @@
 import fallbackCover from '@/assets/story/ui/new-book-icon.png'
 import { learnerApiClient } from '../learnerApiClient'
-import { resolveAuthenticatedStoryImage } from '../story/authenticatedStoryImage'
 import { getGrowthAreaId, resolveTrainingMapping } from './trainingTemplateMapping'
 import type {
   LearnerCurrentCurriculum,
@@ -182,7 +181,7 @@ export class ApiLearnerContentRepository implements LearnerContentRepository {
       ]),
     )
 
-    const stories = await Promise.all(response.stories.map(async (story, index) => {
+    const stories = response.stories.map((story, index) => {
       const template = templates.get(String(story.storyTemplateId))
       return {
         storyId: String(story.storyId),
@@ -195,15 +194,13 @@ export class ApiLearnerContentRepository implements LearnerContentRepository {
           || template?.templateTitle
           || '나의 이야기',
         coverImageUrl: template?.imageUrl || fallbackCover,
-        entryImageUrl: await resolveAuthenticatedStoryImage(
-          studentId,
-          String(story.storyId),
-          story.entryImageUrl,
-        ),
+        // 인증이 필요한 이미지는 화면에 보이기 직전에 내려받는다. 목록 API가
+        // 모든 표지 다운로드를 기다리게 하면 첫 화면이 이미지 수만큼 늦어진다.
+        entryImageUrl: story.entryImageUrl,
         status: story.storyStatus,
         progress: story.progress,
       }
-    }))
+    })
 
     return {
       templates: response.storyTemplates.map((template) => ({
@@ -224,25 +221,22 @@ export class ApiLearnerContentRepository implements LearnerContentRepository {
       `/api/app/story/${encodeURIComponent(studentId)}/${encodeURIComponent(storyId)}/lines`,
       { signal: options.signal },
     )
-    const pages = await Promise.all([...response.storyLines]
+    const pages = [...response.storyLines]
       .sort((left, right) => (
         (left.sceneOrder ?? 0) - (right.sceneOrder ?? 0)
         || left.lineOrder - right.lineOrder
       ))
-      .map(async (line) => ({
+      .map((line) => ({
         lineId: String(line.lineId),
         order: line.lineOrder,
         lines: [line.lineText],
-        // 서버가 삽화를 주지 않으면 null 그대로 둔다(화면에서 이미지 영역을 숨긴다).
-        imageUrl: await resolveAuthenticatedStoryImage(
-          studentId,
-          storyId,
-          line.imageUrl,
-        ),
+        // 원본 경로만 전달하고 reader가 현재/다음 장면 순으로 인증 다운로드한다.
+        // 서버가 삽화를 주지 않으면 null 그대로 둔다.
+        imageUrl: line.imageUrl,
         readAt: line.readAt,
         requiresBranchInput: line.requiresBranchInput,
         branchPrompt: line.branchPrompt,
-      })))
+      }))
 
     return {
       storyId,

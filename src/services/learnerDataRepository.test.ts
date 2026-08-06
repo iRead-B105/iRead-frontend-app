@@ -2,11 +2,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const content = vi.hoisted(() => ({
   getStoryLibrary: vi.fn(),
+  getStoryDetail: vi.fn(),
 }))
 
 vi.mock('@/features/learner/content', () => ({
   learnerContentRepository: {
     getStoryLibrary: content.getStoryLibrary,
+    getStoryDetail: content.getStoryDetail,
   },
 }))
 
@@ -43,6 +45,7 @@ describe('learnerDataRepository 이야기 책장 캐시', () => {
   beforeEach(() => {
     vi.resetModules()
     content.getStoryLibrary.mockReset()
+    content.getStoryDetail.mockReset()
   })
 
   it('같은 아동의 준비된 책장을 중복 조회하지 않는다', async () => {
@@ -67,5 +70,30 @@ describe('learnerDataRepository 이야기 책장 캐시', () => {
 
     expect(content.getStoryLibrary).toHaveBeenCalledTimes(2)
     expect(refreshed.stories[0]?.progress).toBe(20)
+  })
+
+  it('로그인 후 이어 읽을 이야기의 장면 경로를 미리 조회한다', async () => {
+    content.getStoryLibrary.mockResolvedValue(library(10))
+    content.getStoryDetail.mockResolvedValue({
+      storyId: '31',
+      title: '개미와 배짱이',
+      character: '개미',
+      branchQuestion: '',
+      status: 'IN_PROGRESS',
+      currentDay: 1,
+      availableDay: 1,
+      totalDays: 10,
+      pagesPerDay: 10,
+      dayComplete: false,
+      pages: [
+        { lineId: '1', imageUrl: '/scenes/one.png', readAt: '2026-08-04T10:00:00' },
+        { lineId: '2', imageUrl: '/scenes/two.png', readAt: null },
+      ],
+    })
+    const repository = await import('./learnerDataRepository')
+
+    await repository.preloadSelectedStudentStoryLibrary()
+
+    expect(content.getStoryDetail).toHaveBeenCalledWith('20', '31')
   })
 })

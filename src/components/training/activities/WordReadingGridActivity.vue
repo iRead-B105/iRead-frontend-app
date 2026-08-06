@@ -10,7 +10,7 @@ import microphoneIcon from '@/assets/icons/microphone.svg'
 import { cursorGazeFallbackActive } from '@/lib/cursorGazeFallback'
 import { readingRecordingMs } from '@/lib/readingRecordingDuration'
 
-const props = defineProps<{ question: TrainingQuestion }>()
+const props = defineProps<{ question: TrainingQuestion; tutorialActive?: boolean }>()
 type VoiceEvaluationControls = {
   success: (message?: string) => void
   retry: (message?: string) => void
@@ -152,6 +152,7 @@ const setRetry = (wordIndex: number, message = '') => {
 }
 
 const startSpeech = async (wordIndex: number) => {
+  if (props.tutorialActive) return
   if (disposed) return
   if (isBusy.value || speechState.value === 'success') return
   const word = items.value[wordIndex]
@@ -203,6 +204,7 @@ const startSilenceStop = (minRecordingMs: number, silenceMs: number) => {
 }
 
 const startWholeSentenceSpeech = async () => {
+  if (props.tutorialActive) return
   if (disposed || isBusy.value || speechState.value === 'success') return
   stopSpeech()
   if (retryTimer) {
@@ -228,6 +230,7 @@ const startWholeSentenceSpeech = async () => {
 
 // 녹음이 끝나면 활동 모드에 따라 단어 또는 문장 전체를 Azure 평가로 보낸다.
 watch(() => recorder.state.status, (status) => {
+  if (props.tutorialActive) return
   const blob = recorder.audioBlob.value
   if (status !== 'recorded' || !blob || blob === submittedBlob) return
   const wordIndex = activeIndex.value
@@ -293,6 +296,7 @@ const emitGazeWordHit = (clientX: number, clientY: number, tokenIndex: number) =
 }
 
 const updateGaze = (clientX: number, clientY: number, emitWordHit = false) => {
+  if (props.tutorialActive) return
   gazePoint.value = { x: clientX, y: clientY }
   gazeVisible.value = true
   const nextGazeIndex = cardIndexAt(clientX, clientY)
@@ -348,7 +352,7 @@ onMounted(() => {
   window.addEventListener('iread:gaze', onGaze)
   // 시선 드웰: 응시한 미완료 카드 → 해당 단어 녹음 시작(녹음/평가 중에는 무시).
   stateTimer = setInterval(() => {
-    if (disposed || allComplete.value || isBusy.value || speechState.value === 'success' || wholeSentenceRecording.value) return
+    if (props.tutorialActive || disposed || allComplete.value || isBusy.value || speechState.value === 'success' || wholeSentenceRecording.value) return
     const idx = gazeIndex.value
     if (idx === null) {
       dwellStartedAt = 0

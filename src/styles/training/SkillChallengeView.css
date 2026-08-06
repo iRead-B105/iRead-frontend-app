@@ -8,7 +8,7 @@
   place-items: center;
   overflow: hidden;
   padding: clamp(10px, 1.5cqh, 20px) var(--learner-page-padding);
-  background: #62bff2 url('../../assets/backgrounds/challenge-section-background.png') center / cover no-repeat;
+  background: #62bff2 url('../../assets/backgrounds/challenge-section-background.webp') center / cover no-repeat;
 }
 
 .challenge-panel {
