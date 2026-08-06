@@ -92,6 +92,10 @@ watch(() => props.question.id, reset, { immediate: true })
 // 조립한 문장 텍스트(따라 읽기 기준). targetResult가 완성 문장이다.
 const assembledSentence = computed(() => props.question.targetResult ?? props.question.targetText ?? '')
 
+// 문장 전체 조립은 기본적으로 녹음을 요구하지 않는다.
+// 서버 문항의 requiredInputs에 VOICE가 있을 때만 따라 읽기 단계를 거친다.
+const voiceRequired = computed(() => props.question.requiredInputs?.includes('VOICE') ?? false)
+
 // 녹음 최대 시간 = 글자 수 × 1초(3~30초). 끝나면 자동으로 평가로 넘어간다.
 const recordingMs = computed(() => readingRecordingMs(assembledSentence.value))
 
@@ -121,7 +125,7 @@ const retrySpeech = (message = '한 번 더 읽어봐!') => {
 
 // 조립한 문장을 실제로 녹음해 백엔드 발음 평가로 보낸다(부모 evaluateActivityVoice).
 const startSpeech = async () => {
-  if (!assemblyCorrect.value || isComplete.value) return
+  if (!voiceRequired.value || !assemblyCorrect.value || isComplete.value) return
   if (
     recorder.state.status === 'recording'
     || recorder.state.status === 'requesting'
@@ -173,8 +177,8 @@ const evaluateSentence = () => {
     // 완성한 순서를 세션 제출 경로로 저장해 백엔드에 응답 기록을 남긴다.
     session.selectAnswer(slots.value.filter((id): id is string => id !== null).join('|'))
     void session.submitAnswer()
-    if (session.assessmentMode.value) {
-      // 검사는 따라 읽기 없이 바로 다음으로 진행한다.
+    if (session.assessmentMode.value || !voiceRequired.value) {
+      // 검사와 녹음이 필요 없는 문항은 따라 읽기 없이 바로 다음으로 진행한다.
       speechState.value = 'success'
       statusMessage.value = '다 만들었어!'
     }
@@ -287,7 +291,7 @@ onBeforeUnmount(() => {
 <template>
   <section class="activity activity--sentence-order" :aria-label="question.instruction">
     <header class="activity-heading">
-      <h1>{{ assemblyCorrect ? '완성한 문장을 읽어봐!' : '문장을 만들어봐!' }}</h1>
+      <h1>{{ assemblyCorrect && voiceRequired ? '완성한 문장을 읽어봐!' : '문장을 만들어봐!' }}</h1>
       <p v-if="statusMessage" class="status-message" :class="speechState" role="status" aria-live="polite">{{ statusMessage }}</p>
     </header>
 
