@@ -12,7 +12,7 @@ import { consonantPronunciationText } from '@/lib/hangulPronunciation'
 import { cursorGazeFallbackActive } from '@/lib/cursorGazeFallback'
 import { readingRecordingMs } from '@/lib/readingRecordingDuration'
 
-const props = defineProps<{ question: TrainingQuestion }>()
+const props = defineProps<{ question: TrainingQuestion; tutorialActive?: boolean }>()
 type VoiceEvaluationControls = {
   success: (message?: string) => void
   retry: (message?: string) => void
@@ -131,6 +131,7 @@ const setRetry = (message?: string) => {
 }
 
 const startSpeech = async () => {
+  if (props.tutorialActive) return
   if (!traceCompleted.value || speechState.value === 'listening' || speechState.value === 'success') return
   stopSpeech()
   if (retryTimer) clearTimeout(retryTimer)
@@ -197,6 +198,7 @@ const HIT_RADIUS_PX = 56
 const LOOKAHEAD_POINTS = 5
 
 const advanceFromClientPoint = (clientX: number, clientY: number) => {
+  if (props.tutorialActive) return
   const svg = stage.value
   if (!svg || traceCompleted.value) return
 
@@ -233,6 +235,7 @@ const advanceFromClientPoint = (clientX: number, clientY: number) => {
 }
 
 const onPointerMove = (event: PointerEvent) => {
+  if (props.tutorialActive) return
   // 가상 아이트래커는 iread:gaze 이벤트로 시선을 보내므로 pointermove는 무시한다.
   // 커서 폴백은 아이트래커 미연결 시 자동으로 켜진다.
   if (virtualEyeTrackerConnected.value || !cursorGazeFallbackActive.value) return
@@ -248,6 +251,7 @@ const onGaze = (event: Event) => {
 }
 
 const submitTrace = () => {
+  if (props.tutorialActive) return
   const submittedStrokes = recordedStrokes.value
     .filter((points) => points.length >= 2)
     .map((points) => ({ points: points.map((point) => ({ ...point })) }))

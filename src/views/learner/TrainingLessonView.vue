@@ -755,6 +755,7 @@ const evaluateActivityVoice = async (
     completesQuestion: boolean
   },
 ) => {
+  if (tutorialVisible.value) return
   const mapped = serverQuestions.value[session.progressState.currentQuestionIndex]
   const itemId = learningItemId.value
 
@@ -1045,7 +1046,10 @@ const isSavingFailed = computed(() => session.savingState.status === 'failed')
     <div
       v-if="(phase === 'playing' || tutorialVisible) && lesson"
       class="playing"
-      :class="{ 'playing--first-sound': lesson.id === 'word-first-sound-choice' }"
+      :class="{
+        'playing--first-sound': lesson.id === 'word-first-sound-choice',
+        'playing--tutorial-active': tutorialVisible,
+      }"
     >
       <div class="lesson-topbar lesson-topbar--inside">
         <LearningBackButton @back="exitToHome" />
