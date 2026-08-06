@@ -44,6 +44,9 @@ const currentAsset = computed(() => rabbitAssets[state.value])
 const currentMessage = computed(() => messages[state.value])
 const isCompletionRoute = () => String(route.name ?? '').includes('complete')
 const isStoryRoute = () => String(route.name ?? '').startsWith('story-')
+// 인사(손 올리기) 인터랙션은 메인 화면에서만 허용한다.
+// 훈련·이야기·검사 중에는 마우스·시선이 스쳐도 반응하지 않는다.
+const interactionEnabled = computed(() => route.name === 'learner-home')
 
 const deriveState = (): RabbitState => {
   if (isCompletionRoute()) return 'celebrate'
@@ -83,6 +86,7 @@ const refreshState = () => {
 }
 
 const greet = () => {
+  if (!interactionEnabled.value) return
   hovered.value = true
   pendingState = null
   window.clearTimeout(stateTimer)
@@ -95,6 +99,7 @@ const restore = () => {
 }
 
 const onGaze = (event: Event) => {
+  if (!interactionEnabled.value) return
   const detail = (event as CustomEvent<{ clientX?: number; clientY?: number; x?: number; y?: number }>).detail
   const x = detail?.clientX ?? detail?.x
   const y = detail?.clientY ?? detail?.y
@@ -116,6 +121,14 @@ const onGaze = (event: Event) => {
 }
 
 watch(() => route.fullPath, () => void nextTick(refreshState))
+
+// 인사 도중 훈련·이야기 화면으로 넘어가면 손을 올린 채 남지 않게 즉시 복귀
+watch(interactionEnabled, (enabled) => {
+  if (enabled) return
+  window.clearTimeout(gazeLeaveTimer)
+  gazeLeaveTimer = 0
+  if (hovered.value) restore()
+})
 
 onMounted(() => {
   // 상태 전환 시 로딩 깜빡임 없이 즉시 바뀌도록 모든 상태 이미지를 미리 받아 둔다

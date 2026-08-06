@@ -45,6 +45,7 @@ import { learnerTestRepository } from '@/features/learner/test'
 import { presentTrainingHint } from '@/features/learner/training/hintPresentation'
 import { getTrainingTemplateMapping } from '@/features/learner/content/trainingTemplateMapping'
 import { resolveAuthenticatedQuestionImage } from '@/features/learner/training/authenticatedQuestionImage'
+import { getTutorialFamily } from '@/features/learner/tutorial/tutorialFamily'
 import { isApiError } from '@/lib/api'
 import { cursorGazeFallbackActive } from '@/lib/cursorGazeFallback'
 import TrainingTutorial from '@/components/training/TrainingTutorial.vue'
@@ -140,11 +141,11 @@ const tutorialTrainingKey = computed(() =>
   `${challengeTrackId.value ? 'challenge' : 'training'}:${categoryId.value}:${lesson.value?.id ?? lessonId.value}:${lesson.value?.activityType ?? 'unknown'}`,
 )
 const tutorialStudentKey = computed(() => String(getCachedStudent().studentId))
+const tutorialFamily = computed(() => getTutorialFamily(tutorialTrainingKey.value))
 const tutorialStorageKeys = computed(() => {
   const key = tutorialTrainingKey.value
-  const normalizedKey = key.replace(/^(training|challenge):/, '')
   return [
-    `iread-training-tutorial:v2:${tutorialStudentKey.value}:${normalizedKey}`,
+    `iread-training-tutorial:v3:${tutorialStudentKey.value}:${tutorialFamily.value}`,
     `iread-training-tutorial:v2:${tutorialStudentKey.value}:${key}`,
     `iread-training-tutorial:v2:${tutorialStudentKey.value}:${key.replace(/^training:/, 'challenge:')}`,
     `iread-training-tutorial:v2:${tutorialStudentKey.value}:${key.replace(/^challenge:/, 'training:')}`,
