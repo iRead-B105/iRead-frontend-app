@@ -68,8 +68,12 @@ const pronunciationText = computed(() => {
   const glyph = props.question.traceGlyph ?? ''
   const consonantText = consonantPronunciationText(glyph)
   if (consonantText !== glyph) return consonantText
-  return hangulPronunciations[glyph]
-    ?? props.question.speechAliases?.find((alias) => alias && alias !== glyph)
+  if (hangulPronunciations[glyph]) return hangulPronunciations[glyph]
+  // 완성형 음절(가·하 등)은 그 글자를 그대로 읽는다. speechAliases/audioText에는
+  // 생성 콘텐츠에 따라 예문("하늘이 맑아요")이나 안내문("가 라고 읽어봐")이
+  // 들어올 수 있어 폴백으로 쓰면 낱자 대신 문장을 읽어 버린다.
+  if (/^[가-힣]+$/.test(glyph)) return glyph
+  return props.question.speechAliases?.find((alias) => alias && alias !== glyph)
     ?? props.question.audioText
     ?? props.question.targetText
     ?? glyph
