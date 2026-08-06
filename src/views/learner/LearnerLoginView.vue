@@ -244,7 +244,10 @@ const changeStudentPage = (offset: number) => {
         </form>
 
         <form v-else-if="linkedStudents.length" class="student-form" @submit.prevent="handleStudentLogin">
-          <div class="student-browser">
+          <div
+            class="student-browser"
+            :class="{ 'student-browser--single-page': totalStudentPages <= 1 }"
+          >
             <button
               v-if="totalStudentPages > 1"
               type="button"
