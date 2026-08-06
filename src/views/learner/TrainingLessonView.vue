@@ -46,6 +46,7 @@ import { presentTrainingHint } from '@/features/learner/training/hintPresentatio
 import { getTrainingTemplateMapping } from '@/features/learner/content/trainingTemplateMapping'
 import { isApiError } from '@/lib/api'
 import { cursorGazeFallbackActive } from '@/lib/cursorGazeFallback'
+import TrainingTutorial from '@/components/training/TrainingTutorial.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -132,6 +133,16 @@ const gazeTransferDebug = ref({
 // 향후 추가 시 이 맵에만 등록하면 됩니다.
 const activityComponent = computed<Component | null>(() =>
   lesson.value ? (trainingActivityComponents[lesson.value.activityType] ?? null) : null,
+)
+const tutorialVisible = ref(false)
+const tutorialTrainingKey = computed(() =>
+  `${challengeTrackId.value ? 'challenge' : 'training'}:${categoryId.value}:${lesson.value?.id ?? lessonId.value}:${lesson.value?.activityType ?? 'unknown'}`,
+)
+const tutorialStudentKey = computed(() => String(getCachedStudent().studentId))
+const tutorialCompleted = computed(() =>
+  window.localStorage.getItem(
+    `iread-training-tutorial:v2:${tutorialStudentKey.value}:${tutorialTrainingKey.value}`,
+  ) === 'completed',
 )
 
 type Phase = 'intro' | 'playing' | 'saving'
@@ -491,7 +502,8 @@ onMounted(async () => {
     }
   }
   if (!integrationError.value) {
-    await startPlaying()
+    if (tutorialCompleted.value) await startPlaying()
+    else tutorialVisible.value = true
   }
 })
 
@@ -598,7 +610,7 @@ watch(
     const microphoneBlockerResolved = deviceBlocker.value === 'microphone' && micAvailable
     if (gazeBlockerResolved || microphoneBlockerResolved) {
       deviceBlocker.value = null
-      if (phase.value === 'intro') void startPlaying()
+      if (phase.value === 'intro' && !tutorialVisible.value) void startPlaying()
     }
 
     // intro 단계에서도 차단 상태를 유지해야 한다. 여기서 지우면 시작 전에 걸린
@@ -1012,7 +1024,7 @@ const isSavingFailed = computed(() => session.savingState.status === 'failed')
   >
     <!-- 문제 풀이 -->
     <div
-      v-if="phase === 'playing' && lesson"
+      v-if="(phase === 'playing' || tutorialVisible) && lesson"
       class="playing"
       :class="{ 'playing--first-sound': lesson.id === 'word-first-sound-choice' }"
     >
@@ -1046,7 +1058,10 @@ const isSavingFailed = computed(() => session.savingState.status === 'failed')
                   ></span>
                 </span>
               </div>
-              <h1 class="learner-instruction lesson-instruction">
+          <h1
+            class="learner-instruction lesson-instruction"
+            data-training-tutorial="instruction"
+          >
                 {{ displayQuestion.instruction }}
               </h1>
             </div>
@@ -1063,11 +1078,20 @@ const isSavingFailed = computed(() => session.savingState.status === 'failed')
           v-if="displayQuestion && activityComponent"
           :key="displayQuestion.id"
           :question="displayQuestion"
+          :tutorial-active="tutorialVisible"
           @next="goNext"
           @voice-recorded="evaluateActivityVoice"
         />
       </div>
     </div>
+
+    <TrainingTutorial
+      :visible="tutorialVisible"
+      :training-key="tutorialTrainingKey"
+      :student-key="tutorialStudentKey"
+      :activity-type="lesson?.activityType ?? 'gaze-trace'"
+      @finish="tutorialVisible = false; void startPlaying()"
+    />
 
     <!-- 저장 오버레이(저장 중 입력 잠금) -->
     <Transition name="fade">

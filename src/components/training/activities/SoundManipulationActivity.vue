@@ -8,7 +8,7 @@ import cardYellow from '@/assets/training/choice-cards/choice-card-letter-awning
 import cardMint from '@/assets/training/choice-cards/choice-card-letter-awning-mint.webp'
 import cardPurple from '@/assets/training/choice-cards/choice-card-letter-awning-purple.webp'
 
-const props = defineProps<{ question: TrainingQuestion }>()
+const props = defineProps<{ question: TrainingQuestion; tutorialActive?: boolean }>()
 defineEmits<{ next: [] }>()
 
 const session = useTrainingSession()
@@ -160,14 +160,14 @@ const showPulse = (unitId: string) => session.progressState.hintLevel >= 1 && is
 const showDirectHint = (unitId: string) => session.progressState.hintLevel >= 2 && isTargetUnit(unitId)
 
 watch(
-  () => props.question.id,
+  () => [props.question.id, props.tutorialActive],
   () => {
     placedSlotId.value = null
     placedChoiceId.value = null
     pickedChoiceId.value = null
     draggingChoiceId.value = null
     hoverSlotId.value = null
-    void nextTick(playQuestion)
+    if (!props.tutorialActive) void nextTick(playQuestion)
   },
   { immediate: true },
 )

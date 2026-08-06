@@ -9,7 +9,7 @@ import completeButtonDisabled from '@/assets/training/sound-puzzle/complete-butt
 import completeButtonActive from '@/assets/training/sound-puzzle/complete-button-active.png'
 import completeButtonSuccess from '@/assets/training/sound-puzzle/complete-button-success.png'
 
-const props = defineProps<{ question: TrainingQuestion }>()
+const props = defineProps<{ question: TrainingQuestion; tutorialActive?: boolean }>()
 defineEmits<{ next: [] }>()
 
 const session = useTrainingSession()
@@ -225,10 +225,10 @@ const submit = async () => {
 }
 
 watch(
-  () => props.question.id,
+  () => [props.question.id, props.tutorialActive],
   () => {
     clearPlacements()
-    void nextTick(playQuestion)
+    if (!props.tutorialActive) void nextTick(playQuestion)
   },
   { immediate: true },
 )
