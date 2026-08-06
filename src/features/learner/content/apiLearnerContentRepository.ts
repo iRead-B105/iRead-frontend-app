@@ -6,6 +6,7 @@ import type {
   LearnerDeviceStatus,
   LearnerGazeCalibrationGuide,
   LearnerGrowthArea,
+  LearnerGrowthSummary,
   LearnerStoryDetail,
   LearnerStoryFriend,
   LearnerStoryLibrary,
@@ -92,6 +93,7 @@ interface CurrentTrainingListDto {
 }
 
 interface GrowthDto {
+  readonly studyDayCount?: number
   readonly trainingProgress: readonly {
     readonly trainingTemplateId: number
     readonly trainingTemplateName: string
@@ -274,23 +276,28 @@ export class ApiLearnerContentRepository implements LearnerContentRepository {
   async getGrowthAreas(
     studentId: string,
     options: Parameters<LearnerContentRepository['getGrowthAreas']>[1] = {},
-  ): Promise<readonly LearnerGrowthArea[]> {
+  ): Promise<LearnerGrowthSummary> {
     const response = await learnerApiClient.request<GrowthDto>(
       `/api/app/student/${encodeURIComponent(studentId)}/growth`,
       { signal: options.signal },
     )
+    // 학습 일수는 서버가 완료 날짜로 센다. 완료 훈련 개수로 대신 세면 안 된다.
+    const studyDayCount = Math.max(0, Math.trunc(response.studyDayCount ?? 0))
     if (response.growthAreas) {
-      return response.growthAreas.map((area) => ({
-        areaId: area.areaId,
-        name: area.name,
-        learningCount: area.completedCount,
-        stage: Math.min(5, Math.max(1, area.stage)),
-        nextStageProgressPercent: typeof area.nextStageProgressPercent === 'number'
-          ? Math.min(100, Math.max(0, area.nextStageProgressPercent))
-          : null,
-        nextStageHint: area.nextStageHint ?? null,
-        updatedAt: area.updatedAt ?? '',
-      }))
+      return {
+        studyDayCount,
+        areas: response.growthAreas.map((area) => ({
+          areaId: area.areaId,
+          name: area.name,
+          learningCount: area.completedCount,
+          stage: Math.min(5, Math.max(1, area.stage)),
+          nextStageProgressPercent: typeof area.nextStageProgressPercent === 'number'
+            ? Math.min(100, Math.max(0, area.nextStageProgressPercent))
+            : null,
+          nextStageHint: area.nextStageHint ?? null,
+          updatedAt: area.updatedAt ?? '',
+        })),
+      }
     }
 
     // 구버전 Backend 응답과의 순차 배포 호환용이다. 새 Backend에서는 growthAreas를 사용한다.
@@ -305,15 +312,18 @@ export class ApiLearnerContentRepository implements LearnerContentRepository {
       3: '유창성',
     }
 
-    return ([1, 2, 3] as const).map((areaId) => ({
-      areaId,
-      name: names[areaId],
-      learningCount: learningCounts[areaId],
-      stage: Math.min(5, Math.max(1, learningCounts[areaId] + 1)),
-      nextStageProgressPercent: null,
-      nextStageHint: null,
-      updatedAt: '',
-    }))
+    return {
+      studyDayCount,
+      areas: ([1, 2, 3] as const).map((areaId) => ({
+        areaId,
+        name: names[areaId],
+        learningCount: learningCounts[areaId],
+        stage: Math.min(5, Math.max(1, learningCounts[areaId] + 1)),
+        nextStageProgressPercent: null,
+        nextStageHint: null,
+        updatedAt: '',
+      })),
+    }
   }
 
   async getStoryFriends(

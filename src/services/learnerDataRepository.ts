@@ -12,6 +12,7 @@ import type {
   LearnerDeviceStatus,
   LearnerGazeCalibrationGuide,
   LearnerGrowthArea,
+  LearnerGrowthSummary,
   LearnerStudent,
   LearnerStoryDetail,
   LearnerStoryFriend,
@@ -22,6 +23,7 @@ import { useLearnerSessionStore } from '@/stores/learnerSession'
 export type {
   LearnerCurrentCurriculum,
   LearnerGrowthArea,
+  LearnerGrowthSummary,
   LearnerStudent,
   LearnerStoryDetail,
   LearnerStoryFriend,
@@ -164,7 +166,7 @@ export const deleteStorySession = async (storyId: string): Promise<void> => {
   }
 }
 
-export const fetchGrowthAreas = (): Promise<readonly LearnerGrowthArea[]> =>
+export const fetchGrowthAreas = (): Promise<LearnerGrowthSummary> =>
   learnerContentRepository.getGrowthAreas(activeStudentId())
 
 export const fetchStoryFriends = (): Promise<readonly LearnerStoryFriend[]> =>

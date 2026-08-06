@@ -173,6 +173,7 @@ describe('API learner content repository', () => {
           { trainingTemplateId: 22, trainingTemplateName: '낱말 읽기', completedCount: 3 },
           { trainingTemplateId: 30, trainingTemplateName: '문장 따라 읽기', completedCount: 1 },
         ],
+        studyDayCount: 4,
         growthAreas: [
           {
             areaId: 1,
@@ -216,10 +217,11 @@ describe('API learner content repository', () => {
         status: 'LOCKED',
       }),
     ])
-    expect(growth.map((area) => area.learningCount)).toEqual([3, 8, 1])
-    expect(growth.map((area) => area.stage)).toEqual([2, 3, 1])
-    expect(growth.map((area) => area.nextStageProgressPercent)).toEqual([37, null, null])
-    expect(growth.map((area) => area.nextStageHint)).toEqual([
+    expect(growth.studyDayCount).toBe(4)
+    expect(growth.areas.map((area) => area.learningCount)).toEqual([3, 8, 1])
+    expect(growth.areas.map((area) => area.stage)).toEqual([2, 3, 1])
+    expect(growth.areas.map((area) => area.nextStageProgressPercent)).toEqual([37, null, null])
+    expect(growth.areas.map((area) => area.nextStageHint)).toEqual([
       '훈련을 5번 더 하면 자라나요!',
       null,
       null,

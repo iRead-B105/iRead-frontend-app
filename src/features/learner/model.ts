@@ -112,6 +112,12 @@ export interface LearnerStoryDetail {
   readonly pages: readonly LearnerStoryPage[]
 }
 
+export interface LearnerGrowthSummary {
+  /** 훈련을 완료한 서로 다른 날짜 수. 완료 훈련 개수와 다르다. */
+  readonly studyDayCount: number
+  readonly areas: readonly LearnerGrowthArea[]
+}
+
 export interface LearnerGrowthArea {
   readonly areaId: 1 | 2 | 3
   readonly name: string
