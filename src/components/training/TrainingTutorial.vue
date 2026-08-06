@@ -111,7 +111,12 @@ const steps = computed<TrainingTutorialStep[]>(() => {
   ]
 })
 
-const storageKey = computed(() => `iread-training-tutorial:v2:${props.studentKey}:${props.trainingKey}`)
+// 테스트와 일반 훈련이 같은 레슨을 가리키는 경우에는 튜토리얼 완료 상태를 공유한다.
+// 기존 키(v2:training:..., v2:challenge:...)와의 호환을 위해 저장은 공통 키로 한다.
+const normalizedTrainingKey = computed(() =>
+  props.trainingKey.replace(/^(training|challenge):/, ''),
+)
+const storageKey = computed(() => `iread-training-tutorial:v2:${props.studentKey}:${normalizedTrainingKey.value}`)
 const currentStep = computed(() => steps.value[currentIndex.value])
 
 const spotlightBounds = computed(() => {
@@ -255,9 +260,9 @@ onBeforeUnmount(() => {
 <style scoped>
 .training-tutorial { position: fixed; inset: 0; z-index: 1000; pointer-events: none; }
 .training-tutorial__backdrop { position: absolute; inset: 0; pointer-events: auto; }
-.training-tutorial__shade { position: absolute; background: rgba(21, 29, 53, .72); pointer-events: auto; }
+.training-tutorial__shade { position: absolute; background: rgba(21, 29, 53, .55); pointer-events: auto; }
 .training-tutorial__shade--top, .training-tutorial__shade--bottom { left: 0; width: 100%; }
 .training-tutorial__shade--left { left: 0; }
 .training-tutorial__shade--right { right: 0; }
-.training-tutorial__spotlight { position: fixed; z-index: 1; border: 4px solid #ffd65a; border-radius: 22px; box-shadow: 0 0 0 9999px rgba(21, 29, 53, .72), 0 0 0 10px rgba(255, 214, 90, .24), 0 14px 30px rgba(21, 29, 53, .28); cursor: pointer; pointer-events: auto; transition: all .22s ease; }
+.training-tutorial__spotlight { position: fixed; z-index: 1; border: 4px solid #ffd65a; border-radius: 22px; box-shadow: 0 0 0 9999px rgba(21, 29, 53, .55), 0 0 0 10px rgba(255, 214, 90, .24), 0 14px 30px rgba(21, 29, 53, .28); cursor: pointer; pointer-events: auto; transition: all .22s ease; }
 </style>
