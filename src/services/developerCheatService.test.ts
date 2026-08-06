@@ -3,7 +3,9 @@ import { learnerApiClient } from '@/features/learner/learnerApiClient'
 import {
   advanceToNextDemoTraining,
   advanceDemoLearningDay,
+  getDemoStoryReplayStatus,
   resetDemoLearningProgress,
+  toggleDemoStoryReplay,
 } from './developerCheatService'
 
 describe('developerCheatService', () => {
@@ -42,5 +44,21 @@ describe('developerCheatService', () => {
       '/api/app/dev/2103/learning/trainings/181031/next',
       { method: 'POST' },
     )
+  })
+
+  it('시연 이야기 재생 상태를 조회한다', async () => {
+    const request = vi.spyOn(learnerApiClient, 'request').mockResolvedValue({ enabled: false })
+
+    await getDemoStoryReplayStatus()
+
+    expect(request).toHaveBeenCalledWith('/api/app/dev/story-demo', { method: 'GET' })
+  })
+
+  it('시연 이야기 재생을 토글한다', async () => {
+    const request = vi.spyOn(learnerApiClient, 'request').mockResolvedValue({ enabled: true })
+
+    await toggleDemoStoryReplay()
+
+    expect(request).toHaveBeenCalledWith('/api/app/dev/story-demo/toggle', { method: 'POST' })
   })
 })

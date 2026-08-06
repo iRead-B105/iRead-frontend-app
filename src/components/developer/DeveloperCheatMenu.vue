@@ -8,7 +8,9 @@ import { useDeveloperMode } from '@/composables/useDeveloperMode'
 import {
   advanceToNextDemoTraining,
   advanceDemoLearningDay,
+  getDemoStoryReplayStatus,
   resetDemoLearningProgress,
+  toggleDemoStoryReplay,
   type DeveloperCheatResult,
 } from '@/services/developerCheatService'
 
@@ -151,6 +153,36 @@ watch(
   },
 )
 
+const storyReplayEnabled = ref<boolean | null>(null)
+const togglingStoryReplay = ref(false)
+
+const refreshStoryReplayStatus = async () => {
+  try {
+    storyReplayEnabled.value = (await getDemoStoryReplayStatus()).enabled
+  } catch {
+    storyReplayEnabled.value = null
+  }
+}
+
+const toggleStoryReplay = async () => {
+  if (togglingStoryReplay.value) return
+  togglingStoryReplay.value = true
+  errorMessage.value = ''
+  try {
+    storyReplayEnabled.value = (await toggleDemoStoryReplay()).enabled
+  } catch (error) {
+    errorMessage.value = error instanceof Error
+      ? error.message
+      : '시연 이야기 토글을 처리하지 못했습니다.'
+  } finally {
+    togglingStoryReplay.value = false
+  }
+}
+
+watch(open, (value) => {
+  if (value) void refreshStoryReplayStatus()
+}, { immediate: true })
+
 const close = () => {
   open.value = false
 }
@@ -284,6 +316,23 @@ const reloadPage = () => window.location.reload()
               <span>{{ virtualEyeTrackerConnected
                 ? '마우스 포인터를 시선으로 보내는 중'
                 : '마우스 포인터를 시선처럼 사용' }}</span>
+            </button>
+            <button
+              type="button"
+              class="eye-tracker"
+              :class="{ connected: storyReplayEnabled === true }"
+              :disabled="togglingStoryReplay || storyReplayEnabled === null"
+              :aria-pressed="storyReplayEnabled === true"
+              @click="toggleStoryReplay"
+            >
+              <strong>{{ storyReplayEnabled === null
+                ? '시연 이야기 상태 확인 불가'
+                : storyReplayEnabled
+                  ? '시연 이야기 재생 끄기'
+                  : '시연 이야기 재생 켜기' }}</strong>
+              <span>{{ storyReplayEnabled
+                ? '아기돼지 삼형제를 준비된 이야기로 재생 중'
+                : '아기돼지 삼형제를 준비된 이야기로 재생' }}</span>
             </button>
             <button type="button" @click="reloadPage">
               <strong>현재 화면 새로고침</strong>

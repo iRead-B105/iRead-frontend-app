@@ -31,3 +31,15 @@ export const advanceToNextDemoTraining = (
     `/api/app/dev/${studentId}/learning/trainings/${trainingId}/next`,
     { method: 'POST' },
   )
+
+export interface DemoStoryReplayStatus {
+  readonly enabled: boolean
+  readonly sourceStoryId: number
+  readonly delayMs: number
+}
+
+export const getDemoStoryReplayStatus = (): Promise<DemoStoryReplayStatus> =>
+  learnerApiClient.request('/api/app/dev/story-demo', { method: 'GET' })
+
+export const toggleDemoStoryReplay = (): Promise<DemoStoryReplayStatus> =>
+  learnerApiClient.request('/api/app/dev/story-demo/toggle', { method: 'POST' })
