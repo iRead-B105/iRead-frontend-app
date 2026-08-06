@@ -11,6 +11,7 @@ import type { VillageItem } from '@/types/village'
 import { learnerStoryRepository } from '@/features/learner/story'
 import { resolveAuthenticatedStoryImage } from '@/features/learner/story/authenticatedStoryImage'
 import { preloadStoryImage } from '@/features/learner/story/storyImagePreloader'
+import { shouldCollectStoryGaze } from '@/features/learner/story/storyGazeCollectionPolicy'
 import type { LearnerStoryBranchPrompt } from '@/features/learner/model'
 import { learnerGazeRepository } from '@/features/learner/gaze'
 import { useVoiceRecorder } from '@/composables/useVoiceRecorder'
@@ -232,7 +233,7 @@ const pageWords = computed(() => displayTextLines.value.flatMap((line, lineIndex
 ))
 const isLastPage = computed(() => currentPage.value === allPages.value.length - 1)
 const isPageRead = computed(() => readThrough.value >= pageWords.value.length - 1)
-const isActiveReadingPage = computed(() => page.value.readAt === null)
+const isActiveReadingPage = computed(() => shouldCollectStoryGaze(page.value.readAt))
 const isListening = computed(() =>
   voiceRecorder.state.status === 'requesting'
   || voiceRecorder.state.status === 'recording',
@@ -451,6 +452,8 @@ function recordStoryGazeSample(
   source: StoryGazeSource,
   force = false,
 ) {
+  // 이미 진행한 페이지를 다시 볼 때 들어오는 포인터·트래커 이벤트는 저장하지 않는다.
+  if (!isActiveReadingPage.value) return
   // 커서 폴백은 아이트래커 미연결 시 자동으로 켜진다. 트래커가 연결되어
   // 있으면 마우스 좌표를 시선 샘플로 기록하지 않는다.
   if (source === 'cursor' && !cursorGazeFallbackActive.value) return
@@ -792,7 +795,8 @@ function resetStoryGazeState() {
 }
 
 async function startStoryGazeSession() {
-  if (storyGazeSessionId.value) return
+  // readAt이 있는 이전 페이지는 재조회 화면이므로 새 수집 세션을 만들지 않는다.
+  if (!isActiveReadingPage.value || storyGazeSessionId.value) return
   const storyNumericId = Number(storyId.value)
   if (!Number.isInteger(storyNumericId) || storyNumericId <= 0) return
   try {
