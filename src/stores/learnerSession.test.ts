@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { createPinia, setActivePinia } from 'pinia'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { LearnerAuthRepository } from '@/features/learner/auth'
 import type { LearnerStudent } from '@/features/learner/model'
 import type { LearnerStudentRepository } from '@/features/learner/student'
@@ -77,6 +77,10 @@ describe('learner session store', () => {
     setActivePinia(createPinia())
     sessionStorage.clear()
     testLocalStorage.clear()
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
   })
 
   it('bootstrap token과 learning token의 생명주기를 분리한다', async () => {
@@ -179,6 +183,11 @@ describe('learner session store', () => {
   })
 
   it('로그아웃은 현재 learning token을 전달하고 모든 아동 상태를 제거한다', async () => {
+    const deleteCache = vi.fn().mockResolvedValue(true)
+    vi.stubGlobal('caches', {
+      keys: vi.fn().mockResolvedValue(['iread-story-images-v1:101']),
+      delete: deleteCache,
+    })
     const repository = createRepository()
     const session = useLearnerSessionStore()
     await session.loginTeacher(
@@ -193,6 +202,7 @@ describe('learner session store', () => {
     expect(session.status).toBe('anonymous')
     expect(session.student).toBeNull()
     expect(sessionStorage).toHaveLength(0)
+    expect(deleteCache).toHaveBeenCalledWith('iread-story-images-v1:101')
   })
 
   it('학습 진입 상태를 한 번 조회해 같은 세션의 라우팅 기준으로 재사용한다', async () => {

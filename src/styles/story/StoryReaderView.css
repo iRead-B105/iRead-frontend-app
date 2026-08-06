@@ -14,7 +14,7 @@
   padding: clamp(8px,1.35cqh,16px) var(--learner-page-padding);
   overflow: hidden;
   background-color: #66bdf1;
-  background-image: url('../../assets/backgrounds/story-section-background.png');
+  background-image: url('../../assets/backgrounds/story-section-background.webp');
   background-position: center;
   background-size: cover;
   background-repeat: no-repeat;
@@ -76,6 +76,16 @@
   box-shadow: none;
 }
 
+/* 네트워크 삽화를 기다리는 동안에도 텍스트 화면을 즉시 열고 부드러운 배경을 유지한다. */
+.story-scene--image-loading::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(110deg, #cfeaff 20%, #fff4ca 38%, #cfeaff 56%);
+  background-size: 220% 100%;
+  animation: story-image-placeholder 1.4s ease-in-out infinite;
+}
+
 .reader-back {
   position: absolute;
   z-index: 8;
@@ -104,6 +114,16 @@
   height: 100%;
   display: block;
   object-fit: cover;
+  animation: story-image-reveal 180ms ease-out both;
+}
+
+@keyframes story-image-placeholder {
+  to { background-position-x: -220%; }
+}
+
+@keyframes story-image-reveal {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .scene-shade {
@@ -341,6 +361,7 @@
   object-fit: cover;
   filter: saturate(.74) blur(2px);
   transform: scale(1.02);
+  animation: story-image-reveal 180ms ease-out both;
 }
 
 .question-backdrop {
@@ -1139,7 +1160,7 @@
 }
 
 @media (prefers-reduced-motion:reduce) {
-  .story-word--just-read,.story-word--next,.story-word--returning,.gaze-ring--dwelling,.listening-mic--active,.making-dots i,.story-next,.reward-rays {
+  .story-word--just-read,.story-word--next,.story-word--returning,.gaze-ring--dwelling,.listening-mic--active,.making-dots i,.story-next,.reward-rays,.story-scene--image-loading::before,.story-scene>img,.question-scene>img {
     animation: none;
   }
 

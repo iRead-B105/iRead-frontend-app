@@ -5,6 +5,7 @@
  * 실제 구현 선택은 features/learner의 mock/API repository에서 담당한다.
  */
 import { learnerContentRepository } from '@/features/learner/content'
+import { resolveAuthenticatedStoryImage } from '@/features/learner/story/authenticatedStoryImage'
 import { preloadStoryImages } from '@/features/learner/story/storyImagePreloader'
 import type {
   LearnerCurrentCurriculum,
@@ -37,6 +38,7 @@ let storyLibraryCache: {
   stale: boolean
 } | null = null
 let storyLibraryRequest: { studentId: string; pending: Promise<LearnerStoryLibrary> } | null = null
+const storyDetailRequests = new Map<string, Promise<LearnerStoryDetail>>()
 
 function invalidateStoryLibraryCache(studentId: string) {
   if (storyLibraryCache?.studentId === studentId) storyLibraryCache = null
@@ -94,11 +96,51 @@ export const markStoryLibraryCacheStale = () => {
 
 export const preloadSelectedStudentStoryLibrary = async (): Promise<void> => {
   const library = await fetchStoryLibrary()
-  await preloadStoryImages(library.stories.map((story) => story.entryImageUrl))
+  const nextStory = [...library.stories]
+    .filter((story) => story.status === 'IN_PROGRESS')
+    .sort((left, right) => Date.parse(right.lastReadAt ?? right.createdAt)
+      - Date.parse(left.lastReadAt ?? left.createdAt))[0]
+  if (!nextStory?.entryImageUrl) return
+
+  const imageUrl = await resolveAuthenticatedStoryImage(
+    activeStudentId(),
+    nextStory.storyId,
+    nextStory.entryImageUrl,
+  )
+  await preloadStoryImages([imageUrl])
+
+  const detail = await getStoryDetail(nextStory.storyId)
+  const firstUnreadIndex = detail.pages.findIndex((page) => page.readAt === null)
+  const startIndex = firstUnreadIndex >= 0 ? firstUnreadIndex : 0
+  const prioritizedPages = [
+    ...detail.pages.slice(startIndex),
+    ...detail.pages.slice(0, startIndex),
+  ].filter((page) => page.imageUrl)
+
+  for (let index = 0; index < prioritizedPages.length; index += 2) {
+    const resolved = await Promise.all(prioritizedPages
+      .slice(index, index + 2)
+      .map((page) => resolveAuthenticatedStoryImage(
+        activeStudentId(),
+        nextStory.storyId,
+        page.imageUrl,
+      )))
+    // 바로 읽을 두 장면은 디코딩까지 끝내고, 나머지는 영속 캐시에만 저장한다.
+    if (index === 0) await preloadStoryImages(resolved)
+  }
 }
 
-export const getStoryDetail = (storyId: string): Promise<LearnerStoryDetail> =>
-  learnerContentRepository.getStoryDetail(activeStudentId(), storyId)
+export const getStoryDetail = (storyId: string): Promise<LearnerStoryDetail> => {
+  const studentId = activeStudentId()
+  const requestKey = `${studentId}:${storyId}`
+  const existing = storyDetailRequests.get(requestKey)
+  if (existing) return existing
+
+  const pending = learnerContentRepository.getStoryDetail(studentId, storyId)
+    .finally(() => storyDetailRequests.delete(requestKey))
+  storyDetailRequests.set(requestKey, pending)
+  return pending
+}
 
 export const startStorySession = async (storyTemplateId: string): Promise<string> => {
   const studentId = activeStudentId()

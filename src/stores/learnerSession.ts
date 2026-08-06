@@ -1,5 +1,7 @@
 import { defineStore } from 'pinia'
 import { learnerAuthRepository, type LearnerAuthRepository } from '@/features/learner/auth'
+import { clearAuthenticatedProfileImages } from '@/features/learner/auth/authenticatedProfileImage'
+import { clearAuthenticatedStoryImages } from '@/features/learner/story/authenticatedStoryImage'
 import {
   learnerStudentRepository,
   type LearnerLearningEntry,
@@ -55,6 +57,13 @@ function isExpiredLogout(error: unknown): boolean {
   )
 }
 
+async function clearLearnerImageCaches(): Promise<void> {
+  await Promise.all([
+    clearAuthenticatedProfileImages(),
+    clearAuthenticatedStoryImages(),
+  ])
+}
+
 export const useLearnerSessionStore = defineStore('learner-session', {
   state: () => ({
     status: 'unknown' as LearnerAuthenticationStatus,
@@ -82,7 +91,7 @@ export const useLearnerSessionStore = defineStore('learner-session', {
       this.student = { ...student }
       cacheStudent(this.student)
     },
-    reset(options: { preserveStudentCache?: boolean } = {}) {
+    reset(options: { preserveStudentCache?: boolean; preserveImageCache?: boolean } = {}) {
       this.status = 'anonymous'
       this.bootstrapToken = null
       this.accessToken = null
@@ -94,6 +103,7 @@ export const useLearnerSessionStore = defineStore('learner-session', {
       this.learningEntryError = null
       this.learningEntryPromise = null
       if (!options.preserveStudentCache) cacheStudent(null)
+      if (!options.preserveImageCache) void clearLearnerImageCaches()
     },
     async loginTeacher(
       input: LearnerTeacherLoginInput,
@@ -247,11 +257,13 @@ export const useLearnerSessionStore = defineStore('learner-session', {
       this.logoutPending = true
       try {
         await repository.logout(this.accessToken)
-        this.reset()
+        this.reset({ preserveImageCache: true })
+        await clearLearnerImageCaches()
         return true
       } catch (error) {
         if (isExpiredLogout(error)) {
-          this.reset()
+          this.reset({ preserveImageCache: true })
+          await clearLearnerImageCaches()
           return true
         }
         this.authenticationError =

@@ -1,7 +1,7 @@
 import type { TrainingLesson } from '@/types/training'
-import rabbitCarrotImage from '@/assets/sentence-match/rabbit-carrot.png'
-import butterflyFlowerImage from '@/assets/sentence-match/butterfly-flower.png'
-import childReadingImage from '@/assets/sentence-match/child-reading.png'
+import rabbitCarrotImage from '@/assets/sentence-match/rabbit-carrot.webp'
+import butterflyFlowerImage from '@/assets/sentence-match/butterfly-flower.webp'
+import childReadingImage from '@/assets/sentence-match/child-reading.webp'
 
 export const pictureSentenceLesson: TrainingLesson = {
   id: 'match-picture',

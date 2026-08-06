@@ -4,7 +4,7 @@
   min-height: 100cqh;
   padding: 32px;
   place-items: center;
-  background: #65bdf0 url('../../assets/backgrounds/challenge-section-background.png') center / cover no-repeat;
+  background: #65bdf0 url('../../assets/backgrounds/challenge-section-background.webp') center / cover no-repeat;
 }
 
 .challenge-complete__panel {

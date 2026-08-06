@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
-import gardenBackground from '../../assets/backgrounds/garden-growth/garden-stage-1-soil.png'
+import gardenBackground from '../../assets/backgrounds/garden-growth/garden-stage-1-soil.webp'
 import checkIcon from '@/assets/icons/check.svg'
 import growthSummaryBoard from '@/assets/growth/ui/growth-summary-board.webp'
 import phonicsProgressCard from '@/assets/growth/ui/growth-progress-card-phonics.webp'

@@ -14,6 +14,7 @@ const repository = vi.hoisted(() => ({
 vi.mock('@/services/learnerDataRepository', () => ({
   deleteStorySession: repository.deleteStorySession,
   fetchStoryLibrary: repository.fetchStoryLibrary,
+  getCachedStudent: () => ({ studentId: '20' }),
   getCachedStoryLibrary: () => repository.cachedLibrary,
   startStorySession: repository.startStorySession,
 }))

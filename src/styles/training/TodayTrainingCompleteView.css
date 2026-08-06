@@ -9,7 +9,7 @@
   overflow: hidden;
   padding: var(--learner-page-padding);
   place-items: center;
-  background: #22c5ed url('../../assets/backgrounds/training-section-background.png') center / cover no-repeat;
+  background: #22c5ed url('../../assets/backgrounds/training-section-background.webp') center / cover no-repeat;
 }
 
 .complete-card {

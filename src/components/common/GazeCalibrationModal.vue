@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
-import storyScene from '../../assets/story/story-reader-turtle-scene-mock.png'
+import storyScene from '../../assets/story/story-reader-turtle-scene-mock.webp'
 import { fetchGazeCalibrationGuide } from '@/services/learnerDataRepository'
 
 type BridgeAnchorTarget = string | Element | { x: number; y: number } | { clientX: number; clientY: number }
