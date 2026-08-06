@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { TrainingChoice, TrainingQuestion } from '@/types/training'
 import { useTrainingSession } from '@/composables/useTrainingSession'
 import { useVoiceRecorder } from '@/composables/useVoiceRecorder'
+import { readingRecordingMs } from '@/lib/readingRecordingDuration'
 
 const props = defineProps<{ question: TrainingQuestion }>()
 type VoiceEvaluationControls = {
@@ -63,10 +64,8 @@ const isFilled = computed(() => placedChoice.value?.id === props.question.answer
 const showHint = computed(() => attempts.value >= 2 && !isFilled.value)
 const isComplete = computed(() => speechState.value === 'success')
 
-// 문장 길이에 비례한 녹음 시간(3~12초). 끝나면 자동으로 평가로 넘어간다.
-const recordingMs = computed(() =>
-  Math.min(12_000, Math.max(3_000, completedSentence.value.length * 650 + 1_800)),
-)
+// 녹음 최대 시간 = 글자 수 × 1초(3~30초). 끝나면 자동으로 평가로 넘어간다.
+const recordingMs = computed(() => readingRecordingMs(completedSentence.value))
 
 const stopAutoTimer = () => {
   if (autoStopTimer) clearTimeout(autoStopTimer)

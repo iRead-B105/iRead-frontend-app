@@ -8,6 +8,7 @@ import { useVoiceRecorder } from '@/composables/useVoiceRecorder'
 import checkIcon from '@/assets/icons/check.svg'
 import microphoneIcon from '@/assets/icons/microphone.svg'
 import { cursorGazeFallbackActive } from '@/lib/cursorGazeFallback'
+import { readingRecordingMs } from '@/lib/readingRecordingDuration'
 
 const props = defineProps<{ question: TrainingQuestion }>()
 type VoiceEvaluationControls = {
@@ -84,15 +85,12 @@ const wholeSentenceRecording = computed(() => props.question.readingAudioMode ==
 const canProceed = computed(() => allComplete.value && speechState.value === 'success')
 const isBusy = computed(() => speechState.value === 'listening' || speechState.value === 'evaluating')
 
-const recordingMsFor = (wordIndex: number) => {
-  const length = items.value[wordIndex]?.text.length ?? 2
-  return Math.min(8_000, Math.max(3_000, length * 650 + 1_800))
-}
+const recordingMsFor = (wordIndex: number) =>
+  readingRecordingMs(items.value[wordIndex]?.text)
 
-const recordingMsForSentence = () => {
-  const length = props.question.targetText?.length ?? items.value.reduce((sum, item) => sum + item.text.length, 0)
-  return Math.min(15_000, Math.max(5_000, length * 260 + 2_500))
-}
+const recordingMsForSentence = () => readingRecordingMs(
+  props.question.targetText ?? items.value.map((item) => item.text).join(''),
+)
 
 const speechStatusText = computed(() => {
   switch (speechState.value) {

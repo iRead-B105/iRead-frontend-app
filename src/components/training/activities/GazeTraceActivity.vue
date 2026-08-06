@@ -10,6 +10,7 @@ import microphoneIcon from '@/assets/icons/microphone.svg'
 import type { LearnerTraceSubmissionResponse } from '@/features/learner/training'
 import { consonantPronunciationText } from '@/lib/hangulPronunciation'
 import { cursorGazeFallbackActive } from '@/lib/cursorGazeFallback'
+import { readingRecordingMs } from '@/lib/readingRecordingDuration'
 
 const props = defineProps<{ question: TrainingQuestion }>()
 type VoiceEvaluationControls = {
@@ -144,8 +145,8 @@ const startSpeech = async () => {
     speechState.value = 'denied'
     return
   }
-  // 한 글자 발화에 충분한 시간을 준 뒤 자동으로 녹음을 끝낸다.
-  fallbackTimer = setTimeout(() => recorder.stop(), 5_000)
+  // 글자 수에 비례한 최대 시간(하한 3초) 뒤 자동으로 녹음을 끝낸다.
+  fallbackTimer = setTimeout(() => recorder.stop(), readingRecordingMs(pronunciationText.value))
 }
 
 watch(() => recorder.state.status, (status) => {
