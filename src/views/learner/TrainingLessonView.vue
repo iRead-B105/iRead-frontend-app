@@ -44,6 +44,7 @@ import { learnerGazeRepository } from '@/features/learner/gaze'
 import { learnerTestRepository } from '@/features/learner/test'
 import { presentTrainingHint } from '@/features/learner/training/hintPresentation'
 import { getTrainingTemplateMapping } from '@/features/learner/content/trainingTemplateMapping'
+import { resolveAuthenticatedQuestionImage } from '@/features/learner/training/authenticatedQuestionImage'
 import { isApiError } from '@/lib/api'
 import { cursorGazeFallbackActive } from '@/lib/cursorGazeFallback'
 import TrainingTutorial from '@/components/training/TrainingTutorial.vue'
@@ -442,6 +443,15 @@ onMounted(async () => {
           ),
         )
         const mappedQuestions = [firstPayload, ...remainingPayloads].map(mapTrainingQuestion)
+        // 그림 문항 삽화는 백엔드 인증 경로에 저장되므로 blob URL로 바꿔야 <img>가 그린다.
+        // 실패하면 targetImage를 비워 imagePrompt 텍스트 폴백으로 자연 저하.
+        await Promise.all(mappedQuestions.map(async (mapped) => {
+          if (!mapped.question.targetImage) return
+          mapped.question.targetImage = await resolveAuthenticatedQuestionImage(
+            studentId,
+            mapped.question.targetImage,
+          ).catch(() => undefined) ?? undefined
+        }))
         const activityType = mappedQuestions[0]?.activityType
         if (
           !activityType
