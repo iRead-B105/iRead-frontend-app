@@ -22,7 +22,23 @@ export function installLearnerRealtimeSync(
   let client: RealtimeClient | null = null
   let refreshPromise: Promise<void> | null = null
   let profileRefreshPromise: Promise<void> | null = null
+  let deletedStudentSessionPromise: Promise<void> | null = null
   let lastVersion = 0
+
+  const invalidateDeletedStudentSession = (): Promise<void> => {
+    if (deletedStudentSessionPromise) return deletedStudentSessionPromise
+    const task = session.invalidateDeletedStudentSession()
+      .then(async () => {
+        if (router.currentRoute.value.name !== 'learner-login') {
+          await router.replace({ name: 'learner-login' })
+        }
+      })
+      .finally(() => {
+        if (deletedStudentSessionPromise === task) deletedStudentSessionPromise = null
+      })
+    deletedStudentSessionPromise = task
+    return task
+  }
 
   const refreshCurriculum = (): Promise<void> => {
     if (
@@ -66,6 +82,10 @@ export function installLearnerRealtimeSync(
       return
     }
     lastVersion = event.version
+    if (event.resource === 'STUDENT' && event.changeType === 'DELETED') {
+      await invalidateDeletedStudentSession()
+      return
+    }
     if (event.resource === 'CURRICULUM' || event.resource === 'TRAINING') {
       await refreshCurriculum()
     } else if (event.resource === 'STUDENT') {
