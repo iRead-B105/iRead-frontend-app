@@ -4,6 +4,7 @@ type TobiiGazeFrame = {
   type?: string
   source?: string
   valid?: boolean
+  trackerConnected?: boolean
   screenX?: number
   screenY?: number
   trackingLeft?: number
@@ -115,8 +116,6 @@ const GAZE_EMIT_INTERVAL_MS = 11
 const TRANSFORM_STORAGE_KEY = 'iread-tobii-gaze-transform-v2'
 const LEGACY_OFFSET_STORAGE_KEY = 'iread-tobii-gaze-offset-v1'
 const ANCHORS_STORAGE_KEY = 'iread-tobii-gaze-anchors-v1'
-const HEAD_ROTATION_LIMIT_DEG = 15
-const HEAD_POSITION_LIMIT = 0.35
 const HEAD_POSITION_COMPARABLE_RANGE = 8
 const GAZE_SMOOTHING_ALPHA = 0.48
 const GAZE_REPLAY_MAX_MS = 220
@@ -449,17 +448,9 @@ function updateHeadPoseState(frame: TobiiGazeFrame) {
     reason: 'head-stable',
   }
 
-  delta.unstable = (
-    Math.abs(delta.yaw) > HEAD_ROTATION_LIMIT_DEG
-    || Math.abs(delta.pitch) > HEAD_ROTATION_LIMIT_DEG
-    || Math.abs(delta.roll) > HEAD_ROTATION_LIMIT_DEG
-    || (positionComparable && (
-      Math.abs(delta.x) > HEAD_POSITION_LIMIT
-      || Math.abs(delta.y) > HEAD_POSITION_LIMIT
-      || Math.abs(delta.z) > HEAD_POSITION_LIMIT
-    ))
-  )
-  delta.reason = delta.unstable ? 'head-moved' : 'head-stable'
+  // 고개 각도/위치로 시선 입력을 제한하지 않는다. 머리 자세는 측정 정보로만 전달한다.
+  delta.unstable = false
+  delta.reason = 'head-stable'
   lastHeadPoseDelta = delta
   return delta
 }
@@ -642,13 +633,15 @@ function connect() {
   if (userStopped) return
   // Electron 셸이면 IPC로 시선 프레임을 받는다 (구 Python 중계 서버 불필요)
   if (window.ireadGaze) {
+    if (usingIpc) disconnectIpc()
     connectIpc(window.ireadGaze)
     return
   }
-  if (
-    socket
-    && (socket.readyState === WebSocket.CONNECTING || socket.readyState === WebSocket.OPEN)
-  ) return
+  if (socket) {
+    const activeSocket = socket
+    socket = null
+    activeSocket.close()
+  }
 
   connecting.value = true
   emitState()
@@ -673,8 +666,7 @@ function connect() {
       .then(() => {
         if (socket !== nextSocket || userStopped) return
         connecting.value = false
-        connected.value = true
-        emitState()
+        // WebSocket 연결은 브리지 연결일 뿐, 실제 Tobii 연결은 gaze 프레임으로 확인한다.
       })
       .catch(() => {
         if (socket !== nextSocket) return
@@ -685,9 +677,17 @@ function connect() {
       })
   })
   nextSocket.addEventListener('message', (event) => {
-    if (socket !== nextSocket || !connected.value) return
+    if (socket !== nextSocket) return
     try {
-      scheduleEmit(JSON.parse(String(event.data)) as TobiiGazeFrame)
+      const frame = JSON.parse(String(event.data)) as TobiiGazeFrame
+      if (frame.type !== 'gaze') return
+      const trackerIsConnected = frame.trackerConnected === true
+      if (connected.value !== trackerIsConnected) {
+        connected.value = trackerIsConnected
+        connecting.value = false
+        emitState()
+      }
+      if (trackerIsConnected) scheduleEmit(frame)
     } catch {
       // Ignore malformed frames from a partially restarted bridge.
     }
@@ -718,21 +718,23 @@ function connectIpc(api: IreadGazeApi) {
     ipcFrameUnsub = api.onFrame((frame) => {
       if (userStopped) return
       // 프레임이 흐르고 있으면 브릿지 exe가 살아 있는 것 — 상태 이벤트보다 확실한 신호
-      if (!connected.value) {
-        connected.value = true
+      const gazeFrame = frame as TobiiGazeFrame
+      const trackerIsConnected = gazeFrame.trackerConnected === true
+      if (connected.value !== trackerIsConnected) {
+        connected.value = trackerIsConnected
         connecting.value = false
         emitState()
       }
-      scheduleEmit(frame as TobiiGazeFrame)
+      if (trackerIsConnected) scheduleEmit(gazeFrame)
     })
   }
   if (!ipcStatusUnsub) {
     ipcStatusUnsub = api.onStatus((status) => {
       if (userStopped) return
       const running = Boolean(status.running)
-      if (connected.value !== running) {
-        connected.value = running
-        connecting.value = !running
+      if (!running && connected.value) {
+        connected.value = false
+        connecting.value = true
         emitState()
       }
     })
@@ -741,8 +743,9 @@ function connectIpc(api: IreadGazeApi) {
   api.setMode('native').then(
     (status) => {
       if (userStopped) return
-      connected.value = Boolean(status.running)
-      connecting.value = !connected.value
+      // 브리지 프로세스가 실행 중인 것과 실제 Tobii 장치 연결은 다르다.
+      connected.value = false
+      connecting.value = Boolean(status.running)
       emitState()
       // running이 아직 아니면 브릿지가 백오프 재실행 중 — 상태/프레임 이벤트가 갱신해 준다
     },
