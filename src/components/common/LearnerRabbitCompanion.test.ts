@@ -16,7 +16,7 @@ afterEach(() => {
 })
 
 describe('LearnerRabbitCompanion', () => {
-  it('훈련 결과 상태와 인사 상호작용에 맞는 토끼를 보여준다', async () => {
+  it('훈련 중에는 인사 상호작용이 동작하지 않고 훈련 상태를 유지한다', async () => {
     const host = document.createElement('div')
     document.body.append(host)
     const wrapper = mount(LearnerRabbitCompanion, { attachTo: host })
@@ -26,11 +26,24 @@ describe('LearnerRabbitCompanion', () => {
     document.body.append(activity)
     await vi.waitFor(() => expect(wrapper.classes()).toContain('rabbit-companion--correct'))
 
+    // 훈련 화면에서는 마우스를 올려도 인사(손 올리기)로 바뀌지 않는다
+    await wrapper.get('.rabbit-companion__character').trigger('pointerenter')
+    expect(wrapper.classes()).toContain('rabbit-companion--correct')
+    wrapper.unmount()
+  })
+
+  it('메인 화면에서는 마우스 인사 상호작용이 동작한다', async () => {
+    route.name = 'learner-home'
+    route.fullPath = '/learner/home'
+    const host = document.createElement('div')
+    document.body.append(host)
+    const wrapper = mount(LearnerRabbitCompanion, { attachTo: host })
+
     await wrapper.get('.rabbit-companion__character').trigger('pointerenter')
     expect(wrapper.classes()).toContain('rabbit-companion--greeting')
 
     await wrapper.get('.rabbit-companion__character').trigger('pointerleave')
-    expect(wrapper.classes()).toContain('rabbit-companion--correct')
+    expect(wrapper.classes()).toContain('rabbit-companion--idle')
     wrapper.unmount()
   })
 
