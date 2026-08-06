@@ -52,6 +52,12 @@
   transform-origin: center;
 }
 
+/* 튜토리얼 중에는 실제 훈련 입력을 완료 후까지 막는다. */
+.playing--tutorial-active .lesson-topbar,
+.playing--tutorial-active .question-scroll {
+  pointer-events: none;
+}
+
 .lesson-topbar--inside {
   min-height: clamp(154px, 17cqh, 184px);
   display: grid;
