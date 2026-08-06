@@ -5,8 +5,6 @@ const CLICK_WINDOW_MS = 1_500
 const REQUIRED_CLICKS = 5
 
 const readInitialState = () => {
-  // 프로덕션 빌드에서는 localStorage에 'on'이 남아 있어도 개발자 모드를 켜지 않는다.
-  if (!import.meta.env.DEV) return false
   if (typeof window === 'undefined') return false
   return window.localStorage.getItem(STORAGE_KEY) === 'on'
 }
@@ -59,8 +57,8 @@ const setEnabled = (value: boolean) => {
 const toggle = () => setEnabled(!enabled.value)
 
 const registerLogoClick = () => {
-  // 개발자 모드(로그 오버레이·치트 메뉴)는 프로덕션 빌드에서 활성화하지 않는다.
-  if (!import.meta.env.DEV) return false
+  // 패키징(일렉트론) 앱에서도 로고 5연타로 개발자 모드를 열 수 있어야 하므로
+  // 프로덕션 가드를 두지 않는다. 1.5초 내 5연타가 진입 장벽 역할을 한다.
   logoClicks += 1
   if (clickResetTimer !== undefined) window.clearTimeout(clickResetTimer)
 

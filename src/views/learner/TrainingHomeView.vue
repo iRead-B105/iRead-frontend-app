@@ -13,20 +13,23 @@ import TrainingCurriculumPath, {
 } from '@/components/training/TrainingCurriculumPath.vue'
 import TrainingLessonModal from '@/components/training/TrainingLessonModal.vue'
 import { useDailyCurriculum } from '@/composables/useDailyCurriculum'
+import { useDeveloperMode } from '@/composables/useDeveloperMode'
 
 const route = useRoute()
 const router = useRouter()
 
 const categories = getAllCategories()
 const showAllTrainings = ref(false)
-const isDeveloperMode = import.meta.env.DEV
+// 배포 웹에서도 로고 5연타(useDeveloperMode)로 디버그 패널을 열 수 있어야 한다.
+const developerMode = useDeveloperMode()
+const isDeveloperMode = computed(() => import.meta.env.DEV || developerMode.enabled.value)
 const debugPanelOpen = ref(false)
 const dailyCurriculum = useDailyCurriculum()
 
 void dailyCurriculum.reloadCurrentCurriculum().catch(() => undefined)
 
 watchEffect(() => {
-  if (!isDeveloperMode && dailyCurriculum.isTodayComplete.value) {
+  if (!isDeveloperMode.value && dailyCurriculum.isTodayComplete.value) {
     void router.replace({ name: 'training-today-complete' })
   }
 })
