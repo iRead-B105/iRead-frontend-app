@@ -10,6 +10,11 @@ import {
 import type { VillageItem } from '@/types/village'
 import { learnerStoryRepository } from '@/features/learner/story'
 import { resolveAuthenticatedStoryImage } from '@/features/learner/story/authenticatedStoryImage'
+import {
+  clearStoryBranchPending,
+  isStoryBranchPending,
+  markStoryBranchPending,
+} from '@/features/learner/story/pendingBranch'
 import { preloadStoryImage } from '@/features/learner/story/storyImagePreloader'
 import { shouldCollectStoryGaze } from '@/features/learner/story/storyGazeCollectionPolicy'
 import type { LearnerStoryBranchPrompt } from '@/features/learner/model'
@@ -870,7 +875,10 @@ async function goNext() {
       branchVoiceAttemptCount.value = 0
       speechError.value = false
       voiceRecorder.reset()
-      screen.value = 'question'
+      // 이 분기의 생성이 아직 돌고 있으면 선택지를 다시 내주지 않는다.
+      screen.value = isStoryBranchPending(storyId.value, current.lineId)
+        ? 'generating'
+        : 'question'
       return
     }
 
@@ -1027,6 +1035,8 @@ async function submitBranchAnswer(
   branchSubmitting.value = true
   speechError.value = false
   screen.value = 'generating'
+  // 생성이 끝나기 전에 홈으로 나갔다 돌아와도 같은 분기를 다시 고르지 못하게 한다.
+  markStoryBranchPending(storyId.value, current.lineId)
   try {
     const result = await learnerStoryRepository.chooseDirection(
       getCachedStudent().studentId,
@@ -1065,7 +1075,19 @@ async function submitBranchAnswer(
     )
   } finally {
     branchSubmitting.value = false
+    clearStoryBranchPending()
   }
+}
+
+// 생성 요청이 남아 있는 분기 페이지로 복귀했다면 선택지 대신 생성 중 화면을 둔다.
+function restoreGeneratingScreenIfPending() {
+  const current = story.value.pages[currentPage.value]
+  if (!current?.requiresBranchInput || !current.lineId) return
+  if (!isStoryBranchPending(storyId.value, current.lineId)) return
+  clearDwell()
+  clearLeaveTimer()
+  gaze.value.visible = false
+  screen.value = 'generating'
 }
 
 watch(storyId, async () => {
@@ -1076,6 +1098,7 @@ watch(storyId, async () => {
   if (!storyReady.value) return
   currentPage.value = initialPage()
   screen.value = 'reading'
+  restoreGeneratingScreenIfPending()
   rewardedFriend.value = null
   voiceRecorder.reset()
   await startStoryGazeSession()
@@ -1085,6 +1108,9 @@ onMounted(async () => {
   storyReady.value = await loadStory()
   if (!storyReady.value) return
   currentPage.value = initialPage()
+  // 선택지를 눌러둔 채 나갔다 돌아온 경우다. 읽기 화면부터 다시 보여 주면 아이가
+  // 같은 선택지를 또 누르게 되므로 곧바로 생성 중 화면으로 들어간다.
+  restoreGeneratingScreenIfPending()
   await startStoryGazeSession()
   await resetReadingProgressForPage()
   window.addEventListener('pointermove', onPointerMove)
