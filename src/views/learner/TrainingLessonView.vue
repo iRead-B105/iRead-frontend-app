@@ -430,7 +430,9 @@ onMounted(async () => {
         // 검사는 언제든 예기치 않게 끊길 수 있으므로 재진입 시 세션을 초기화해 처음부터 다시 본다.
         if (challengeTrackId.value && intro.status === 'IN_PROGRESS') {
           await learningRepository.value.reset(studentId, itemId)
-          intro = { ...intro, status: 'NOT_STARTED' }
+          // 초기화한 진행을 그대로 복원하면 화면은 이어서 시작하는데 서버에는 기록이
+          // 없어, 마지막 문항을 끝내도 제출 수가 모자라 검사를 종료할 수 없다.
+          intro = { ...intro, status: 'NOT_STARTED', completedQuestionNumbers: [] }
         }
         const firstPayload = await learningRepository.value.getQuestion(studentId, itemId, 1)
         const remainingPayloads = await Promise.all(
@@ -677,6 +679,14 @@ const enableMicrophoneFromBlocker = async () => {
     microphoneRetrying.value = false
   }
 }
+
+// 아이가 브라우저 설정에서 마이크를 허용하면 '마이크 켜기'를 다시 누르지 않아도
+// 차단 화면이 걷히게 한다. 권한이 이미 허용된 상태라 추가 확인 창은 뜨지 않는다.
+watch(() => voiceRecorder.permission.value, (permission) => {
+  if (permission !== 'granted') return
+  if (deviceBlocker.value !== 'microphone') return
+  void enableMicrophoneFromBlocker()
+})
 
 const goNext = async (response?: LearnerTraceSubmissionResponse) => {
   if (submittingQuestion.value) return

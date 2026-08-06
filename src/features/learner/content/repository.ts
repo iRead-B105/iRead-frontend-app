@@ -2,6 +2,7 @@ import type {
   LearnerCurrentCurriculum,
   LearnerDeviceStatus,
   LearnerGrowthArea,
+  LearnerGrowthSummary,
   LearnerGazeCalibrationGuide,
   LearnerRequestOptions,
   LearnerStoryDetail,
@@ -35,7 +36,7 @@ export interface LearnerContentRepository {
   readonly getGrowthAreas: (
     studentId: string,
     options?: LearnerRequestOptions,
-  ) => Promise<readonly LearnerGrowthArea[]>
+  ) => Promise<LearnerGrowthSummary>
   readonly getStoryFriends: (
     studentId: string,
     options?: LearnerRequestOptions,

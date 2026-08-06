@@ -62,7 +62,6 @@ const currentCurriculum = ref<LearnerCurrentCurriculum | null>(null)
 const storyLibrary = ref<LearnerStoryLibrary | null>(null)
 const studyDay = ref(1)
 const lessonsPerGrowthStage = 5
-// TODO: 백엔드에 학습 일차가 추가되면 누적 성장 횟수 기반 임시 계산을 교체합니다.
 const trainingGoalComplete = computed(() => {
   const curriculum = currentCurriculum.value
   return Boolean(
@@ -240,7 +239,7 @@ onMounted(async () => {
   ])
 
   if (growthResult.status === 'fulfilled') {
-    const growthAreas = growthResult.value
+    const growthAreas = growthResult.value.areas
     growthAreas.forEach((area) => {
       learningCounts[area.areaId] = area.learningCount
       stages[area.areaId] = Math.min(5, Math.max(1, area.stage))
@@ -249,10 +248,9 @@ onMounted(async () => {
       const garden = gardens.find((item) => item.id === area.areaId)
       if (garden) garden.title = area.name
     })
-    studyDay.value = Math.max(
-      1,
-      Object.values(learningCounts).reduce((total, count) => total + count, 0) + 1,
-    )
+    // 학습 일수는 서버가 센 완료 날짜 수를 쓴다. 완료 훈련 개수를 더하면
+    // 하루에 여러 훈련을 끝낸 아이가 며칠을 학습한 것처럼 보인다.
+    studyDay.value = Math.max(1, growthResult.value.studyDayCount)
   } else {
     const error = growthResult.reason
     loadError.value =
