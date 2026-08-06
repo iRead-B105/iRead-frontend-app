@@ -50,6 +50,7 @@ interface StoryLinesDto {
     } | null
 
     readonly requiresBranchInput: boolean
+    readonly branchGenerating?: boolean
     readonly lineText: string
     readonly sceneOrder?: number
     readonly lineOrder: number
@@ -235,6 +236,8 @@ export class ApiLearnerContentRepository implements LearnerContentRepository {
         imageUrl: line.imageUrl,
         readAt: line.readAt,
         requiresBranchInput: line.requiresBranchInput,
+        // 서버가 이 분기의 다음 장면을 지금 만들고 있는가. 예전 서버는 주지 않으므로 false.
+        branchGenerating: line.branchGenerating ?? false,
         branchPrompt: line.branchPrompt,
       }))
 

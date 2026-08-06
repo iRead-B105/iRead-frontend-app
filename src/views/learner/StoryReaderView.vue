@@ -15,6 +15,11 @@ import {
   isStoryBranchPending,
   markStoryBranchPending,
 } from '@/features/learner/story/pendingBranch'
+import { isApiError } from '@/lib/api/apiError'
+
+// Backend 가 같은 분기를 이미 만들고 있을 때 주는 응답.
+const isStoryBranchGeneratingError = (error: unknown): boolean =>
+  isApiError(error) && error.code === 'STORY_BRANCH_GENERATING'
 import { preloadStoryImage } from '@/features/learner/story/storyImagePreloader'
 import { shouldCollectStoryGaze } from '@/features/learner/story/storyGazeCollectionPolicy'
 import type { LearnerStoryBranchPrompt } from '@/features/learner/model'
@@ -33,6 +38,7 @@ interface StoryPage {
   imagePosition?: string
   readAt: string | null
   requiresBranchInput: boolean
+  branchGenerating: boolean
   branchPrompt: LearnerStoryBranchPrompt | null
 }
 interface Story {
@@ -70,6 +76,7 @@ const story = ref<Story>({
     lines: ['이야기를 준비하고 있어요.'],
     readAt: null,
     requiresBranchInput: false,
+    branchGenerating: false,
     branchPrompt: null,
   }],
 })
@@ -107,6 +114,7 @@ async function loadStory(preferredLineId?: string): Promise<boolean> {
         lines: [...page.lines],
         readAt: page.readAt,
         requiresBranchInput: page.requiresBranchInput,
+        branchGenerating: page.branchGenerating,
         branchPrompt: page.branchPrompt,
       })),
     }
@@ -876,9 +884,7 @@ async function goNext() {
       speechError.value = false
       voiceRecorder.reset()
       // 이 분기의 생성이 아직 돌고 있으면 선택지를 다시 내주지 않는다.
-      screen.value = isStoryBranchPending(storyId.value, current.lineId)
-        ? 'generating'
-        : 'question'
+      screen.value = isBranchGenerating(currentPage.value) ? 'generating' : 'question'
       return
     }
 
@@ -1066,6 +1072,12 @@ async function submitBranchAnswer(
     voiceRecorder.reset()
     screen.value = 'reading'
   } catch (error) {
+    // 서버가 이미 이 분기를 만들고 있다면 아이에게는 오류가 아니라 기다림이다.
+    // 다른 기기·탭에서 먼저 눌렀거나 새로 고쳐 로컬 기록이 사라진 경우다.
+    if (isStoryBranchGeneratingError(error)) {
+      screen.value = 'generating'
+      return
+    }
     screen.value = 'question'
     // 버튼 선택 실패는 녹음 오류가 아니므로 음성 제출에만 재녹음을 안내한다.
     speechError.value = optionNo === undefined
@@ -1079,11 +1091,17 @@ async function submitBranchAnswer(
   }
 }
 
-// 생성 요청이 남아 있는 분기 페이지로 복귀했다면 선택지 대신 생성 중 화면을 둔다.
+// 이 분기의 다음 장면이 지금 만들어지고 있는가.
+// 서버 잠금이 기준이고, 응답을 기다리는 사이는 로컬 기록으로 메운다.
+function isBranchGenerating(pageIndex: number) {
+  const target = story.value.pages[pageIndex]
+  if (!target?.requiresBranchInput || !target.lineId) return false
+  return target.branchGenerating || isStoryBranchPending(storyId.value, target.lineId)
+}
+
+// 생성 중인 분기 페이지로 복귀했다면 선택지 대신 생성 중 화면을 둔다.
 function restoreGeneratingScreenIfPending() {
-  const current = story.value.pages[currentPage.value]
-  if (!current?.requiresBranchInput || !current.lineId) return
-  if (!isStoryBranchPending(storyId.value, current.lineId)) return
+  if (!isBranchGenerating(currentPage.value)) return
   clearDwell()
   clearLeaveTimer()
   gaze.value.visible = false

@@ -94,6 +94,7 @@ export interface LearnerStoryPage {
   readonly imagePosition?: string
   readonly readAt: string | null
   readonly requiresBranchInput: boolean
+  readonly branchGenerating: boolean
   readonly branchPrompt: LearnerStoryBranchPrompt | null
 }
 
