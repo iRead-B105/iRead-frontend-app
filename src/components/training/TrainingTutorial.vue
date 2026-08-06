@@ -131,6 +131,7 @@ const spotlightBounds = computed(() => {
 })
 
 let retryTimer: ReturnType<typeof setTimeout> | null = null
+let speechRunId = 0
 
 const updateTarget = () => {
   const target = currentStep.value ? document.querySelector<HTMLElement>(currentStep.value.target) : null
@@ -152,13 +153,22 @@ const updateTarget = () => {
 }
 
 const finish = () => {
-  if (ttsLocked.value || audioPlayer.isPlaying.value) return
+  speechRunId += 1
+  audioPlayer.stop()
+  ttsLocked.value = false
   window.localStorage.setItem(storageKey.value, 'completed')
   emit('finish')
 }
 
+const stopCurrentSpeech = () => {
+  speechRunId += 1
+  audioPlayer.stop()
+  ttsLocked.value = false
+}
+
 const next = () => {
-  if (ttsLocked.value || audioPlayer.isPlaying.value) return
+  if (!props.visible) return
+  stopCurrentSpeech()
   if (currentIndex.value >= steps.value.length - 1) {
     finish()
     return
@@ -171,16 +181,22 @@ const speakCurrentStep = () => {
   const description = currentStep.value?.description?.trim()
   if (!description || !props.visible) return
 
+  const runId = ++speechRunId
   ttsLocked.value = true
-  void audioPlayer.speak(description, 0.9).finally(() => {
+  void audioPlayer.speak(description, 0.9).then(() => {
+    if (runId !== speechRunId || !props.visible) return
     ttsLocked.value = false
+    if (currentIndex.value >= steps.value.length - 1) {
+      finish()
+      return
+    }
+    currentIndex.value += 1
   })
 }
 
 watch(() => props.visible, (visible) => {
   if (!visible) {
-    audioPlayer.stop()
-    ttsLocked.value = false
+    stopCurrentSpeech()
     return
   }
   currentIndex.value = 0
@@ -200,7 +216,7 @@ window.addEventListener('resize', onResize)
 onBeforeUnmount(() => {
   window.removeEventListener('resize', onResize)
   if (retryTimer) clearTimeout(retryTimer)
-  audioPlayer.stop()
+  stopCurrentSpeech()
 })
 </script>
 
