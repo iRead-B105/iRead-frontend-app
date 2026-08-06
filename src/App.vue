@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import LearnerErrorModal from '@/components/common/LearnerErrorModal.vue'
+import UnsupportedViewportNotice from '@/components/common/UnsupportedViewportNotice.vue'
 import DevLogOverlay from '@/components/developer/DevLogOverlay.vue'
 import { useTobiiGazeBridge } from '@/composables/useTobiiGazeBridge'
 
@@ -14,5 +15,6 @@ useTobiiGazeBridge({ autoConnect: true })
 <template>
   <RouterView />
   <LearnerErrorModal />
+  <UnsupportedViewportNotice />
   <DevLogOverlay />
 </template>
