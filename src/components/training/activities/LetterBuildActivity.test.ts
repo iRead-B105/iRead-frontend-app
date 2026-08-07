@@ -70,6 +70,59 @@ describe('LetterBuildActivity', () => {
     wrapper.unmount()
   })
 
+  it('오답 제출도 정답과 같은 선택지 식별자 형식으로 보낸다', async () => {
+    const submittedAnswers: (string | string[])[] = []
+    session.setAnswerEvaluator(async (answer) => {
+      submittedAnswers.push(answer)
+      return {
+        attemptNo: 1,
+        correct: false,
+        questionCompleted: false,
+        canRetry: true,
+        hint: null,
+      }
+    })
+
+    const wrapper = mount(LetterBuildActivity, { props: { question } })
+    const cards = wrapper.findAll('.letter-chip')
+    const cardByText = (text: string) => cards.find((card) => card.text() === text)!
+
+    await cardByText('ㄴ').trigger('click')
+    await cardByText('ㅓ').trigger('click')
+    await wrapper.get('.complete-button').trigger('click')
+
+    expect(submittedAnswers).toEqual(['initial-choice-1|medial-choice-1'])
+    expect(session.progressState.isCurrentCorrect).toBe(false)
+    wrapper.unmount()
+  })
+
+  it('슬롯 선택지에 없는 자모를 배치해도 오답인 선택지 식별자로 제출한다', async () => {
+    const submittedAnswers: (string | string[])[] = []
+    session.setAnswerEvaluator(async (answer) => {
+      submittedAnswers.push(answer)
+      return {
+        attemptNo: 1,
+        correct: false,
+        questionCompleted: false,
+        canRetry: true,
+        hint: null,
+      }
+    })
+
+    const wrapper = mount(LetterBuildActivity, { props: { question } })
+    const cards = wrapper.findAll('.letter-chip')
+    const cardByText = (text: string) => cards.find((card) => card.text() === text)!
+
+    // ㅏ는 중성 선택지이므로 첫소리 칸에 놓으면 슬롯 선택지와 매칭되지 않는다.
+    await cardByText('ㅏ').trigger('click')
+    await cardByText('ㅓ').trigger('click')
+    await wrapper.get('.complete-button').trigger('click')
+
+    expect(submittedAnswers).toEqual(['initial-choice-1|medial-choice-1'])
+    expect(session.progressState.isCurrentCorrect).toBe(false)
+    wrapper.unmount()
+  })
+
   it('Enter 키로도 카드를 배치한다', async () => {
     const wrapper = mount(LetterBuildActivity, { props: { question } })
 

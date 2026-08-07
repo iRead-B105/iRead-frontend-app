@@ -207,13 +207,40 @@ const releasePointer = () => {
 onMounted(() => window.addEventListener('pointerup', releasePointer))
 onUnmounted(() => window.removeEventListener('pointerup', releasePointer))
 
+// 제출 값은 정답 여부와 관계없이 question.answer 와 같은
+// `역할-choice-번호|...` 형식이어야 한다. 자모 텍스트를 그대로 보내면
+// buildTrainingResponse 가 선택지 식별자로 파싱하지 못해 제출이 실패한다.
+const arrangedChoiceIds = (): string => {
+  const combineJamo = new Map(
+    Object.entries(compoundJamo).map(([combined, parts]) => [parts.join(''), combined]),
+  )
+  return slots.value
+    .map((slot) => {
+      const joined = visualSlots.value
+        .filter((item) => item.sourceSlotId === slot.id)
+        .map((item) => textFor(placements[item.id]))
+        .join('')
+      const effective = combineJamo.get(joined) ?? joined
+      const slotChoiceIds = (choice: TrainingChoice) => choice.id.startsWith(`${slot.role}-choice-`)
+      const matched = sourceChoices.value.find(
+        (choice) => slotChoiceIds(choice) && choiceText(choice) === effective,
+      )
+      // 배치한 자모가 이 슬롯의 선택지에 없으면(다른 슬롯 조각이나 보충 자모)
+      // 오답이 유지되도록 정답이 아닌 선택지로 기록한다.
+      const fallback = sourceChoices.value.find(
+        (choice) => slotChoiceIds(choice) && choice.id !== slot.answerChoiceId,
+      )
+      return (matched ?? fallback)?.id ?? slot.answerChoiceId
+    })
+    .join('|')
+}
+
 const submit = async () => {
   if (!allFilled.value || isCorrect.value) return
   const correctArrangement = visualSlots.value.every(
     (item) => textFor(placements[item.id]) === item.answerText,
   )
-  const arrangedValue = visualSlots.value.map((item) => textFor(placements[item.id])).join('|')
-  session.selectAnswer(correctArrangement ? props.question.answer : arrangedValue)
+  session.selectAnswer(correctArrangement ? props.question.answer : arrangedChoiceIds())
   const completed = await session.submitAnswer()
 
   if (completed) {
