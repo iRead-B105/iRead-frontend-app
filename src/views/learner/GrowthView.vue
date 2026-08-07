@@ -350,15 +350,6 @@ onBeforeUnmount(() => {
         </ul>
       </aside>
 
-      <button
-        class="growth-friends-button"
-        type="button"
-        aria-haspopup="dialog"
-        :aria-expanded="storyFriendsOpen"
-        @click="storyFriendsOpen = true"
-      >
-        이야기 친구들
-      </button>
 
       <div class="garden-friends" aria-label="정원에 놓은 이야기 친구">
         <button
