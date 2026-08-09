@@ -257,6 +257,13 @@ function mapChoice(number: number, source: StudentQuestionDto): {
     ),
     audioText,
     targetText: source.questionType === 'SAME_INITIAL_WORD_CHOICE' ? audioText : undefined,
+    // 그림-문장 연결은 GAZE 필수인데 화면이 시선 이벤트를 만들지 않아, 시선 샘플이
+    // 하나도 없으면 세션 종료가 거부된다(백엔드 hasCompletedData). 정답 문장을 시선
+    // 토큰 원천으로 두면 dwell 0 인 단어 지표라도 남아 완료가 막히지 않는다.
+    // sentence-choice 액티비티는 targetResult 를 그리지 않으므로 정답이 노출되지 않는다.
+    targetResult: source.questionType === 'IMAGE_SENTENCE_MATCH'
+      ? choices.find((choice) => choice.id === answer)?.text
+      : undefined,
     targetImage: optionalString(source.content, 'imageUrl') ?? undefined,
     // 이미지 생성 정책 확정 전까지 imageUrl 대신 imagePrompt 텍스트를 자리 표시로 보여 준다.
     targetImageLabel: optionalString(source.content, 'imagePrompt') ?? undefined,
