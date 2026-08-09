@@ -216,6 +216,12 @@
   background: #fff8d7;
   color: #ad8120;
   box-shadow: var(--learner-shadow-card);
+  /* 합쳐진 낱말은 음절 수가 2개 이상으로 늘 수 있다. 고정 폭이면 "무지개"가
+     "무지 / 개"로 줄바꿈되므로, 최소 폭만 유지하고 글자 수에 따라 가로로 늘린다. */
+  width: auto;
+  min-width: clamp(112px,10.5cqw,150px);
+  padding-inline: clamp(10px,1.2cqw,18px);
+  white-space: nowrap;
 }
 
 .result-word.revealed {
